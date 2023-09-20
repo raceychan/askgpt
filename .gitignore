@@ -1,3 +1,5 @@
 *.env
 response.json
 answer.md
+
+/.ipynb_checkpoints/
