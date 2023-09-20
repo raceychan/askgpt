@@ -1,12 +1,14 @@
 import asyncio
 import argparse
+
 import openai
+
 from pathlib import Path
+from datetime import datetime
+from dataclasses import dataclass
+
 from rich.console import Console
 from rich.markdown import Markdown
-from datetime import datetime
-
-from dataclasses import dataclass
 
 frozenclass = dataclass(frozen=True, slots=True, unsafe_hash=True)
 
