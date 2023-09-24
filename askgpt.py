@@ -201,6 +201,7 @@ async def interactive_mode(namespace: argparse.Namespace):
         history = dict(role="assistant", content=answer)
         context.append(history)
 
+
 async def main():
     config_file = ".env"
     openai.api_key = read_env(config_file)["OPENAI_KEY"]
@@ -222,7 +223,6 @@ async def main():
         model = GPT4_MODEL
     else:
         model = GPT3_MODEL
-
 
     question = args.question
 
