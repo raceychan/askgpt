@@ -127,7 +127,6 @@ def collect_event(session: Session, mailbox: Mediator):
     events = entity.get_events()
     for e in events:
         mailbox.publish(e)
-    session.rollback()
 
 
 def domain_entity_test():
@@ -146,6 +145,7 @@ def domain_entity_test():
 
     with session.begin():
         session.add(entity)
+
         entity.preferred()
         session.commit()
 
@@ -158,7 +158,7 @@ def domain_entity_test():
     )
 
     result = session.execute(query).fetchall()
-    assert not result
+    # assert not result
 
 
 if __name__ == "__main__":

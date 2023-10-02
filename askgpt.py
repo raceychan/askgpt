@@ -169,6 +169,7 @@ def show_answer(answer_file: str = "answer.md"):
 
 
 def quit(context: list):
+    question, answer = "", ""
     if context:
         for msg in context:
             role = msg.get("role")
@@ -178,6 +179,7 @@ def quit(context: list):
                 question = msg.get("content")
             elif role == "assistant":
                 answer = msg.get("content")
+
             save_answer(question, answer)
 
     console.rule("[bold red]Answer")
@@ -203,8 +205,8 @@ async def interactive_mode(namespace: argparse.Namespace):
 
 
 async def main():
-    config_file = ".env"
-    openai.api_key = read_env(config_file)["OPENAI_KEY"]
+    config_file = "src/.env"
+    openai.api_key = read_env(config_file)["OPENAI_API_KEY"]
     context = list()
 
     parser = argparse.ArgumentParser(description="cli for chatgpt")
