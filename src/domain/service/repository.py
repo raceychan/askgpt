@@ -1,5 +1,12 @@
 from sqlalchemy import Engine, Transaction
 
+"""
+Remember:
+repository and unitwork in doman service
+should only be interfaces
+and let infra implemente
+"""
+
 
 class Repository:
     def __init__(self, engine):
@@ -20,8 +27,6 @@ class Repository:
     def find_by_id(self, user_id):
         # Implement finding a user by ID logic here
         ...
-
-    # Add other repository methods as needed
 
 
 class UnitOfWork:

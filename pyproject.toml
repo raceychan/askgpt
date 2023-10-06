@@ -16,10 +16,10 @@ pydantic = "^2.3.0"
 
 [tool.poetry.group.dev.dependencies]
 pyright = "^1.1.327"
+pytest = "^7.4.2"
 
 [tool.pyright]
 include = ["src/*.py"]
-
 #typeCheckingMode = "strict"
 
 [build-system]

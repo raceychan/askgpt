@@ -1,18 +1,17 @@
-import typing as ty
+import abc
 import datetime
+import typing as ty
 import uuid
+from dataclasses import dataclass
+from functools import cached_property, singledispatchmethod
 
-from functools import cached_property
-from pydantic import BaseModel, Field, computed_field, ConfigDict, SerializeAsAny
+from pydantic import BaseModel, ConfigDict, Field, SerializeAsAny, computed_field
+
+from src.domain.model.name_tools import pascal_to_snake
 
 utc_datetime = ty.Annotated[datetime.datetime, "UTC_TimeStamp"]
 
-
-def pascal_to_snake(string: str):
-    "works for both camelCase and PascalCase"
-    if not string:
-        return string
-    return "".join(["_" + c.lower() if c.isupper() else c for c in string]).lstrip("_")
+frozen = dataclass(frozen=True, slots=True, kw_only=True)
 
 
 def rich_repr(namespace: ty.Mapping, indent="\t"):
@@ -109,9 +108,10 @@ class DomainBase(BaseModel):
 
     @classmethod
     def tableclause(cls, table_name: str = ""):
-        import uuid
-        import sqlalchemy as sa
         import decimal
+        import uuid
+
+        import sqlalchemy as sa
 
         types_mapping = {
             str: sa.String,
@@ -141,35 +141,9 @@ class ValueObject(DomainBase):
     model_config = ConfigDict(frozen=True)
 
 
-class Entity(DomainBase):
-    """
-    Base Model for domain entities,
-    subclass could mark domain id as entity_id by setting alias=True in field
-    >>> Example:
-    --------
-    class User(Entity):
-        usr_id: str = Field(alias="entity_id")
-
-    Configs:
-    --------
-        * populate_by_name=True
-    """
-
-    entity_id: str
-    model_config = ConfigDict(populate_by_name=True)
-
-    def predict_command(self, command: "Command") -> "Event":
-        raise NotImplementedError
-
-    def apply(self, event: "Event") -> None:
-        raise NotImplementedError
-
-    def handle(self, command: "Command"):
-        raise NotImplementedError
-
-
 class Message(DomainBase):
-    model_config = ConfigDict(frozen=True)
+    # model_config = ConfigDict(frozen=True)
+    model_config = ConfigDict(frozen=True, populate_by_name=True)
 
 
 class Command(Message):
@@ -224,3 +198,38 @@ class Envelope(DomainBase):
     @computed_field
     def version(self) -> str:
         return self.event.version
+
+
+class EntityABC(abc.ABC):
+    def predict_command(self, command: Command) -> Event:
+        raise NotImplementedError
+
+    @singledispatchmethod
+    def apply(self, event: Event):
+        raise NotImplementedError
+
+    @abc.abstractmethod
+    def _(self, event: Event):
+        ...
+
+    @abc.abstractmethod
+    def handle(self, command: Command):
+        raise NotImplementedError
+
+
+class Entity(DomainBase, EntityABC):
+    """
+    Base Model for domain entities,
+    subclass could mark domain id as entity_id by setting alias=True in field
+    >>> Example:
+    --------
+    class User(Entity):
+        usr_id: str = Field(alias="entity_id")
+
+    Configs:
+    --------
+        * populate_by_name=True
+    """
+
+    entity_id: str
+    model_config = ConfigDict(populate_by_name=True)

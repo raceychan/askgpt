@@ -1,12 +1,10 @@
-import asyncio
 import argparse
+import asyncio
+from dataclasses import dataclass
+from datetime import datetime
+from pathlib import Path
 
 import openai
-
-from pathlib import Path
-from datetime import datetime
-from dataclasses import dataclass
-
 from rich.console import Console
 from rich.markdown import Markdown
 

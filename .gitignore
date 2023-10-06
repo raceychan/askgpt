@@ -1,3 +1,4 @@
+settings.toml
 *.env
 response.json
 answer.md

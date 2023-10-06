@@ -127,8 +127,6 @@ class ChatMessage:
     is_user_message: bool
     timestamp: utc_datetime = Field(default_factory=timestamp_factory)
 
-
-
 class User(Entity):
     chatbot_id: str
     active: bool = False

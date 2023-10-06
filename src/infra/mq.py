@@ -2,7 +2,7 @@ import abc
 import queue
 import typing
 
-from domain.model import Message
+from src.domain.model import Message
 
 
 class Receivable(typing.Protocol):

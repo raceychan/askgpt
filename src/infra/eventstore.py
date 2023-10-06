@@ -1,9 +1,10 @@
 import typing as ty
-import sqlalchemy as sa
 
+import sqlalchemy as sa
 from sqlalchemy.ext import asyncio as sa_aio
-from app.actor import Actor
-from domain.model import Message, Event, Envelope
+
+from src.app.actor import Actor
+from src.domain.model import Envelope, Event, Message
 
 
 def table_parser(event: Event):
@@ -20,15 +21,13 @@ class EventStore(Actor):
         self.engine = engine
         self.event_table = event_table
 
-    async def _handle(self, message: Message):
+    async def handle(self, message: Message):
         if not isinstance(message, Event):
             raise TypeError(f"Unexpected message type: {type(message)}")
 
         await self.add(message)
 
     async def add(self, event: Event):
-        # envelope = Envelope(payload=event)
-        # value = envelope.model_dump()
         value = table_parser(event)
         stmt = sa.insert(self.event_table).values(value)
 
