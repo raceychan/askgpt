@@ -1,19 +1,11 @@
 import abc
 import typing
-
+from dataclasses import dataclass, field
 from functools import partial
 from uuid import uuid4
-from dataclasses import dataclass, field
 
-from sqlalchemy import (
-    Table,
-    Column,
-    String,
-    Boolean,
-    create_engine,
-    event,
-)
-from sqlalchemy.orm import registry, Session
+from sqlalchemy import Boolean, Column, String, Table, create_engine, event
+from sqlalchemy.orm import Session, registry
 
 
 @dataclass
