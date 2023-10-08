@@ -88,6 +88,9 @@ class MailBox:
     def get(self):
         return self._broker.get()
 
+    def __iter__(self):
+        yield self.get()
+
     @property
     def volume(self):
         return self._broker.maxsize

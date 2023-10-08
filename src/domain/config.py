@@ -1,20 +1,19 @@
 from dataclasses import dataclass
 
-from pydantic import ConfigDict, computed_field
+from pydantic import BaseModel, ConfigDict, computed_field
 
 from src.domain.fileutil import FileUtil
-from src.domain.model import DomainBase
 
 frozen = dataclass(frozen=True, slots=True, kw_only=True, repr=False)
 
 
-class SettingsBase(DomainBase):
+class SettingsBase(BaseModel):
     model_config = ConfigDict(
         frozen=True,
         use_enum_values=True,
         validate_default=True,
         validate_assignment=True,
-        str_min_length=1,
+        # str_min_length=1,
         strict=True,
         extra="forbid",
     )

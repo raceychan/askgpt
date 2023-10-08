@@ -1,4 +1,4 @@
-from sqlalchemy import Engine, Transaction
+import abc
 
 """
 Remember:
@@ -8,23 +8,44 @@ and let infra implemente
 """
 
 
-class Repository:
-    def __init__(self, engine):
-        self.engine = engine
+from src.domain.model import Event
 
-    def add(self, user):
+
+class IEventStore(abc.ABC):
+    @abc.abstractmethod
+    async def add(self, event: Event):
+        ...
+
+    @abc.abstractmethod
+    async def add_all(self, events: list[Event]):
+        ...
+
+    @abc.abstractmethod
+    async def get(self, entity_id: str) -> list[Event]:
+        ...
+
+    @abc.abstractmethod
+    async def remove(self, entity_id: str):
+        ...
+
+
+class IRepository(abc.ABC):
+    @abc.abstractmethod
+    def add(self, entity):
         # Implement user creation logic here
         ...
 
-    def update(self, user):
+    @abc.abstractmethod
+    def update(self, entity):
         # Implement user update logic here
         ...
 
-    def delete(self, user):
+    @abc.abstractmethod
+    def delete(self, entity):
         # Implement user deletion logic here
         ...
 
-    def find_by_id(self, user_id):
+    def find_by_id(self, entity_id: str):
         # Implement finding a user by ID logic here
         ...
 
@@ -39,7 +60,7 @@ class UnitOfWork:
         user_repository.update(retrieved_user)
     """
 
-    def __init__(self, engine: Engine):
+    def __init__(self, engine):
         self.engine = engine
 
     def __enter__(self):

@@ -17,6 +17,15 @@ pydantic = "^2.3.0"
 [tool.poetry.group.dev.dependencies]
 pyright = "^1.1.327"
 pytest = "^7.4.2"
+pytest-asyncio = "^0.21.1"
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+testpaths = ["tests"]
+addopts = "--strict-markers"
+markers = [
+    "integration_test: marks tests as slow integration tests (deselect with '-m \"not integration_test\"')",
+]
 
 [tool.pyright]
 include = ["src/*.py"]

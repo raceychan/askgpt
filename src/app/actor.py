@@ -43,7 +43,7 @@ class Actor(abc.ABC):
 class Root(Actor):
     childs: dict[str, "Actor"]
 
-    def __init__(self, aggrate: "Aggregate"):
+    def __init__(self, aggrate: Entity):
         self.aggregate = aggrate
         self.childs = dict()
 

@@ -1,5 +1,4 @@
 import typing as ty
-from dataclasses import dataclass
 from enum import Enum
 from pathlib import Path
 
@@ -103,7 +102,11 @@ class ChatSession(Entity):
     messages: list[ChatMessage] = Field(default_factory=list)
 
 
-class UserCredated(Event):
+# class UserEvent(Event):
+#     event_registry: ty.ClassVar[dict] = dict()
+
+
+class UserCreated(Event):
     entity_id: str = Field(alias="user_id")
 
 
@@ -121,7 +124,7 @@ class User(Entity):
 
     @Entity.apply.register
     @classmethod
-    def _(cls, event: UserCredated):
+    def _(cls, event: UserCreated):
         return cls(user_id=event.entity_id)
 
 
@@ -198,12 +201,3 @@ class System(Actor):
 
     def add_user(self, user: User):
         self.childs[user.entity_id] = UserActor(user=user)
-
-
-def main():
-    system = System(model_client=OpenAIClient.from_config(settings))
-    user = User.apply(UserCredated(user_id="admin"))
-    system.add_user(user)
-
-    cmd = SendChatMessage(user_message="what is your name?")
-    system.handle(cmd)
