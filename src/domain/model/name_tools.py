@@ -8,10 +8,10 @@ def str_to_snake(string: str) -> str:
     """
     Examples:
     -------
-    >>> print(snake_case("myCamelName"))  # Output: "my_variable_name"
-    print(snake_case("snake-case-example"))  # Output: "snake_case_example"
-    print(snake_case("AnotherExample123"))  # Output: "another_example123"
-    print(snake_case("PascalCase"))  # Output: "camel_case"
+    >>> snake_case("myCamelName") == my_variable_name"
+    assert snake_case("snake-case-example") == "snake_case_example"
+    assert snake_case("AnotherExample123") == "another_example123"
+    assert snake_case("PascalCase") == "camel_case"
     """
     string = string.replace("-", " ")
 
@@ -31,7 +31,7 @@ def pascal_to_snake(string: str):
     return "".join(["_" + c.lower() if c.isupper() else c for c in string]).lstrip("_")
 
 
-def snake_to_pascal(snake_string):
+def snake_to_pascal(snake_string: str):
     words = snake_string.split("_")
     pascal_string = "".join([word.capitalize() for word in words])
     return pascal_string

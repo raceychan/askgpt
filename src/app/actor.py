@@ -1,8 +1,13 @@
 import abc
+import typing as ty
 from functools import cached_property
 
 from src.domain.model import Command, Entity, Message, Query
 from src.infra.mq import MailBox
+
+
+class AbstractRef:
+    ...
 
 
 class Actor(abc.ABC):
@@ -53,3 +58,6 @@ class Root(Actor):
             child = self.create(aggregate_id)
             self.childs[aggregate_id] = child
         return child
+
+
+ActorRef = ty.Annotated[str, AbstractRef, "ActorRef"]

@@ -6,7 +6,9 @@ from src.domain.config import Settings
 
 
 def cli():
-    parser = ArgumentParser(prog=settings.PROJECT_NAME)
+    parser = ArgumentParser()  # prog=settings.PROJECT_NAME)
+    parser.add_argument("question", type=str, nargs="?")
+    parser.add_argument("session_id", type=str, nargs="?")
     parser.add_argument("--show", action="store_true")
     parser.add_argument("--message")
     parser.add_argument("--model")
@@ -17,10 +19,15 @@ def cli():
 
 
 def app(namespace):
-    settings = Settings.from_file()
-    system = gpt.System(model_client=gpt.OpenAIClient.from_config(settings))
-    user = gpt.User.apply(gpt.UserCredated(user_id="admin"))
-    system.add_user(user)
+    user_id: str = "admin"
+    default_session_id: str = "main_session"
 
-    cmd = gpt.SendChatMessage(user_message="what is your name?")
-    system.handle(cmd)
+    system = gpt.setup_system()
+    user = system.get_user(user_id)
+    session_id = namespace.session_id or default_session_id
+    session = user.get_session(session_id, user.user.entity_id)
+    # user.handle()
+
+
+if __name__ == "__main__":
+    cli()

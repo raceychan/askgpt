@@ -15,7 +15,7 @@ def value_parser(val: str):
     """
     if val[0] in {'"', "'"}:  # Removing quotes if they exist
         if val[0] == val[-1]:
-            value = val[1:-1]
+            val = val[1:-1]
         else:
             raise ValueError(f"{val} inproperly quoted")
 
@@ -174,8 +174,9 @@ class FileUtil:
             ) from se
         return file
 
-    def read_file(self, filename: str):
-        file = self.find(filename)
+    def read_file(self, file: str | pathlib.Path):
+        if isinstance(file, str):
+            file = self.find(file)
         return self.file_loader.handle(file)
 
     @classmethod

@@ -55,7 +55,7 @@ def read_env(filename: str = ".env") -> dict:
     def parse(val: str):
         if val[0] in {'"', "'"}:  # Removing quotes if they exist
             if val[0] == val[-1]:
-                value = val[1:-1]
+                val = val[1:-1]
             else:
                 raise ValueError(f"{val} inproperly quoted")
 
@@ -204,7 +204,8 @@ async def interactive_mode(namespace: argparse.Namespace):
 
 async def main():
     config_file = "src/.env"
-    openai.api_key = read_env(config_file)["OPENAI_API_KEY"]
+    openai.api_key = read_env(config_file)["OPENAI_API_KEY"].replace("'", "")
+    breakpoint()
     context = list()
 
     parser = argparse.ArgumentParser(description="cli for chatgpt")

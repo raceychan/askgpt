@@ -3,12 +3,12 @@ import datetime
 import typing as ty
 import uuid
 from dataclasses import dataclass
-from functools import cached_property, singledispatchmethod
+from enum import Enum
+from functools import singledispatchmethod
 
 from pydantic import BaseModel, ConfigDict, Field, SerializeAsAny, computed_field
-from typing_extensions import Unpack
 
-from src.domain.model.name_tools import pascal_to_snake
+from src.domain.model.name_tools import pascal_to_snake, str_to_snake
 
 utc_datetime = ty.Annotated[datetime.datetime, "UTC_TimeStamp"]
 
@@ -34,6 +34,23 @@ def uuid_factory() -> str:
 
 def timestamp_factory() -> utc_datetime:
     return datetime.datetime.utcnow()
+
+
+def enum_generator(
+    **kwargs: dict[str, ty.Iterable[str]]
+) -> ty.Generator["Enum", None, None]:
+    """
+    Example:
+    -----
+    >>> enum_gen = enum_generator(Color=["red", "green", "blue"])
+    Color = next(enum_gen)
+    assert issubclass(Color, Enum)
+    assert isinstance(Color.red, Color)
+    assert Color.red.value == "red"
+    """
+
+    for name, values in kwargs.items():
+        yield Enum(name, {str_to_snake(v): v for v in values})
 
 
 class DomainBase(BaseModel):
@@ -191,12 +208,7 @@ class Event(Message):
 
     @classmethod
     def rebuild(cls, event_data: ty.Mapping):
-        """
-        BUG:
-        1. timestamp would change
-        """
         event_type = cls.match_event_type(event_data["event_type"])
-
         event = event_type(**event_data)
         return event
 
@@ -238,7 +250,7 @@ class EntityABC(abc.ABC):
         raise NotImplementedError
 
     @singledispatchmethod
-    def apply(self, event: Event):
+    def apply(cls, event: Event):
         raise NotImplementedError
 
     @abc.abstractmethod

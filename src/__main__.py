@@ -1,3 +1,3 @@
-from src.entrypoints.cli import cli
+# from src.adapter.cli import cli
 
-cli()
+# cli()

@@ -1,6 +1,7 @@
 import pytest
 
 from src.domain.config import Settings
+from src.domain.fileutil import FileLoader, FileUtil
 
 
 class TestSettings(Settings):
@@ -25,3 +26,15 @@ def async_engine(settings: TestSettings):
         settings.db.ASYNC_DB_URL, echo=settings.db.ENGINE_ECHO, pool_pre_ping=True
     )
     return engine
+
+
+@pytest.fixture(scope="session")
+def fileloader():
+    return FileLoader.from_chain()
+
+
+@pytest.fixture(scope="session")
+def fileutil(fileloader):
+    from pathlib import Path
+
+    return FileUtil(work_dir=Path.cwd(), file_loader=fileloader)
