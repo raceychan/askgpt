@@ -7,6 +7,9 @@ from pydantic import BaseModel
 
 from src.domain.model.name_tools import str_to_snake
 
+# TODO: read
+# https://learn.microsoft.com/en-us/dotnet/architecture/microservices/microservice-ddd-cqrs-patterns/domain-events-design-implementation
+
 
 def enum_generator(
     **kwargs: dict[str, ty.Iterable[str]]
