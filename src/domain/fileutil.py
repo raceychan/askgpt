@@ -47,7 +47,7 @@ class NotDutyError(Exception):
 
 
 class LoaderChain(abc.ABC):
-    _handle_chain: list[type["FileLoader"]] = list()
+    _handle_chain: ty.ClassVar[list[type["FileLoader"]]] = list()
     _next_handler: ty.Optional["FileLoader"] = None
 
     def set_next(self, handler: "FileLoader"):
@@ -62,6 +62,14 @@ class LoaderChain(abc.ABC):
         while node._next_handler is not None:
             node = node._next_handler
         node.set_next(handler)
+
+    def reverse(self) -> None:
+        """
+        Reverse the whole chain so that the last node becomes the first node
+        Do this when you want your newly added subclass take over the chain
+        """
+        raise NotImplementedError  # TODO: implement this
+        # reff: https://www.prepbytes.com/blog/python/python-program-to-reverse-a-linked-list/
 
     @property
     def next_handler(self):
@@ -170,7 +178,7 @@ class FileUtil:
             file = next(rg)
         except StopIteration as se:
             raise FileNotFoundError(
-                f"File {filename} not found in current directory {work_dir}"
+                f"File '{filename}' not found in current directory {work_dir}"
             ) from se
         return file
 

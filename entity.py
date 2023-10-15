@@ -57,7 +57,6 @@ class EditCustomerDetails(ABCCommand):
 class CustomerCreated(ABCEvent):
     customer_id: str
 
-
 @dataclass
 class CustomerIsPreferred(ABCEvent):
     custom_id: str

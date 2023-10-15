@@ -1,30 +1,14 @@
 import typing as ty
-from enum import Enum
 from pathlib import Path
 
 import openai
 from pydantic import BaseModel
 
-from src.domain.model.name_tools import str_to_snake
+from src.app.utils.fmtutils import fprint
+from src.domain.model import Command
 
 # TODO: read
 # https://learn.microsoft.com/en-us/dotnet/architecture/microservices/microservice-ddd-cqrs-patterns/domain-events-design-implementation
-
-
-def enum_generator(
-    **kwargs: dict[str, ty.Iterable[str]]
-) -> ty.Generator[Enum, None, None]:
-    """
-    Example:
-    -----
-    >>> enum_gen = enum_generator(Color=["red", "green", "blue"])
-    Color = next(enum_gen)
-    assert issubclass(Color, Enum)
-    assert isinstance(Color.red, Color)
-    assert Color.red.value == "red"
-    """
-    for name, values in kwargs.items():
-        yield Enum(name, {str_to_snake(v): v for v in values})
 
 
 class ModelEndpoint(BaseModel):
@@ -113,8 +97,7 @@ class ChatSession(Entity):
     messages: list[ChatMessage] = Field(default_factory=list)
 
     def handle(self, command: Command):
-        if command is SendChatMessage:
-            ...
+        ...
 
     @Entity.apply.register
     @classmethod
@@ -134,6 +117,7 @@ class SendChatMessage(Command):
     user_message: str
     model: CompletionModels = "gpt-3.5-turbo"
     stream: bool = True
+    session_id: str
 
     @computed_field
     @property
@@ -143,6 +127,7 @@ class SendChatMessage(Command):
 
 class ChatMessageSent(Event):
     session_id: str
+    chat_message: ChatMessage
 
 
 # aggregate_root
@@ -183,15 +168,9 @@ class OpenAIClient:
 
 
 class SessionActor(Actor):
-    def __init__(self, chat_session: ChatSession):
+    def __init__(self, chat_session: ChatSession, model_client: OpenAIClient):
         self.chat_session = chat_session
-        self.model_client: OpenAIClient = ...
-
-    def handle(self, message: Message):
-        if type(message) is SendChatMessage:
-            chunks = self.send(message=message.chat_message, model=message.model)
-            for chunk in chunks:
-                print(chunk, end="")
+        self.model_client: OpenAIClient = model_client
 
     def send(self, message: ChatMessage, model: CompletionModels, stream=True):
         chunks = self.model_client.send(message=message, model=model, stream=stream)
@@ -201,35 +180,69 @@ class SessionActor(Actor):
                 content = choice.get("delta", {}).get("content")
                 yield content
 
+    def display_message(self, answer: ty.Generator) -> str:
+        str_container = ""
+        for chunk in answer:
+            if chunk is not None:
+                fprint(chunk)
+                str_container += chunk
+        return str_container
+
+    def handle(self, message: Message):
+        if type(message) is SendChatMessage:
+            chunks = self.send(message=message.chat_message, model=message.model)
+            answer = self.display_message(chunks)
+
+            sent_event = ChatMessageSent(
+                entity_id=self.chat_session.user_id,
+                session_id=self.chat_session.session_id,
+                chat_message=message.chat_message,
+            )
+
     @classmethod
-    def from_event(cls, event: SessionCreated):
-        return cls(chat_session=ChatSession.apply(event))
+    def from_event(cls, event: SessionCreated, model_client: OpenAIClient):
+        return cls(chat_session=ChatSession.apply(event), model_client=model_client)
 
 
 class UserActor(Actor):
-    def __init__(self, user: User):
+    def __init__(self, user: User, model_client: OpenAIClient):
         self.user = user
+        self.model_client = model_client
         self.childs: dict[ActorRef, SessionActor] = dict()
 
     def handle(self, message: Message):
         if isinstance(message, Command):
-            self.user.handle(message)
+            self.handle_command(message)
         elif isinstance(message, Event):
-            self.user.apply(message)
+            ...
+
+    def handle_command(self, command: Command):
+        if type(command) is SendChatMessage:
+            session = self.get_session(
+                session_id=command.session_id, user_id=self.user.entity_id
+            )
+            session.handle(command)
 
     @classmethod
-    def from_event(cls, event: UserCreated):
-        return cls(user=User.apply(event))
+    def from_event(cls, event: UserCreated, model_client: OpenAIClient):
+        return cls(user=User.apply(event), model_client=model_client)
 
     def create_session(self, session_id: str, user_id: str):
         event = SessionCreated(session_id=session_id, user_id=user_id)
-        session_actor = SessionActor.from_event(event)
+        session_actor = SessionActor.from_event(event, model_client=self.model_client)
         self.childs[session_actor.chat_session.entity_id] = session_actor
+        return session_actor
 
-    def get_session(self, session_id: str, user_id):
+    def get_session(self, session_id: str, user_id) -> SessionActor:
         if (session_actor := self.childs.get(session_id, None)) is None:
             session_actor = self.create_session(session_id, user_id)
         return session_actor
+
+    def ask_question(self, question: str, session_id: str):
+        cmd = SendChatMessage(
+            entity_id=self.user.entity_id, session_id=session_id, user_message=question
+        )
+        self.handle(cmd)
 
 
 class System(Actor):
@@ -238,11 +251,13 @@ class System(Actor):
         self.childs: dict[ActorRef, UserActor] = dict()
 
     def handle(self, command: Command):
-        ...
+        if type(command) is CreateUser:
+            self.create_user(command.entity_id)
+            event = UserCreated(user_id=command.entity_id)
 
     def create_user(self, user_id: str) -> UserActor:
         event = UserCreated(user_id=user_id)
-        user_actor = UserActor.from_event(event)
+        user_actor = UserActor.from_event(event, model_client=self.model_client)
         self.childs[user_actor.user.entity_id] = user_actor
         return user_actor
 
