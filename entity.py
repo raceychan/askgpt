@@ -4,7 +4,7 @@ from dataclasses import dataclass, field
 from functools import partial
 from uuid import uuid4
 
-from sqlalchemy import Boolean, Column, String, Table, create_engine, event
+from sqlalchemy import Boolean, Column, String, Table, create_engine, event as sa_event
 from sqlalchemy.orm import Session, registry
 
 
@@ -57,6 +57,7 @@ class EditCustomerDetails(ABCCommand):
 class CustomerCreated(ABCEvent):
     customer_id: str
 
+
 @dataclass
 class CustomerIsPreferred(ABCEvent):
     custom_id: str
@@ -84,10 +85,14 @@ class Customer(ABCEntity):
     customer_id: str = field(default_factory=lambda: str(uuid4()))
     is_preferred: bool = field(default=False)
 
+    def handle(self):
+        event = CustomerIsPreferred(self.customer_id)
+        self.preferred()
+        self.raise_event(event)
+
     def preferred(self):
         if self.is_preferred is False:
             self.is_preferred = True
-            self.raise_event(CustomerIsPreferred(self.customer_id))
 
 
 class Mediator:
@@ -130,7 +135,7 @@ def domain_entity_test():
     handler = EventHandler()
     mailbox = Mediator(event_handler=handler)
 
-    event.listen(session, "before_commit", partial(collect_event, mailbox=mailbox))
+    sa_event.listen(session, "before_commit", partial(collect_event, mailbox=mailbox))
 
     entity = Customer()
 

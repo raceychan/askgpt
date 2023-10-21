@@ -1,6 +1,6 @@
 import pytest
 
-from src.app.service.gpt import UserCreated
+from src.app.gpt.user import UserCreated
 from src.domain.config import Settings
 from src.infra.eventstore import EventStore, dump_event, load_event
 from src.infra.schema import EventSchema

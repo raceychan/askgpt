@@ -212,14 +212,6 @@ class Event(Message):
         event = event_type(**event_data)
         return event
 
-    # @classmethod
-    # def build(cls, *, entity_id: str, **data):
-    #     if not data.get("event_type"):
-    #         data["event_type"] = pascal_to_snake(cls.__name__)
-    #     return cls(entity_id=entity_id, **data)
-
-    #   @cached_property
-
     @computed_field
     def event_type(self) -> str:
         return pascal_to_snake(self.__class__.__name__)

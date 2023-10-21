@@ -1,17 +1,18 @@
 import asyncio
 
 from src.app.actor import Actor
+from src.domain.config import Settings
 from src.domain.model import Event, Message
 from src.infra.eventstore import EventStore
 from src.infra.mq import MailBox
 
 
-class EventRecord(Actor):
+class Journal(Actor):
     _loop: asyncio.AbstractEventLoop
 
     def __init__(self, eventstore: EventStore, mailbox: MailBox):
         self.eventstore = eventstore
-        self.mailbox = mailbox
+        self.mailbox: MailBox = mailbox
 
     async def handle(self, message: Message):
         if not isinstance(message, Event):
@@ -25,9 +26,6 @@ class EventRecord(Actor):
     async def persist_event(self):
         if not self.mailbox:
             await asyncio.sleep(1)
-            # waiter = self._loop.create_future()
-            # self._loop.call_later(0.1, waiter.set_result, None)
-            # await waiter
             await self.persist_event()
         else:
             for msg in self.mailbox:
@@ -36,3 +34,14 @@ class EventRecord(Actor):
     async def start(self):
         await self._setup()
         await self.persist_event()
+
+    @classmethod
+    def build(
+        cls,
+        *,
+        db_url,
+    ):
+        es = EventStore.build(db_url=db_url)
+        return cls(eventstore=es, mailbox=MailBox.build())
+
+

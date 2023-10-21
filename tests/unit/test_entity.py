@@ -1,4 +1,4 @@
-from src.app.service.gpt import User, UserCreated
+from src.app.gpt.user import User, UserCreated
 
 
 def test_create_user_from_event():

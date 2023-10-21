@@ -1,1 +1,1 @@
-from src.app.service import gpt
+from src.app.gpt import service

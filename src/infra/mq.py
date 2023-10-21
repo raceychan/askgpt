@@ -1,11 +1,11 @@
 import abc
 import queue
-import typing
+import typing as ty
 
 from src.domain.model import Message
 
 
-class Receivable(typing.Protocol):
+class Receivable(ty.Protocol):
     def receive(self, message: Message):
         ...
 
@@ -56,7 +56,7 @@ class QueueBroker(MessageBroker):
 
     @property
     def subscribes(self):
-        return self._subscribers.copy()
+        return self._subscribers
 
     def put(self, message: Message) -> None:
         self._queue.put(message)
@@ -97,3 +97,12 @@ class MailBox:
 
     def register(self, subscriber: Receivable):
         self._broker.register(subscriber)
+
+    @classmethod
+    def build(cls, broker: MessageBroker | None = None):
+        if broker is None:
+            broker = QueueBroker()
+        return cls(broker)
+
+
+# mailbox = MailBox.build()

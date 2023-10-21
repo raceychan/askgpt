@@ -1,10 +1,14 @@
 from dataclasses import dataclass
 
-from pydantic import BaseModel, ConfigDict  # , computed_field
+from pydantic import BaseModel, ConfigDict
 
 from src.domain.fileutil import FileUtil
 
 frozen = dataclass(frozen=True, slots=True, kw_only=True, repr=False)
+
+"""
+url = protocol//authority@ip:port/path?query#fragment
+"""
 
 
 class SettingsBase(BaseModel):
@@ -12,7 +16,6 @@ class SettingsBase(BaseModel):
         frozen=True,
         use_enum_values=True,
         validate_default=True,
-        validate_assignment=True,
         # str_min_length=1,
         strict=True,
         extra="forbid",
@@ -28,12 +31,10 @@ class Settings(SettingsBase):
         ASYNC_DB_DRIVER: str = "aiosqlite"
         DATABASE: str
 
-        # @computed_field
         @property
         def DB_URL(self) -> str:
             return f"{self.DB_DRIVER}:///{self.DATABASE}"
 
-        # @computed_field
         @property
         def ASYNC_DB_URL(self) -> str:
             return f"{self.DB_DRIVER}+{self.ASYNC_DB_DRIVER}:///{self.DATABASE}"
@@ -46,4 +47,10 @@ class Settings(SettingsBase):
         return cls(**fileutil.read_file(filename))
 
 
-settings = Settings.from_file("settings.toml")
+class TestDefaults:
+    user_id: str = "admin"
+    session_id: str = "default_session"
+    model: str = "gpt-3.5-turbo"
+
+
+# settings = Settings.from_file("settings.toml")

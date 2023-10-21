@@ -1,22 +1,5 @@
-import pytest
-
-from src.app.service.gpt import UserCreated
+from src.app.gpt.user import UserCreated
 from src.domain.model import Event
-
-
-@pytest.fixture
-def entity_id():
-    return "test_id"
-
-
-@pytest.fixture
-def event(entity_id):
-    return Event(entity_id=entity_id)
-
-
-@pytest.fixture
-def user_created(entity_id):
-    return UserCreated(user_id=entity_id)
 
 
 def test_rebuild_event(user_created: UserCreated):

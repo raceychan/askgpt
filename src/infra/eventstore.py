@@ -2,32 +2,9 @@ import typing as ty
 
 import sqlalchemy as sa
 from sqlalchemy.ext import asyncio as sa_aio
-from sqlalchemy.sql import type_api as sa_ty
 
 from src.domain.model import Event
 from src.domain.service.interface import IEventStore
-
-
-def as_sa_types(py_type: type) -> sa_ty.TypeEngine:
-    import datetime
-    import decimal
-    import uuid
-
-    TYPES_MAPPING = {
-        str: sa.String,
-        int: sa.Integer,
-        datetime.datetime: sa.DateTime,
-        bool: sa.Boolean,
-        float: sa.Float,
-        list: sa.JSON,
-        dict: sa.JSON,
-        uuid.UUID: sa.UUID,
-        None: sa.Null,
-        decimal.Decimal: sa.Numeric,
-    }
-
-    return TYPES_MAPPING[py_type]
-
 
 EVENT_TABLE: ty.Final[sa.TableClause] = sa.table(
     "domain_events",
@@ -93,3 +70,7 @@ class EventStore(IEventStore):
 
     async def remove(self, entity_id: str):
         raise NotImplementedError
+
+    @classmethod
+    def build(cls, *, db_url: str):
+        return cls(engine=sa_aio.create_async_engine(db_url))

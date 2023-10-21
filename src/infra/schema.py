@@ -49,7 +49,7 @@ class EventSchema(TableBase):
     This should be our single source of truth for table
     """
 
-    __tablename__ = "domain_events"
+    __tablename__ = "domain_events"  # type: ignore
 
     id = sa.Column("id", sa.String, primary_key=True)
     event_type = sa.Column("event_type", sa.String, index=True)
