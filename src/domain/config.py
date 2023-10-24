@@ -6,9 +6,7 @@ from src.domain.fileutil import FileUtil
 
 frozen = dataclass(frozen=True, slots=True, kw_only=True, repr=False)
 
-"""
-url = protocol//authority@ip:port/path?query#fragment
-"""
+
 
 
 class SettingsBase(BaseModel):
@@ -16,7 +14,6 @@ class SettingsBase(BaseModel):
         frozen=True,
         use_enum_values=True,
         validate_default=True,
-        # str_min_length=1,
         strict=True,
         extra="forbid",
     )

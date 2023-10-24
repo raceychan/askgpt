@@ -1,7 +1,7 @@
 import asyncio
 from argparse import ArgumentParser, Namespace
 
-from src.app import Mediator, gpt, journal
+from src.app import Mediator, gpt
 from src.domain.config import Settings, TestDefaults
 
 settings = Settings.from_file("settings.toml")

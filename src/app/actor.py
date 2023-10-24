@@ -59,6 +59,7 @@ class Actor(AbstractActor):
     def system(self):
         return self._system
 
+
     @cached_property
     def persistence_id(self) -> str:
         return f"{type(self).__name__}:{self.entity.entity_id}"
