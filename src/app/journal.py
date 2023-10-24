@@ -1,7 +1,6 @@
 import asyncio
 
 from src.app.actor import Actor
-from src.domain.config import Settings
 from src.domain.model import Event, Message
 from src.infra.eventstore import EventStore
 from src.infra.mq import MailBox
@@ -11,8 +10,8 @@ class Journal(Actor):
     _loop: asyncio.AbstractEventLoop
 
     def __init__(self, eventstore: EventStore, mailbox: MailBox):
+        super().__init__(mailbox)
         self.eventstore = eventstore
-        self.mailbox: MailBox = mailbox
 
     async def handle(self, message: Message):
         if not isinstance(message, Event):
@@ -35,13 +34,14 @@ class Journal(Actor):
         await self._setup()
         await self.persist_event()
 
+    async def apply(self, event: Event):
+        ...
+
     @classmethod
     def build(
         cls,
         *,
-        db_url,
+        db_url: str,
     ):
         es = EventStore.build(db_url=db_url)
         return cls(eventstore=es, mailbox=MailBox.build())
-
-

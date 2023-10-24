@@ -35,6 +35,3 @@ def snake_to_pascal(snake_string: str):
     words = snake_string.split("_")
     pascal_string = "".join([word.capitalize() for word in words])
     return pascal_string
-
-
-

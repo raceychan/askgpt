@@ -39,7 +39,8 @@ class TableBase:
     @classmethod
     def generate_tableclause(cls) -> sa.TableClause:
         clause = sa.table(
-            cls.__tablename__, *[sa.column(c) for c in cls.__table__.columns]  # type: ignore
+            cls.__tablename__,
+            *[sa.column(c) for c in cls.__table__.columns],  # type: ignore
         )
         return clause
 

@@ -14,19 +14,27 @@ ActorRef = ty.Annotated[str, AbstractRef, "ActorRef"]
 
 
 class AbstractActor(abc.ABC):
-    @abc.abstractmethod
-    async def handle(self, command: Command) -> Event:
-        "Process message"
-
     async def reply(self):
         raise NotImplementedError
 
-    def create(self, aggregate_id: str) -> "Actor":
-        "Create new actor"
+    @abc.abstractmethod
+    async def handle(self, command: Command):
+        """
+        Process/handle command, potentially change its state,
+        this should not return anything to seperate command and query
+        """
         raise NotImplementedError
 
     @singledispatchmethod
+    @abc.abstractmethod
     def apply(self, event: Event):
+        raise NotImplementedError
+
+    # @abc.abstractmethod
+    def create_child(self, command: Command) -> "Actor":
+        raise NotImplementedError
+
+    def get_child(self, entity_id: str) -> "Actor":
         raise NotImplementedError
 
 
@@ -34,21 +42,46 @@ class Actor(AbstractActor):
     entity: Entity
     mailbox: MailBox
     childs: dict[str, "Actor"]
+    _system: ty.ClassVar["System"]
 
     def __init__(self, mailbox: MailBox):
         self.childs = dict()
         self.mailbox = mailbox
+        if not isinstance(self, System):
+            self._ensure_system()
+
+
+    def _ensure_system(self):
+        if not isinstance(self.system, System):
+            raise Exception("Actor must be created under System")
+
+    @property
+    def system(self):
+        return self._system
 
     @cached_property
     def persistence_id(self) -> str:
         return f"{type(self).__name__}:{self.entity.entity_id}"
 
-    def get_child(self, aggregate_id: str) -> "Actor":
-        child = self.childs.get(aggregate_id, None)
-        # if not child:
-        #     child = self.create(aggregate_id)
-        #     self.childs[aggregate_id] = child
-        return child
+    def get_actor(self, actor_ref: ActorRef) -> ty.Optional["Actor"]:
+        if (actor := self.get_child(actor_ref)) is not None:
+            return actor
+
+        for child in self.childs.values():
+            actor = child.get_actor(actor_ref)
+            if actor is None:
+                continue
+            return actor
+
+
+    def get_child(self, entity_id: str) -> ty.Optional["Actor"]:
+        return self.childs.get(entity_id, None)
+
+    def get_or_create(self, command: Command) -> "Actor":
+        actor = self.get_child(command.entity_id)
+        if not actor:
+            actor = self.create_child(command)
+        return actor
 
     async def send(self, message: Message, other: "Actor"):
         "Send message to other actor, message may contain information about sender id"
@@ -63,40 +96,41 @@ class Actor(AbstractActor):
         else:
             raise NotImplementedError
 
-    def publish(self, event: Event):
+    def collect(self, event: Event):
         self.mailbox.put(event)
-
-    def apply(self, event: Event):
-        self.entity.apply(event)
 
     @singledispatchmethod
     async def handle(self, command: Command):
-        actor = self.get_actor(command.entity_id)
+        actor = self.get_or_create(command)
         if actor is not None:
             await actor.handle(command)
         else:
             raise Exception("command not handled")
 
-    def get_actor(self, actor_ref: ActorRef) -> "Actor":
-        if not self.childs:
-            raise Exception
+    @property
+    def entity_id(self):
+        return self.entity.entity_id
 
-        if (actor := self.get_child(actor_ref)) is not None:
-            return actor
-
-        for child in self.childs.values():
-            actor = child.get_actor(actor_ref)
-            if actor is None:
-                continue
-            return actor
+    @classmethod
+    def set_system(cls, system: "System"):
+        if (sys_ := getattr(Actor, "_system", None)) is not None:
+            if sys_ is not system:
+                raise Exception("System already set")
+            return 
+        if not isinstance(system, System):
+            raise Exception("System must be instance of System")
+        Actor._system = system
 
 
 class System(Actor):
-    ...
+    def __new__(cls, *args, **kwargs):
+        if not hasattr(cls, "_system"):
+            cls._system = super().__new__(cls)
+        return cls._system
 
-
-class UnRegisteredCommandError(Exception):
-    ...
+    def __init__(self, mailbox: MailBox):
+        super().__init__(mailbox=mailbox)
+        self.set_system(self)
 
 
 class Mediator(Actor):
@@ -105,57 +139,15 @@ class Mediator(Actor):
     """
 
     def __init__(self, mailbox: MailBox):
-        self.mailbox = mailbox
+        super().__init__(mailbox=mailbox)
 
-    async def dispatch(self, command: Command):
-        actor = self.get_child(command.entity_id)
-        if actor:
-            await actor.handle(command)
+    async def handle(self, command: Command):
+        await self.system.handle(command)
 
-    # _dispatcher: dict[type[Command], Actor] = dict()
-
-    # @classmethod
-    # def register(cls, command: type[Command], actor: Actor):
-    #     cls._dispatcher[command] = actor
-
-    # def dispatch(self, command: Command) -> Actor:
-    #     try:
-    #         return self._dispatcher[command.__class__]
-    #     except KeyError:
-    #         raise UnRegisteredCommandError
-
-    # async def send(self, command: Command):
-    #     await self.dispatch(command).handle(command)
-
-    # async def start(self):
-    #     ...
+    def apply(self, event: Event):
+        raise NotImplementedError
 
 
-# class System(Actor):
-#     childs: dict[ActorRef, UserActor]
-
-#     def __init__(self):
-#         super().__init__(mailbox=MailBox.build())
-
-#     def create_user(self, event: UserCreated) -> UserActor:
-#         user_actor = UserActor.from_event(event)
-#         self.childs[user_actor.entity.entity_id] = user_actor
-#         self.publish(event)
-#         return user_actor
-
-#     def get_user(self, user_id: ActorRef):
-#         if (user_actor := self.childs.get(user_id, None)) is None:
-#             event = UserCreated(user_id=user_id)
-#             user_actor = self.create_user(event)
-#         return user_actor
-
-#     def handle(self, command: Command):
-#         if type(command) is CreateUser:
-#             event = UserCreated(user_id=command.entity_id)
-#             self.create_user(event)
-
-
-# def setup_system(settings: Settings):
-#     system = System()
-#     journal
-#     return system
+    @classmethod
+    def build(cls):
+        return cls(mailbox=MailBox.build())

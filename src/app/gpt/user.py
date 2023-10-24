@@ -44,7 +44,7 @@ class ChatMessage(ValueObject):
 
 class CreateSession(Command):
     user_id: str
-    session_id: str
+    entity_id: str = Field(alias="session_id")
 
 
 class SessionCreated(Event):
@@ -64,7 +64,8 @@ class SendChatMessage(Command):
     user_message: str
     model: CompletionModels = "gpt-3.5-turbo"
     stream: bool = True
-    session_id: str
+    entity_id: str = Field(alias="session_id")
+    user_id: str
 
     @computed_field
     @property
@@ -81,7 +82,7 @@ class ChatMessageSent(Event):
 
 
 class ChatSession(Entity):
-    session_id: str = Field(alias="entity_id", default_factory=uuid_factory)
+    entity_id: str = Field(alias="session_id", default_factory=uuid_factory)
     user_id: str
     messages: list[ChatMessage] = Field(default_factory=list)
 
@@ -91,7 +92,7 @@ class ChatSession(Entity):
     @Entity.apply.register
     @classmethod
     def _(cls, event: SessionCreated):
-        return cls(entity_id=event.entity_id, user_id=event.user_id)
+        return cls(session_id=event.entity_id, user_id=event.user_id)
 
 
 # aggregate_root
@@ -101,7 +102,7 @@ class User(Entity):
 
     def add_new_session(self):
         new_session = ChatSession(user_id=self.user_id)  # type: ignore
-        self.chat_sessions[new_session.session_id] = new_session
+        self.chat_sessions[new_session.entity_id] = new_session
 
     def handle(self, message: Message):
         if type(message) == "AddNewSession":

@@ -1,13 +1,13 @@
 import pytest
 
-from src.adapter.cli import CLIOptions, Defaults
+from src.adapter.cli import CLIOptions, TestDefaults
 
 
 def test_validate():
     options = CLIOptions(question="hello", interactive=False)
     options.validate()
-    assert options.user_id == Defaults.user_id
-    assert options.session_id == Defaults.session_id
+    assert options.user_id == TestDefaults.user_id
+    assert options.session_id == TestDefaults.session_id
     assert options.interactive == False
 
 

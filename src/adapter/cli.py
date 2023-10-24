@@ -8,7 +8,7 @@ settings = Settings.from_file("settings.toml")
 
 
 def setup_system(settings: Settings):
-    system = gpt.service.GPTSystem()
+    system = gpt.service.GPTSystem.setup(settings)
     return system
 
 
@@ -28,36 +28,31 @@ class CLIOptions(Namespace):
             raise ValueError("question and interactive are mutually exclusive")
 
 
-# async def record_event():
-#     recorder = journal.setup_journal(settings)
-#     await recorder.start()
-
-
 async def send_question(question: str, mediator: Mediator):
     command = gpt.service.SendChatMessage(
-        entity_id=TestDefaults.user_id,
+        user_id=TestDefaults.user_id,
         session_id=TestDefaults.session_id,
         user_message=question,
     )
-    await mediator.send(command)
+    await mediator.receive(command)
 
 
 async def interactive(mediator: Mediator):
     while True:
         question = input("what woud you like to ask?")
         command = gpt.service.SendChatMessage(
-            entity_id=TestDefaults.user_id,
+            user_id=TestDefaults.user_id,
             session_id=TestDefaults.session_id,
             user_message=question,
         )
-        await mediator.send(command)
+        await mediator.receive(command)
 
 
 async def app(options: CLIOptions):
-    system = gpt.service.setup_system(settings)
-    mediator = Mediator()
-    mediator.__class__.register(gpt.service.Command, system)
-    asyncio.create_task(record_event())
+    system = setup_system(settings)
+    mediator = Mediator.build()
+
+    # asyncio.create_task(record_event())
 
     if options.question:
         await send_question(options.question, mediator)
