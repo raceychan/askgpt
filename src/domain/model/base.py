@@ -7,7 +7,6 @@ from enum import Enum
 from functools import singledispatchmethod
 
 from pydantic import BaseModel, ConfigDict, Field, SerializeAsAny, computed_field
-
 from src.domain.model.name_tools import pascal_to_snake, str_to_snake
 
 utc_datetime = ty.Annotated[datetime.datetime, "UTC_TimeStamp"]
@@ -155,6 +154,9 @@ class DomainBase(BaseModel):
                 for fieldname, filedtype in cls.model_all_fields().items()
             ],
         )
+
+    def __str__(self):
+        return self.__repr__()
 
 
 class ValueObject(DomainBase):

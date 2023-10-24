@@ -1,8 +1,15 @@
-import pytest
+import asyncio
 
+import pytest
 from src.domain.config import Settings
 from src.domain.fileutil import FileLoader, FileUtil
 
+
+@pytest.fixture(scope="session")
+def event_loop():
+    loop = asyncio.new_event_loop()
+    yield loop
+    loop.close()
 
 class TestSettings(Settings):
     __test__ = False

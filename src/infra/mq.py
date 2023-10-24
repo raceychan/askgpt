@@ -83,7 +83,6 @@ class MailBox:
         return self.__len__() > 0
 
     def put(self, event: Message):
-        print(event)
         self._broker.put(event)
 
     def get(self):

@@ -11,8 +11,8 @@ class EchoMailbox(MailBox):
 
 
 @pytest.fixture(scope="module")
-def gpt_system(settings):
-    return service.GPTSystem.setup(settings)
+async def gpt_system(settings):
+    return await service.GPTSystem.create(settings)
 
 
 @pytest.fixture(scope="module")
@@ -44,3 +44,4 @@ async def test_user_get_journal(gpt_system):
 
     journal = user.system.get_actor("journal")
     assert isinstance(journal, service.Journal)
+

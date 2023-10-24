@@ -45,8 +45,8 @@ def session_created():
 
 
 @pytest.fixture(scope="module")
-def system(settings):
-    system = GPTSystem.setup(settings)
+async def system(settings):
+    system = await GPTSystem.create(settings)
     return system
 
 

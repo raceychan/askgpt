@@ -14,7 +14,7 @@ ActorRef = ty.Annotated[str, AbstractRef, "ActorRef"]
 
 
 class AbstractActor(abc.ABC):
-    async def reply(self):
+    def reply(self):
         raise NotImplementedError
 
     @abc.abstractmethod
@@ -25,13 +25,17 @@ class AbstractActor(abc.ABC):
         """
         raise NotImplementedError
 
+    @abc.abstractmethod
+    def receive(self, message: Message):
+        raise NotImplementedError
+
     @singledispatchmethod
     @abc.abstractmethod
     def apply(self, event: Event):
         raise NotImplementedError
 
     # @abc.abstractmethod
-    def create_child(self, command: Command) -> "Actor":
+    async def create_child(self, command: Command) -> "Actor":
         raise NotImplementedError
 
     def get_child(self, entity_id: str) -> "Actor":
@@ -74,14 +78,13 @@ class Actor(AbstractActor):
                 continue
             return actor
 
-
     def get_child(self, entity_id: str) -> ty.Optional["Actor"]:
         return self.childs.get(entity_id, None)
 
-    def get_or_create(self, command: Command) -> "Actor":
+    async def get_or_create(self, command: Command) -> "Actor":
         actor = self.get_child(command.entity_id)
         if not actor:
-            actor = self.create_child(command)
+            actor = await self.create_child(command)
         return actor
 
     async def send(self, message: Message, other: "Actor"):
@@ -90,23 +93,36 @@ class Actor(AbstractActor):
 
     async def receive(self, message: Message):
         "Receive message from other actor, may either persist or handle message or both"
+        # NOTE: actor could receive many messages at once, but we only process one at a time
+        # shoud we add lock to mailbox or actor?
+
+        
+        #TODO: seperate logic of handlng message from receiving messages
+        # so that actor can receive messages until its mailbox is full, 
+        # but still handle only one message at a time
+
+        self.mailbox.put(message)
+
         if isinstance(message, Command):
             await self.handle(message)
         elif isinstance(message, Event):
-            self.apply(message)
+            await self.apply(message)
         else:
             raise NotImplementedError
 
-    def collect(self, event: Event):
-        self.mailbox.put(event)
+    async def on_receive(self):
+        ...
+        #msg = self.mailbox.get()
+
+    async def publish(self, event: Event):
+        journal = self.system.get_child("journal")
+        assert journal
+        await journal.receive(event)
 
     @singledispatchmethod
     async def handle(self, command: Command):
-        actor = self.get_or_create(command)
-        if actor is not None:
-            await actor.handle(command)
-        else:
-            raise Exception("command not handled")
+        raise NotImplementedError
+
 
     @property
     def entity_id(self):
@@ -132,6 +148,16 @@ class System(Actor):
     def __init__(self, mailbox: MailBox):
         super().__init__(mailbox=mailbox)
         self.set_system(self)
+
+    @singledispatchmethod 
+    async def handle(self, command: Command):
+        # TODO: test this
+        raise NotImplementedError
+        #actor = await self.get_or_create(command)
+        #if actor is not None:
+        #    await actor.handle(command)
+        #else:
+        #    raise Exception("command not handled")
 
 
 class Mediator(Actor):

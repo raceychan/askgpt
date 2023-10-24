@@ -7,8 +7,8 @@ from src.domain.config import Settings, TestDefaults
 settings = Settings.from_file("settings.toml")
 
 
-def setup_system(settings: Settings):
-    system = gpt.service.GPTSystem.setup(settings)
+async def setup_system(settings: Settings):
+    system = await gpt.service.GPTSystem.create(settings)
     return system
 
 
@@ -49,7 +49,7 @@ async def interactive(mediator: Mediator):
 
 
 async def app(options: CLIOptions):
-    system = setup_system(settings)
+    system = await setup_system(settings)
     mediator = Mediator.build()
 
     # asyncio.create_task(record_event())

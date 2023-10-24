@@ -81,13 +81,13 @@ class GPTSystem(System):
 
     @System.handle.register
     async def _(self, command: CreateUser):
-        self.create_child(command)
+        await self.create_child(command)
 
-    def create_child(self, command: CreateUser) -> "UserActor":
+    async def create_child(self, command: CreateUser) -> "UserActor":
         event = UserCreated(user_id=command.entity_id)
         user_actor = UserActor.apply(event)
         self.childs[user_actor.entity.entity_id] = user_actor
-        self.collect(event)
+        await self.publish(event)
         return user_actor
 
     def create_journal(self):
@@ -108,11 +108,11 @@ class GPTSystem(System):
         return cls(mailbox=MailBox.build(), settings=event.settings)
 
     @classmethod
-    def setup(cls, settings: Settings):
+    async def create(cls, settings: Settings):
         event = SystemStarted(entity_id="system", settings=settings)
         system: GPTSystem = cls.apply(event)
         system.create_journal()
-        system.collect(event)
+        await system.publish(event)
         return system
 
 
@@ -124,11 +124,11 @@ class UserActor(Actor):
         super().__init__(mailbox=MailBox.build())
         self.entity = user
 
-    def create_child(self, command: CreateSession) -> "SessionActor":
+    async def create_child(self, command: CreateSession) -> "SessionActor":
         event = SessionCreated(user_id=command.user_id, session_id=command.entity_id)
         session_actor = SessionActor.apply(event)
         self.childs[session_actor.entity.entity_id] = session_actor
-        self.collect(event)
+        await self.publish(event)
         return session_actor
 
     @singledispatchmethod
@@ -141,7 +141,7 @@ class UserActor(Actor):
 
     @handle.register
     async def _(self, command: CreateSession):
-        self.create_child(command)
+        await self.create_child(command)
 
     @apply.register
     @classmethod
@@ -189,7 +189,7 @@ class SessionActor(Actor):
             session_id=self.entity.entity_id,
             chat_message=command.chat_message,
         )
-        self.collect(event)
+        await self.publish(event)
         self.display_message(chunks)
 
     @singledispatchmethod
