@@ -24,6 +24,8 @@ def mediator(gpt_system):
 async def test_create_user_from_mediator(mediator: Mediator):
     command = service.CreateUser(user_id=TestDefaults.user_id)
     await mediator.receive(command)
+    # NOTE: if we use asyncio.create_task in on_receive
+    # i wouldn't be able to get actor from mediator
 
     user = mediator.system.get_actor(command.entity_id)
     assert isinstance(user, service.UserActor)
@@ -44,4 +46,3 @@ async def test_user_get_journal(gpt_system):
 
     journal = user.system.get_actor("journal")
     assert isinstance(journal, service.Journal)
-

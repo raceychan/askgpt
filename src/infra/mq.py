@@ -1,6 +1,6 @@
 import abc
-import queue
 import typing as ty
+from collections import deque
 
 from src.domain.model import Message
 
@@ -41,14 +41,15 @@ class MessageBroker(abc.ABC):
         raise NotImplementedError
 
 
+
 class QueueBroker(MessageBroker):
     def __init__(self, maxsize: int = 0):
-        self._queue: queue.Queue[Message] = queue.Queue(maxsize)
+        self._queue: deque[Message] = deque(maxlen=maxsize or None)
         self._maxsize = maxsize
         self._subscribers: set[Receivable] = set()
 
     def __len__(self):
-        return len(self._queue.queue)
+        return len(self._queue)
 
     @property
     def maxsize(self):
@@ -59,10 +60,10 @@ class QueueBroker(MessageBroker):
         return self._subscribers
 
     def put(self, message: Message) -> None:
-        self._queue.put(message)
+        self._queue.append(message)
 
     def get(self):
-        return self._queue.get()
+        return self._queue.popleft()
 
     def broadcast(self, message: Message) -> None:
         for subscriber in self._subscribers:
@@ -92,17 +93,20 @@ class MailBox:
         yield self.get()
 
     @property
-    def volume(self):
+    def capacity(self):
         return self._broker.maxsize
+
+    def size(self):
+        return len(self._broker)
 
     def register(self, subscriber: Receivable):
         self._broker.register(subscriber)
 
     @classmethod
-    def build(cls, broker: MessageBroker | None = None):
+    def build(cls, broker: MessageBroker | None = None, maxsize: int = 0):
         if broker is None:
-            broker = QueueBroker()
+            broker = QueueBroker(maxsize)
         return cls(broker)
 
 
-# mailbox = MailBox.build()
+

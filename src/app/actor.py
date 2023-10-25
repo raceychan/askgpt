@@ -1,4 +1,5 @@
 import abc
+import asyncio
 import typing as ty
 from functools import cached_property, singledispatchmethod
 
@@ -11,6 +12,7 @@ class AbstractRef:
 
 
 ActorRef = ty.Annotated[str, AbstractRef, "ActorRef"]
+
 
 
 class AbstractActor(abc.ABC):
@@ -34,7 +36,6 @@ class AbstractActor(abc.ABC):
     def apply(self, event: Event):
         raise NotImplementedError
 
-    # @abc.abstractmethod
     async def create_child(self, command: Command) -> "Actor":
         raise NotImplementedError
 
@@ -54,6 +55,8 @@ class Actor(AbstractActor):
         if not isinstance(self, System):
             self._ensure_system()
 
+        self._handle_sem = asyncio.Semaphore(1)
+
 
     def _ensure_system(self):
         if not isinstance(self.system, System):
@@ -62,7 +65,6 @@ class Actor(AbstractActor):
     @property
     def system(self):
         return self._system
-
 
     @cached_property
     def persistence_id(self) -> str:
@@ -93,30 +95,28 @@ class Actor(AbstractActor):
 
     async def receive(self, message: Message):
         "Receive message from other actor, may either persist or handle message or both"
-        # NOTE: actor could receive many messages at once, but we only process one at a time
-        # shoud we add lock to mailbox or actor?
-
-        
-        #TODO: seperate logic of handlng message from receiving messages
-        # so that actor can receive messages until its mailbox is full, 
-        # but still handle only one message at a time
-
         self.mailbox.put(message)
-
-        if isinstance(message, Command):
-            await self.handle(message)
-        elif isinstance(message, Event):
-            await self.apply(message)
-        else:
-            raise NotImplementedError
+        await self.on_receive()
+        #asyncio.create_task(self.on_receive())
 
     async def on_receive(self):
-        ...
-        #msg = self.mailbox.get()
+        if self.mailbox.size() == 0:
+            return
+        
+        async with self._handle_sem:
+            message = self.mailbox.get()
+
+            if isinstance(message, Command):
+                await self.handle(message)
+            elif isinstance(message, Event):
+                await self.apply(message)
+            else:
+                raise NotImplementedError
 
     async def publish(self, event: Event):
         journal = self.system.get_child("journal")
-        assert journal
+        if not journal:
+            raise Exception("Journal not created")
         await journal.receive(event)
 
     @singledispatchmethod
@@ -149,17 +149,6 @@ class System(Actor):
         super().__init__(mailbox=mailbox)
         self.set_system(self)
 
-    @singledispatchmethod 
-    async def handle(self, command: Command):
-        # TODO: test this
-        raise NotImplementedError
-        #actor = await self.get_or_create(command)
-        #if actor is not None:
-        #    await actor.handle(command)
-        #else:
-        #    raise Exception("command not handled")
-
-
 class Mediator(Actor):
     """
     In-memory mediator
@@ -174,7 +163,10 @@ class Mediator(Actor):
     def apply(self, event: Event):
         raise NotImplementedError
 
-
     @classmethod
     def build(cls):
         return cls(mailbox=MailBox.build())
+
+        
+
+

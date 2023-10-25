@@ -49,7 +49,7 @@ async def interactive(mediator: Mediator):
 
 
 async def app(options: CLIOptions):
-    system = await setup_system(settings)
+    await setup_system(settings)
     mediator = Mediator.build()
 
     # asyncio.create_task(record_event())
