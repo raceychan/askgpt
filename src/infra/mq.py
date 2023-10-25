@@ -92,6 +92,9 @@ class MailBox:
     def __iter__(self):
         yield self.get()
 
+    def __repr__(self):
+        ...
+
     @property
     def capacity(self):
         return self._broker.maxsize

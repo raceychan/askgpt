@@ -2,7 +2,6 @@ import typing as ty
 from functools import singledispatchmethod
 
 import openai
-
 from src.app.actor import Actor, ActorRef, System
 from src.app.gpt.user import (
     ChatMessage,
@@ -90,8 +89,9 @@ class GPTSystem(System):
         await self.publish(event)
         return user_actor
 
-    def create_journal(self):
-        journal = Journal.build(db_url=self.settings.db.ASYNC_DB_URL)
+    def create_journal(self, db_urL: str):
+        db_url = db_urL
+        journal = Journal.build(db_url=db_url)
         self.childs["journal"] = journal
 
     @property
@@ -109,9 +109,14 @@ class GPTSystem(System):
 
     @classmethod
     async def create(cls, settings: Settings):
+        """
+        TODO: we might use dependency injection for journal 
+        so that we can use different journal implementations for testing
+        """
+
         event = SystemStarted(entity_id="system", settings=settings)
         system: GPTSystem = cls.apply(event)
-        system.create_journal()
+        system.create_journal(db_urL=settings.db.ASYNC_DB_URL)
         await system.publish(event)
         return system
 
@@ -152,7 +157,7 @@ class UserActor(Actor):
 class SessionActor(Actor):
     entity: ChatSession
 
-    def __init__(self, chat_session: ChatSession):  # , model_client: OpenAIClient):
+    def __init__(self, chat_session: ChatSession):  
         super().__init__(mailbox=MailBox.build())
         self.entity = chat_session
         self.model_client: OpenAIClient = OpenAIClient.from_config(

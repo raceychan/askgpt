@@ -96,22 +96,24 @@ class Actor(AbstractActor):
     async def receive(self, message: Message):
         "Receive message from other actor, may either persist or handle message or both"
         self.mailbox.put(message)
-        await self.on_receive()
+
+        async with self._handle_sem:
+            await self.on_receive()
         #asyncio.create_task(self.on_receive())
 
     async def on_receive(self):
         if self.mailbox.size() == 0:
             return
         
-        async with self._handle_sem:
-            message = self.mailbox.get()
+#        async with self._handle_sem:
+        message = self.mailbox.get()
 
-            if isinstance(message, Command):
-                await self.handle(message)
-            elif isinstance(message, Event):
-                await self.apply(message)
-            else:
-                raise NotImplementedError
+        if isinstance(message, Command):
+            await self.handle(message)
+        elif isinstance(message, Event):
+            await self.apply(message)
+        else:
+            raise NotImplementedError
 
     async def publish(self, event: Event):
         journal = self.system.get_child("journal")
