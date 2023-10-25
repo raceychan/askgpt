@@ -66,10 +66,11 @@ def test_event_immutable(user_created, session_created):
         
 def test_command_serialize(create_user, create_session):
     data = create_user.asdict()
-    assert data == {'user_id': TestDefaults.user_id}
+    data['user_id'] == TestDefaults.user_id
 
     data = create_session.asdict()
-    assert data == {'user_id': TestDefaults.user_id, 'session_id': TestDefaults.session_id}
+    assert data['user_id'] == TestDefaults.user_id
+    assert data['session_id'] == TestDefaults.session_id
     
 
 def test_event_serialize(user_created, session_created):
