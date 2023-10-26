@@ -112,6 +112,11 @@ class Actor(AbstractActor):
             raise TypeError("Unknown message type")
 
     async def publish(self, event: Event):
+        # TODO: rewrite this
+        # create a queue actor, pass it to both system and journal
+        # where all events send to Queue Actor
+        # and Queue Actor forward them to journal
+
         journal = self.system.get_child("journal")
         if not journal:
             raise Exception("Journal not created")
@@ -119,6 +124,7 @@ class Actor(AbstractActor):
 
     @singledispatchmethod
     async def handle(self, command: Command):
+        breakpoint()
         raise NotImplementedError
 
     @property
@@ -147,6 +153,9 @@ class System(Actor):
         self.set_system(self)
         self._journal_started_event = asyncio.Event()
 
+    # @property
+    # def journal(self) -> Journal:
+    #     return self.system.childs["journal"]  # type: ignore
 
 
 class Mediator(Actor):

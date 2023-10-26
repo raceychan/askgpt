@@ -42,6 +42,7 @@ class Settings(SettingsBase):
 
 
 class TestDefaults:
+    system_id: str = "system"
     user_id: str = "admin"
     session_id: str = "default_session"
     model: str = "gpt-3.5-turbo"

@@ -60,4 +60,21 @@ class EventSchema(TableBase):
 
     @classmethod
     def from_model(cls, model):
-        ...
+        raise NotImplementedError
+
+async def assure_tables_exist(*, async_engine: sa_aio.AsyncEngine | None=None, db_url: str|None = None):
+    if async_engine is None and db_url is None:
+        raise Exception("Either async_engine or db_url must be provided")
+    
+    if async_engine is None:
+        assert db_url is not None
+        async_engine = sa_aio.create_async_engine(db_url)
+
+    sql = "SELECT name FROM sqlite_schema WHERE type='table' ORDER BY name"
+    async with async_engine.begin() as cursor:
+        cache = await cursor.execute(sa.text(sql))
+        result = cache.one_or_none()
+    if result is None:
+        await EventSchema.create_table_async(async_engine)
+    else:
+        assert "domain_events" in result._tuple()

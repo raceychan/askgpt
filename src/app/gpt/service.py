@@ -17,7 +17,7 @@ from src.app.gpt.user import (
     User,
     UserCreated,
 )
-from src.app.journal import Journal
+from src.app.journal import EventStore, Journal
 from src.app.utils.fmtutils import fprint
 from src.domain.config import Settings
 from src.domain.model import Command, Event, Message
@@ -91,17 +91,20 @@ class GPTSystem(System):
         await self.publish(event)
         return user_actor
 
-    def create_journal(self, eventstore, mailbox: MailBox):
+    def create_journal(self, eventstore: EventStore, mailbox: MailBox):
         journal = Journal(eventstore, mailbox)
         self.childs["journal"] = journal
-        return journal
-
-    @property
-    def journal(self) -> Journal:
-        return self.system.childs["journal"]  # type: ignore
     
     def set_journal(self, journal: Journal):
         self.system.childs["journal"] = journal
+
+    @property
+    def journal(self):
+        try:
+            journal_ = self.system.childs["journal"]
+        except KeyError as ke:
+            raise Exception("Journal not created") from ke
+        return journal_
 
     @singledispatchmethod
     def apply(self, event: Event):

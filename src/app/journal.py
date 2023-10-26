@@ -16,7 +16,7 @@ class Journal(Actor):
 
     async def on_receive(self):
         message = await self.mailbox.get()
-        print("journal received")
+        print(f"journal received {message}")
         if isinstance(message, Event):
             await self.eventstore.add(message)
             print(f"{message} added to eventstore")
@@ -46,3 +46,4 @@ class Journal(Actor):
     ):
         es = EventStore.build(db_url=db_url)
         return cls(eventstore=es, mailbox=MailBox.build())
+

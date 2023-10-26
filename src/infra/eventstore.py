@@ -2,7 +2,6 @@ import typing as ty
 
 import sqlalchemy as sa
 from sqlalchemy.ext import asyncio as sa_aio
-
 from src.domain.model import Event
 from src.domain.service.interface import IEventStore
 
@@ -22,18 +21,23 @@ def dump_event(event: Event) -> dict:
     data = event.asdict(by_alias=False)
     return dict(
         id=data.pop("event_id"),
-        event_type=data.pop("event_type"),
         entity_id=data.pop("entity_id"),
-        version=event.__class__.version,
-        event_body=data,
         gmt_created=data.pop("timestamp"),
+        event_type=data.pop("event_type"),
+        event_body=data,
+        version=event.__class__.version,
     )
 
 
 def load_event(row_mapping: ty.Mapping) -> Event:
     data = dict(row_mapping)
     matched_type = Event.match_event_type(data["event_type"])
-    return matched_type(id=data.pop("id"), timestamp=data.pop("gmt_created"), **data)
+    event_id = data.pop("id")
+    entity_id = data.pop("entity_id")
+    timestamp = data.pop("gmt_created")
+    body = data.pop("event_body")
+
+    return matched_type(id=event_id, entity_id=entity_id, timestamp=timestamp, **body)
 
 
 class EventStore(IEventStore):
@@ -74,3 +78,5 @@ class EventStore(IEventStore):
     @classmethod
     def build(cls, *, db_url: str):
         return cls(engine=sa_aio.create_async_engine(db_url))
+
+

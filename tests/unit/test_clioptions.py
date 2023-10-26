@@ -8,7 +8,7 @@ def test_validate():
     options.validate()
     assert options.user_id == TestDefaults.user_id
     assert options.session_id == TestDefaults.session_id
-    assert options.interactive == False
+    assert options.interactive is False
 
 
 def test_validate_fail():

@@ -8,3 +8,5 @@ def test_rebuild_event(user_created: UserCreated):
     assert isinstance(e, UserCreated)
     assert user_created.timestamp == data["timestamp"]
     assert hash(user_created) == hash(e)
+
+

@@ -4,7 +4,7 @@ from src.infra.eventstore import EventStore
 from src.infra.schema import EventSchema
 
 
-@pytest.fixture(scope="package")
+@pytest.fixture(scope="module")
 def async_engine(settings):
     from sqlalchemy.ext import asyncio as sa_aio
 
@@ -14,13 +14,12 @@ def async_engine(settings):
     return engine
 
 
-
-@pytest.fixture(scope="package", autouse=True)
+@pytest.fixture(scope="module", autouse=True)
 async def event_table(async_engine):
     await EventSchema.create_table_async(async_engine)
 
 
-@pytest.fixture(scope="package")
+@pytest.fixture(scope="module")
 async def eventstore(async_engine) -> EventStore:
     es = EventStore(async_engine)
     return es

@@ -2,7 +2,7 @@ import pytest
 
 from src.app.actor import MailBox, Mediator
 from src.app.gpt import service
-from src.app.journal import Journal
+from src.app.journal import EventStore
 from src.domain.config import TestDefaults
 
 
@@ -17,8 +17,8 @@ async def gpt_system(settings):
 
 @pytest.fixture(scope="module", autouse=True)
 async def journal(gpt_system: service.GPTSystem, eventstore):
-    journal: Journal = gpt_system.create_journal(eventstore=eventstore, mailbox=EchoMailbox.build())
-    return journal
+    gpt_system.create_journal(eventstore=eventstore, mailbox=EchoMailbox.build())
+    return gpt_system.journal
 
 @pytest.fixture(scope="module")
 def mediator():
@@ -46,6 +46,9 @@ def send_chat_message():
         user_message="hello",
     )
 
+@pytest.fixture(scope="module")
+def system_started(settings):
+    return service.SystemStarted(entity_id=TestDefaults.system_id, settings=settings)
 
 @pytest.fixture(scope="module")
 def user_created():
@@ -59,12 +62,17 @@ def session_created():
     )
 
 
-async def test_create_user_from_mediator(mediator: Mediator):
+async def test_create_user_from_mediator(mediator: Mediator, eventstore: EventStore, create_user: service.CreateUser):
     command = service.CreateUser(user_id=TestDefaults.user_id)
     await mediator.receive(command)
-
     user = mediator.system.get_actor(command.entity_id)
     assert isinstance(user, service.UserActor)
+
+    user_events = await eventstore.get(create_user.entity_id)
+    assert len(user_events) == 1
+    assert isinstance(user_events[0], service.UserCreated)
+
+
 
 
 async def test_system_get_user_actor(gpt_system):
@@ -86,7 +94,6 @@ async def test_user_get_journal(gpt_system):
     assert isinstance(journal, service.Journal)
 
 
-
 async def test_create_user_by_command(
     gpt_system: service.GPTSystem, create_user: service.CreateUser
 ):
@@ -95,9 +102,8 @@ async def test_create_user_by_command(
     user = gpt_system.get_actor(create_user.entity_id)
     assert isinstance(user, service.UserActor)
 
-
 async def test_create_session_by_command(
-    gpt_system: service.GPTSystem, create_session: service.CreateSession
+    gpt_system: service.GPTSystem, create_session: service.CreateSession, eventstore: EventStore
 ):
     user = gpt_system.get_actor(create_session.user_id)
     assert isinstance(user, service.UserActor)
@@ -105,6 +111,11 @@ async def test_create_session_by_command(
     await user.handle(create_session)
     session = user.get_actor(create_session.entity_id)
     assert isinstance(session, service.SessionActor)
+
+
+    session_events = await eventstore.get(create_session.entity_id)
+    assert len(session_events) == 1
+    assert isinstance(session_events[0], service.SessionCreated)
 
 
 async def test_create_user_by_event(user_created: service.UserCreated):
@@ -119,8 +130,20 @@ async def test_create_session_by_event(session_created: service.SessionCreated):
     assert session.entity_id == session_created.entity_id
 
 
-async def test_assert_events(eventstore, system_started: service.SystemStarted, user_created: service.UserCreated, session_created: service.SessionCreated):
+async def test_event_unduplicate(eventstore, system_started: service.SystemStarted, user_created: service.UserCreated, session_created: service.SessionCreated):
     system_events = await eventstore.get(system_started.entity_id)
+    system_events_set = set(system_events)
+    assert len(system_events) == len(system_events_set) 
+
     user_events = await eventstore.get(user_created.entity_id)
-    session_events= await eventstore.get(session_created.entity_id)
-    assert len(user_events) == 1
+    user_events_set = set(user_events)
+    assert len(user_events) == len(user_events_set)
+
+    session_events = await eventstore.get(session_created.entity_id)
+    session_events_set = set(session_events)
+    assert len(session_events) == len(session_events_set)
+
+    all_events = await eventstore.list_all()
+    all_events_set = set(all_events)
+
+    assert all_events_set - system_events_set - user_events_set - session_events_set == set()

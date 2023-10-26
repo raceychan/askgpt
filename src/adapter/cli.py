@@ -1,14 +1,16 @@
 import asyncio
 from argparse import ArgumentParser, Namespace
 
-from src.app import Mediator, gpt
+from src.app import Mediator, gpt, journal
 from src.domain.config import Settings, TestDefaults
+from src.infra.schema import assure_tables_exist
 
 settings = Settings.from_file("settings.toml")
 
 
 async def setup_system(settings: Settings):
     system = await gpt.service.GPTSystem.create(settings)
+    system.set_journal(journal.Journal.build(db_url=settings.db.ASYNC_DB_URL))
     return system
 
 
@@ -49,13 +51,21 @@ async def interactive(mediator: Mediator):
 
 
 async def app(options: CLIOptions):
+    await assure_tables_exist(db_url=settings.db.ASYNC_DB_URL)
     await setup_system(settings)
+
     mediator = Mediator.build()
 
+    # TODO:
+    # mediator currently is not working, when mediator send a command to system
+    # system does not know what to do.
+    # do we still need mediator when using actor model?
+    raise NotImplementedError
+
     if options.question:
-        await send_question(options.question, mediator)
+       await send_question(options.question, mediator)
     elif options.interactive:
-        await interactive(mediator)
+       await interactive(mediator)
 
 
 def cli() -> CLIOptions:
