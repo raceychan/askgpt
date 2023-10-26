@@ -12,38 +12,31 @@ class Journal(Actor):
     def __init__(self, eventstore: EventStore, mailbox: MailBox):
         super().__init__(mailbox)
         self.eventstore = eventstore
+        self.system._journal_started_event.set()
 
     async def on_receive(self):
-        message = self.mailbox.get()
+        message = await self.mailbox.get()
+        print("journal received")
         if isinstance(message, Event):
-            #await self.eventstore.add(message)
-            pass
-            # print(f"{message} persisted")
+            await self.eventstore.add(message)
+            print(f"{message} added to eventstore")
+        else:
+            raise TypeError("Currently journal only accepts events")
 
     async def handle(self, message: Message):
-        # if not isinstance(message, Event):
-        #     raise TypeError(f"Unexpected message type: {type(message)}")
-        # await self.eventstore.add(message)
         ...
 
-    async def _setup(self):
-        self._loop = asyncio.get_running_loop()
-
     async def persist_event(self):
-        #if self.mailbox.size() == 0:
-        #    await asyncio.sleep(1)
-        #    await self.persist_event()
-        #else:
-        #    for msg in self.mailbox:
-        #        await self.handle(msg)
         raise NotImplementedError
 
     async def start(self):
-        await self._setup()
         await self.persist_event()
 
     async def apply(self, event: Event):
         raise NotImplementedError
+
+    async def publish(self, event: Event):
+        await self.receive(event)
 
     @classmethod
     def build(

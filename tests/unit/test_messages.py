@@ -50,7 +50,6 @@ def test_command_immutable(create_user, create_session):
 
     with pytest.raises(ValidationError):
         create_user.entity_id = "new_id"
-    
 
 
 def test_event_immutable(user_created, session_created):
@@ -59,25 +58,23 @@ def test_event_immutable(user_created, session_created):
     assert user_created.entity_id == TestDefaults.user_id
     assert session_created.entity_id == TestDefaults.session_id
 
-
     with pytest.raises(ValidationError):
         user_created.entity_id = "new_id"
 
-        
+
 def test_command_serialize(create_user, create_session):
     data = create_user.asdict()
-    data['user_id'] == TestDefaults.user_id
+    data["user_id"] == TestDefaults.user_id
 
     data = create_session.asdict()
-    assert data['user_id'] == TestDefaults.user_id
-    assert data['session_id'] == TestDefaults.session_id
-    
+    assert data["user_id"] == TestDefaults.user_id
+    assert data["session_id"] == TestDefaults.session_id
+
 
 def test_event_serialize(user_created, session_created):
     data = user_created.asdict()
     assert data["user_id"] == TestDefaults.user_id
     assert data["event_type"] == "user_created"
-
 
     data = session_created.asdict()
     assert data["user_id"] == TestDefaults.user_id

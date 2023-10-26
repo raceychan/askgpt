@@ -14,7 +14,6 @@ class AbstractRef:
 ActorRef = ty.Annotated[str, AbstractRef, "ActorRef"]
 
 
-
 class AbstractActor(abc.ABC):
     def reply(self):
         raise NotImplementedError
@@ -57,7 +56,6 @@ class Actor(AbstractActor):
 
         self._handle_sem = asyncio.Semaphore(1)
 
-
     def _ensure_system(self):
         if not isinstance(self.system, System):
             raise Exception("Actor must be created under System")
@@ -95,25 +93,23 @@ class Actor(AbstractActor):
 
     async def receive(self, message: Message):
         "Receive message from other actor, may either persist or handle message or both"
-        self.mailbox.put(message)
+        await self.mailbox.put(message)
 
         async with self._handle_sem:
             await self.on_receive()
-        #asyncio.create_task(self.on_receive())
 
     async def on_receive(self):
         if self.mailbox.size() == 0:
             return
-        
-#        async with self._handle_sem:
-        message = self.mailbox.get()
+
+        message = await self.mailbox.get()
 
         if isinstance(message, Command):
             await self.handle(message)
         elif isinstance(message, Event):
-            await self.apply(message)
+            self.apply(message)
         else:
-            raise NotImplementedError
+            raise TypeError("Unknown message type")
 
     async def publish(self, event: Event):
         journal = self.system.get_child("journal")
@@ -125,7 +121,6 @@ class Actor(AbstractActor):
     async def handle(self, command: Command):
         raise NotImplementedError
 
-
     @property
     def entity_id(self):
         return self.entity.entity_id
@@ -135,7 +130,7 @@ class Actor(AbstractActor):
         if (sys_ := getattr(Actor, "_system", None)) is not None:
             if sys_ is not system:
                 raise Exception("System already set")
-            return 
+            return
         if not isinstance(system, System):
             raise Exception("System must be instance of System")
         Actor._system = system
@@ -150,6 +145,9 @@ class System(Actor):
     def __init__(self, mailbox: MailBox):
         super().__init__(mailbox=mailbox)
         self.set_system(self)
+        self._journal_started_event = asyncio.Event()
+
+
 
 class Mediator(Actor):
     """
@@ -168,7 +166,3 @@ class Mediator(Actor):
     @classmethod
     def build(cls):
         return cls(mailbox=MailBox.build())
-
-        
-
-

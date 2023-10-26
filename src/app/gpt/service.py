@@ -1,7 +1,9 @@
+import asyncio
 import typing as ty
 from functools import singledispatchmethod
 
 import openai
+
 from src.app.actor import Actor, ActorRef, System
 from src.app.gpt.user import (
     ChatMessage,
@@ -76,7 +78,7 @@ class GPTSystem(System):
 
     def __init__(self, mailbox: MailBox, settings: Settings):
         super().__init__(mailbox=mailbox)
-        self.settings=settings
+        self.settings = settings
 
     @System.handle.register
     async def _(self, command: CreateUser):
@@ -89,14 +91,17 @@ class GPTSystem(System):
         await self.publish(event)
         return user_actor
 
-    def create_journal(self, db_urL: str):
-        db_url = db_urL
-        journal = Journal.build(db_url=db_url)
+    def create_journal(self, eventstore, mailbox: MailBox):
+        journal = Journal(eventstore, mailbox)
         self.childs["journal"] = journal
+        return journal
 
     @property
     def journal(self) -> Journal:
-        return self.system.childs["journal"] # type: ignore
+        return self.system.childs["journal"]  # type: ignore
+    
+    def set_journal(self, journal: Journal):
+        self.system.childs["journal"] = journal
 
     @singledispatchmethod
     def apply(self, event: Event):
@@ -109,16 +114,15 @@ class GPTSystem(System):
 
     @classmethod
     async def create(cls, settings: Settings):
-        """
-        TODO: we might use dependency injection for journal 
-        so that we can use different journal implementations for testing
-        """
-
         event = SystemStarted(entity_id="system", settings=settings)
         system: GPTSystem = cls.apply(event)
-        system.create_journal(db_urL=settings.db.ASYNC_DB_URL)
-        await system.publish(event)
+        asyncio.create_task(system.publish_started_event(event))
         return system
+
+    async def publish_started_event(self, event: SystemStarted):
+        await self._journal_started_event.wait()
+        await self.publish(event)
+
 
 
 class UserActor(Actor):
@@ -157,7 +161,7 @@ class UserActor(Actor):
 class SessionActor(Actor):
     entity: ChatSession
 
-    def __init__(self, chat_session: ChatSession):  
+    def __init__(self, chat_session: ChatSession):
         super().__init__(mailbox=MailBox.build())
         self.entity = chat_session
         self.model_client: OpenAIClient = OpenAIClient.from_config(

@@ -23,9 +23,11 @@ class MessageBroker(abc.ABC):
     def get(self) -> Message:
         raise NotImplementedError
 
+
     @abc.abstractproperty
     def maxsize(self) -> int:
         raise NotImplementedError
+
 
     @abc.abstractmethod
     def register(self, subscriber: Receivable) -> None:
@@ -39,7 +41,6 @@ class MessageBroker(abc.ABC):
             https://stackoverflow.com/questions/39586635/why-is-kafka-pull-based-instead-of-push-based
         """
         raise NotImplementedError
-
 
 
 class QueueBroker(MessageBroker):
@@ -72,7 +73,6 @@ class QueueBroker(MessageBroker):
     def register(self, subscriber: Receivable):
         self._subscribers.add(subscriber)
 
-
 class MailBox:
     def __init__(self, broker: MessageBroker):
         self._broker = broker
@@ -83,17 +83,17 @@ class MailBox:
     def __bool__(self):
         return self.__len__() > 0
 
-    def put(self, event: Message):
-        self._broker.put(event)
+    async def put(self, message: Message):
+        self._broker.put(message)
 
-    def get(self):
+    async def get(self):
         return self._broker.get()
 
-    def __iter__(self):
-        yield self.get()
+    async def __aiter__(self):
+        yield await self.get()
 
     def __repr__(self):
-        ...
+        return f"{self.__class__.__name__}({self.size()} messages)"
 
     @property
     def capacity(self):
@@ -110,6 +110,3 @@ class MailBox:
         if broker is None:
             broker = QueueBroker(maxsize)
         return cls(broker)
-
-
-

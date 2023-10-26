@@ -1,12 +1,9 @@
 from dataclasses import dataclass
 
 from pydantic import BaseModel, ConfigDict
-
 from src.domain.fileutil import FileUtil
 
 frozen = dataclass(frozen=True, slots=True, kw_only=True, repr=False)
-
-
 
 
 class SettingsBase(BaseModel):

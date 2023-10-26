@@ -52,8 +52,6 @@ async def app(options: CLIOptions):
     await setup_system(settings)
     mediator = Mediator.build()
 
-    # asyncio.create_task(record_event())
-
     if options.question:
         await send_question(options.question, mediator)
     elif options.interactive:

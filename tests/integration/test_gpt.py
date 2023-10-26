@@ -1,6 +1,8 @@
 import pytest
+
 from src.app.actor import MailBox, Mediator
 from src.app.gpt import service
+from src.app.journal import Journal
 from src.domain.config import TestDefaults
 
 
@@ -13,11 +15,16 @@ class EchoMailbox(MailBox):
 async def gpt_system(settings):
     return await service.GPTSystem.create(settings)
 
+@pytest.fixture(scope="module", autouse=True)
+async def journal(gpt_system: service.GPTSystem, eventstore):
+    journal: Journal = gpt_system.create_journal(eventstore=eventstore, mailbox=EchoMailbox.build())
+    return journal
 
 @pytest.fixture(scope="module")
-def mediator(gpt_system):
-    mdr =  Mediator(mailbox=MailBox.build())
+def mediator():
+    mdr = Mediator(mailbox=MailBox.build())
     return mdr
+
 
 @pytest.fixture(scope="module")
 def create_user():
@@ -52,13 +59,9 @@ def session_created():
     )
 
 
-
 async def test_create_user_from_mediator(mediator: Mediator):
     command = service.CreateUser(user_id=TestDefaults.user_id)
     await mediator.receive(command)
-
-    # NOTE: if we use asyncio.create_task in on_receive
-    # we wouldn't be able to get actor from mediator
 
     user = mediator.system.get_actor(command.entity_id)
     assert isinstance(user, service.UserActor)
@@ -69,9 +72,11 @@ async def test_system_get_user_actor(gpt_system):
     assert isinstance(user, service.UserActor)
     return user
 
+
 async def test_system_get_journal(gpt_system):
     journal = gpt_system.get_actor("journal")
     assert isinstance(journal, service.Journal)
+
 
 async def test_user_get_journal(gpt_system):
     user = gpt_system.get_actor(TestDefaults.user_id)
@@ -80,13 +85,11 @@ async def test_user_get_journal(gpt_system):
     journal = user.system.get_actor("journal")
     assert isinstance(journal, service.Journal)
 
-# @pytest.fixture(scope="module")
-# async def system(settings):
-#     system = await GPTSystem.create(settings)
-#     return system
 
 
-async def test_create_user_by_command(gpt_system: service.GPTSystem, create_user: service.CreateUser):
+async def test_create_user_by_command(
+    gpt_system: service.GPTSystem, create_user: service.CreateUser
+):
     await gpt_system.handle(create_user)
 
     user = gpt_system.get_actor(create_user.entity_id)
@@ -114,3 +117,10 @@ async def test_create_session_by_event(session_created: service.SessionCreated):
     session = service.SessionActor.apply(session_created)
     assert isinstance(session, service.SessionActor)
     assert session.entity_id == session_created.entity_id
+
+
+async def test_assert_events(eventstore, system_started: service.SystemStarted, user_created: service.UserCreated, session_created: service.SessionCreated):
+    system_events = await eventstore.get(system_started.entity_id)
+    user_events = await eventstore.get(user_created.entity_id)
+    session_events= await eventstore.get(session_created.entity_id)
+    assert len(user_events) == 1
