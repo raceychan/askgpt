@@ -15,25 +15,23 @@ class MessageBroker(abc.ABC):
     def __len__(self) -> int:
         raise NotImplementedError
 
-    @abc.abstractmethod
-    def put(self, message: Message) -> None:
-        raise NotImplementedError
-
-    @abc.abstractmethod
-    def get(self) -> Message:
-        raise NotImplementedError
-
-
     @abc.abstractproperty
     def maxsize(self) -> int:
         raise NotImplementedError
 
+    @abc.abstractmethod
+    async def put(self, message: Message) -> None:
+        raise NotImplementedError
+
+    @abc.abstractmethod
+    async def get(self) -> Message:
+        raise NotImplementedError
 
     @abc.abstractmethod
     def register(self, subscriber: Receivable) -> None:
         raise NotImplementedError
 
-    def broadcast(self, message: Message) -> None:
+    async def broadcast(self, message: Message) -> None:
         """
         Optional method to broadcast message to all subscribers,
         only push-based MQ should implement this method
@@ -60,18 +58,19 @@ class QueueBroker(MessageBroker):
     def subscribes(self):
         return self._subscribers
 
-    def put(self, message: Message) -> None:
+    async def put(self, message: Message) -> None:
         self._queue.append(message)
 
-    def get(self):
+    async def get(self):
         return self._queue.popleft()
 
-    def broadcast(self, message: Message) -> None:
+    async def broadcast(self, message: Message) -> None:
         for subscriber in self._subscribers:
             subscriber.receive(message)
 
     def register(self, subscriber: Receivable):
         self._subscribers.add(subscriber)
+
 
 class MailBox:
     def __init__(self, broker: MessageBroker):
@@ -84,10 +83,10 @@ class MailBox:
         return self.__len__() > 0
 
     async def put(self, message: Message):
-        self._broker.put(message)
+        await self._broker.put(message)
 
     async def get(self):
-        return self._broker.get()
+        return await self._broker.get()
 
     async def __aiter__(self):
         yield await self.get()
@@ -110,3 +109,6 @@ class MailBox:
         if broker is None:
             broker = QueueBroker(maxsize)
         return cls(broker)
+
+
+ 

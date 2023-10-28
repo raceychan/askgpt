@@ -8,6 +8,7 @@ from src.infra.eventstore import EventStore, dump_event, load_event
 def test_settins(settings):
     assert isinstance(settings, Settings)
 
+
 @pytest.fixture(scope="module")
 def user_created():
     event = UserCreated(user_id="race")

@@ -12,14 +12,12 @@ class Journal(Actor):
     def __init__(self, eventstore: EventStore, mailbox: MailBox):
         super().__init__(mailbox)
         self.eventstore = eventstore
-        self.system._journal_started_event.set()
+        self.system.eventlog.register_listener(self)
 
     async def on_receive(self):
         message = await self.mailbox.get()
-        print(f"journal received {message}")
         if isinstance(message, Event):
             await self.eventstore.add(message)
-            print(f"{message} added to eventstore")
         else:
             raise TypeError("Currently journal only accepts events")
 
@@ -36,7 +34,8 @@ class Journal(Actor):
         raise NotImplementedError
 
     async def publish(self, event: Event):
-        await self.receive(event)
+        raise NotImplementedError
+        # await self.receive(event)
 
     @classmethod
     def build(
@@ -46,4 +45,3 @@ class Journal(Actor):
     ):
         es = EventStore.build(db_url=db_url)
         return cls(eventstore=es, mailbox=MailBox.build())
-

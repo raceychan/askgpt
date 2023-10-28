@@ -1,14 +1,13 @@
 import abc
 
+from src.domain.model import Event
+
 """
 Remember:
 repository and unitwork in doman service
 should only be interfaces
 and let infra implemente
 """
-
-
-from src.domain.model import Event
 
 
 class IEventStore(abc.ABC):

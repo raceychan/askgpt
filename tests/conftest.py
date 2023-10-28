@@ -5,6 +5,7 @@ import pytest
 from src.domain.config import Settings
 from src.domain.fileutil import FileLoader, FileUtil
 
+
 @pytest.fixture(scope="session")
 def event_loop():
     loop = asyncio.new_event_loop()
@@ -34,4 +35,5 @@ def fileloader():
 @pytest.fixture(scope="session")
 def fileutil(fileloader):
     from pathlib import Path
+
     return FileUtil(work_dir=Path.cwd(), file_loader=fileloader)

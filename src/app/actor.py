@@ -4,10 +4,14 @@ import typing as ty
 from functools import cached_property, singledispatchmethod
 
 from src.domain.model import Command, Entity, Event, Message
-from src.infra.mq import MailBox
+from src.infra.mq import MailBox, MessageBroker, Receivable
 
 
 class AbstractRef:
+    ...
+
+
+class SystemNotSetError(Exception):
     ...
 
 
@@ -19,15 +23,16 @@ class AbstractActor(abc.ABC):
         raise NotImplementedError
 
     @abc.abstractmethod
-    async def handle(self, command: Command):
+    async def handle(self, command: Command) -> None:
         """
         Process/handle command, potentially change its state,
-        this should not return anything to seperate command and query
+        *This should not return anything* to seperate command and query
+
         """
         raise NotImplementedError
 
     @abc.abstractmethod
-    def receive(self, message: Message):
+    def receive(self, message: Message) -> None:
         raise NotImplementedError
 
     @singledispatchmethod
@@ -57,8 +62,8 @@ class Actor(AbstractActor):
         self._handle_sem = asyncio.Semaphore(1)
 
     def _ensure_system(self):
-        if not isinstance(self.system, System):
-            raise Exception("Actor must be created under System")
+        if not hasattr(self, "system") or not isinstance(self.system, System):
+            raise SystemNotSetError("Actor must be created under System")
 
     @property
     def system(self):
@@ -112,19 +117,11 @@ class Actor(AbstractActor):
             raise TypeError("Unknown message type")
 
     async def publish(self, event: Event):
-        # TODO: rewrite this
-        # create a queue actor, pass it to both system and journal
-        # where all events send to Queue Actor
-        # and Queue Actor forward them to journal
-
-        journal = self.system.get_child("journal")
-        if not journal:
-            raise Exception("Journal not created")
-        await journal.receive(event)
+        eventlog = self.system.eventlog
+        await eventlog.receive(event)
 
     @singledispatchmethod
     async def handle(self, command: Command):
-        breakpoint()
         raise NotImplementedError
 
     @property
@@ -151,11 +148,41 @@ class System(Actor):
     def __init__(self, mailbox: MailBox):
         super().__init__(mailbox=mailbox)
         self.set_system(self)
-        self._journal_started_event = asyncio.Event()
 
-    # @property
-    # def journal(self) -> Journal:
-    #     return self.system.childs["journal"]  # type: ignore
+        self._eventlog_started_event = asyncio.Event()
+
+    def create_eventlog(self, broker: MessageBroker | None = None):
+        eventlog = EventLog(mailbox=MailBox.build(broker))
+        self.childs["eventlog"] = eventlog
+
+    @property
+    def eventlog(self) -> "EventLog":
+        return self.childs["eventlog"]  # type: ignore
+
+    def create_mediator(self, broker: MessageBroker | None = None):
+        raise NotImplementedError
+
+
+class EventLog(Actor):
+    _event_listener: Actor
+
+    def __init__(self, mailbox: MailBox):
+        super().__init__(mailbox=mailbox)
+        self.system._eventlog_started_event.set()
+
+    def register_listener(self, listener: Actor):
+        self._event_listener = listener
+
+    async def on_receive(self):
+        msg = await self.mailbox.get()
+        await self._event_listener.receive(msg)
+
+    async def apply(self, event):
+        raise NotImplementedError
+
+    @classmethod
+    def build(cls):
+        return cls(mailbox=MailBox.build())
 
 
 class Mediator(Actor):

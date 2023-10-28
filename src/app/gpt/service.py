@@ -4,7 +4,7 @@ from functools import singledispatchmethod
 
 import openai
 
-from src.app.actor import Actor, ActorRef, System
+from src.app.actor import Actor, ActorRef, EventLog, System
 from src.app.gpt.user import (
     ChatMessage,
     ChatMessageSent,
@@ -80,10 +80,6 @@ class GPTSystem(System):
         super().__init__(mailbox=mailbox)
         self.settings = settings
 
-    @System.handle.register
-    async def _(self, command: CreateUser):
-        await self.create_child(command)
-
     async def create_child(self, command: CreateUser) -> "UserActor":
         event = UserCreated(user_id=command.entity_id)
         user_actor = UserActor.apply(event)
@@ -92,19 +88,28 @@ class GPTSystem(System):
         return user_actor
 
     def create_journal(self, eventstore: EventStore, mailbox: MailBox):
+        "journal is part of the application layer, so it should be created here by gptsystem"
         journal = Journal(eventstore, mailbox)
         self.childs["journal"] = journal
-    
-    def set_journal(self, journal: Journal):
-        self.system.childs["journal"] = journal
 
-    @property
-    def journal(self):
-        try:
-            journal_ = self.system.childs["journal"]
-        except KeyError as ke:
-            raise Exception("Journal not created") from ke
-        return journal_
+    async def publish_started_event(self, event: SystemStarted):
+        await self._eventlog_started_event.wait()
+        await self.publish(event)
+
+    @classmethod
+    async def create(cls, settings: Settings, eventstore: EventStore | None = None):
+        if eventstore is None:
+            eventstore = EventStore.build(db_url=settings.db.ASYNC_DB_URL)
+
+        event = SystemStarted(entity_id="system", settings=settings)
+        system: GPTSystem = cls.apply(event)
+        system.create_eventlog()
+        system.create_journal(
+            eventstore=eventstore,
+            mailbox=MailBox.build(),
+        )
+        asyncio.create_task(system.publish_started_event(event))
+        return system
 
     @singledispatchmethod
     def apply(self, event: Event):
@@ -115,17 +120,29 @@ class GPTSystem(System):
     def _(cls, event: SystemStarted):
         return cls(mailbox=MailBox.build(), settings=event.settings)
 
-    @classmethod
-    async def create(cls, settings: Settings):
-        event = SystemStarted(entity_id="system", settings=settings)
-        system: GPTSystem = cls.apply(event)
-        asyncio.create_task(system.publish_started_event(event))
-        return system
+    @singledispatchmethod
+    async def handle(self, command: Command):
+        raise NotImplementedError
 
-    async def publish_started_event(self, event: SystemStarted):
-        await self._journal_started_event.wait()
-        await self.publish(event)
+    @handle.register
+    async def _(self, command: SendChatMessage):
+        user = self.get_actor(command.user_id)
+        if not user:
+            create_user = CreateUser(user_id=command.user_id)
+            user = await self.create_child(create_user)
 
+        session = user.get_actor(command.entity_id)
+        if not session:
+            create_session = CreateSession(
+                user_id=command.user_id, session_id=command.entity_id
+            )
+            session = await user.create_child(create_session)
+
+        await session.handle(command)
+
+    @handle.register
+    async def _(self, command: CreateUser):
+        await self.create_child(command)
 
 
 class UserActor(Actor):
@@ -172,6 +189,7 @@ class SessionActor(Actor):
         )
 
     def send(self, message: ChatMessage, model: CompletionModels, stream=True):
+        raise Exception("debug")
         chunks = self.model_client.send(message=message, model=model, stream=stream)
 
         for resp in chunks:

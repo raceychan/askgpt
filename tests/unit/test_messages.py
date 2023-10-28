@@ -1,4 +1,5 @@
 import pytest
+
 from src.app.gpt.user import (
     CreateSession,
     CreateUser,
@@ -62,11 +63,9 @@ def test_event_immutable(user_created, session_created):
         user_created.entity_id = "new_id"
 
 
-def test_command_serialize(create_user, create_session):
-    data = create_user.asdict()
-    data["user_id"] == TestDefaults.user_id
-
+def test_command_serialize(create_session):
     data = create_session.asdict()
+
     assert data["user_id"] == TestDefaults.user_id
     assert data["session_id"] == TestDefaults.session_id
 

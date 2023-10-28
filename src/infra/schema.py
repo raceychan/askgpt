@@ -6,6 +6,7 @@ from sqlalchemy.ext import asyncio as sa_aio
 from sqlalchemy.sql import func
 
 from src.domain.model.name_tools import pascal_to_snake
+from src.infra.sa_utils import engine_factory
 
 T = ty.TypeVar("T")
 
@@ -62,19 +63,31 @@ class EventSchema(TableBase):
     def from_model(cls, model):
         raise NotImplementedError
 
-async def assure_tables_exist(*, async_engine: sa_aio.AsyncEngine | None=None, db_url: str|None = None):
-    if async_engine is None and db_url is None:
-        raise Exception("Either async_engine or db_url must be provided")
-    
-    if async_engine is None:
-        assert db_url is not None
-        async_engine = sa_aio.create_async_engine(db_url)
 
-    sql = "SELECT name FROM sqlite_schema WHERE type='table' ORDER BY name"
+async def test_table_exists(table_name: str, async_engine: sa_aio.AsyncEngine):
+    sql = f"SELECT name FROM sqlite_schema WHERE type='table' and name='{table_name}' ORDER BY name"
     async with async_engine.begin() as cursor:
         cache = await cursor.execute(sa.text(sql))
         result = cache.one_or_none()
-    if result is None:
-        await EventSchema.create_table_async(async_engine)
-    else:
-        assert "domain_events" in result._tuple()
+
+    if result != table_name:
+        raise ValueError(f"Table {table_name} does not exist")
+
+
+async def create_eventstore(async_engine: sa_aio.AsyncEngine):
+    await EventSchema.create_table_async(async_engine)
+
+
+async def setup_eventstore(settings):
+    if settings.db.DB_DRIVER == "sqlite":
+        if not settings.db.DATABASE.exists():
+            raise FileNotFoundError(
+                f"Database file not found at {settings.db.DATABASE}"
+            )
+
+    engine = engine_factory(settings.db.ASYNC_DB_URL, isolation_level="SERIALIZABLE")
+
+    try:
+        await test_table_exists(EventSchema.__tablename__, engine)
+    except ValueError:
+        await create_eventstore(engine)

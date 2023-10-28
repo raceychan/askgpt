@@ -2,6 +2,7 @@ import typing as ty
 
 import sqlalchemy as sa
 from sqlalchemy.ext import asyncio as sa_aio
+
 from src.domain.model import Event
 from src.domain.service.interface import IEventStore
 
@@ -49,6 +50,7 @@ class EventStore(IEventStore):
     async def add(self, event: Event):
         value = dump_event(event)
         stmt = sa.insert(self.table).values(value)
+
         async with self.engine.begin() as cursor:
             await cursor.execute(stmt)
 
@@ -78,5 +80,3 @@ class EventStore(IEventStore):
     @classmethod
     def build(cls, *, db_url: str):
         return cls(engine=sa_aio.create_async_engine(db_url))
-
-

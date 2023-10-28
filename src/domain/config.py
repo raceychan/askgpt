@@ -1,6 +1,8 @@
+import pathlib
 from dataclasses import dataclass
 
 from pydantic import BaseModel, ConfigDict
+
 from src.domain.fileutil import FileUtil
 
 frozen = dataclass(frozen=True, slots=True, kw_only=True, repr=False)
@@ -11,7 +13,7 @@ class SettingsBase(BaseModel):
         frozen=True,
         use_enum_values=True,
         validate_default=True,
-        strict=True,
+        strict=False,
         extra="forbid",
     )
 
@@ -23,7 +25,7 @@ class Settings(SettingsBase):
     class DB(SettingsBase):
         DB_DRIVER: str
         ASYNC_DB_DRIVER: str = "aiosqlite"
-        DATABASE: str
+        DATABASE: pathlib.Path
 
         @property
         def DB_URL(self) -> str:
