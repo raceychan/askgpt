@@ -4,7 +4,7 @@ import typing as ty
 from functools import cached_property, singledispatchmethod
 
 from src.domain.model import Command, Entity, Event, Message
-from src.infra.mq import MailBox, MessageBroker, Receivable
+from src.infra.mq import MailBox, MessageBroker
 
 
 class AbstractRef:
@@ -149,8 +149,6 @@ class System(Actor):
         super().__init__(mailbox=mailbox)
         self.set_system(self)
 
-        self._eventlog_started_event = asyncio.Event()
-
     def create_eventlog(self, broker: MessageBroker | None = None):
         eventlog = EventLog(mailbox=MailBox.build(broker))
         self.childs["eventlog"] = eventlog
@@ -168,7 +166,6 @@ class EventLog(Actor):
 
     def __init__(self, mailbox: MailBox):
         super().__init__(mailbox=mailbox)
-        self.system._eventlog_started_event.set()
 
     def register_listener(self, listener: Actor):
         self._event_listener = listener

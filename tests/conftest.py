@@ -1,4 +1,5 @@
 import asyncio
+import pathlib
 
 import pytest
 
@@ -18,13 +19,14 @@ class TestSettings(Settings):
 
     class DB(Settings.DB):
         DB_DRIVER: str = "sqlite"
-        DATABASE: str = ":memory:"
+        DATABASE: pathlib.Path | str = ":memory:"
         ENGINE_ECHO: bool = True
 
 
 @pytest.fixture(scope="session")
 def settings() -> TestSettings:
-    return TestSettings(OPENAI_API_KEY="fake_api_key", db=TestSettings.DB())
+    ss = TestSettings(OPENAI_API_KEY="fake_api_key", db=TestSettings.DB())
+    return ss
 
 
 @pytest.fixture(scope="session")

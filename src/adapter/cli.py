@@ -37,18 +37,9 @@ async def send_question(question: str, system: gpt.service.GPTSystem):
 
 
 async def interactive(system: gpt.service.GPTSystem):
-    # TODO:
-    # 1. Catch KeyboardInterrupt event to quit system and publish event to eventlog
-
     while True:
         question = input("\nwhat woud you like to ask?\n\n")
-        command = gpt.service.SendChatMessage(
-            user_id=TestDefaults.user_id,
-            session_id=TestDefaults.session_id,
-            user_message=question,
-        )
-
-        await system.receive(command)
+        await send_question(question, system)
 
 
 async def app(options: CLIOptions):
@@ -59,7 +50,12 @@ async def app(options: CLIOptions):
     if options.question:
         await send_question(options.question, system)
     elif options.interactive:
-        await interactive(system)
+        try:
+            await interactive(system)
+        except KeyboardInterrupt:
+            quit("\nBye")
+        finally:
+            await system.stop()
 
 
 def cli() -> CLIOptions:

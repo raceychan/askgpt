@@ -69,8 +69,16 @@ class OpenAIClient:  # TODO: this might be an (Actor):
         return cls(api_key=config.OPENAI_API_KEY)
 
 
+class SystemCreated(Event):
+    ...
+
+
 class SystemStarted(Event):
     settings: Settings
+
+
+class SystemStoped(Event):
+    ...
 
 
 class GPTSystem(System):
@@ -92,10 +100,6 @@ class GPTSystem(System):
         journal = Journal(eventstore, mailbox)
         self.childs["journal"] = journal
 
-    async def publish_started_event(self, event: SystemStarted):
-        await self._eventlog_started_event.wait()
-        await self.publish(event)
-
     @classmethod
     async def create(cls, settings: Settings, eventstore: EventStore | None = None):
         if eventstore is None:
@@ -108,7 +112,7 @@ class GPTSystem(System):
             eventstore=eventstore,
             mailbox=MailBox.build(),
         )
-        asyncio.create_task(system.publish_started_event(event))
+        # await system.publish(event)
         return system
 
     @singledispatchmethod
@@ -143,6 +147,10 @@ class GPTSystem(System):
     @handle.register
     async def _(self, command: CreateUser):
         await self.create_child(command)
+
+    async def stop(self):
+        ...
+        # await self.publish(SystemStoped(entity_id="system"))
 
 
 class UserActor(Actor):
@@ -189,7 +197,6 @@ class SessionActor(Actor):
         )
 
     def send(self, message: ChatMessage, model: CompletionModels, stream=True):
-        raise Exception("debug")
         chunks = self.model_client.send(message=message, model=model, stream=stream)
 
         for resp in chunks:

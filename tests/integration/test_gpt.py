@@ -146,8 +146,10 @@ async def test_event_unduplicate(
     assert len(session_events) == len(session_events_set)
 
     all_events = await eventstore.list_all()
-    all_events_set = set(all_events)
+    assert isinstance(all_events[0], service.SystemStarted)
+    assert isinstance(all_events[-1], service.SystemStoped)
 
+    all_events_set = set(all_events)
     assert (
         all_events_set - system_events_set - user_events_set - session_events_set
         == set()
