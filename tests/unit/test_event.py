@@ -1,4 +1,4 @@
-from src.app.gpt.user import UserCreated
+from src.app.gpt.model import UserCreated
 from src.domain.model import Event
 
 

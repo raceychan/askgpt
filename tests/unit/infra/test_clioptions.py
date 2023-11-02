@@ -1,13 +1,13 @@
 import pytest
 
-from src.adapter.cli import CLIOptions, TestDefaults
+from src.adapter.cli import CLIOptions, gpt
 
 
 def test_validate():
     options = CLIOptions(question="hello", interactive=False)
     options.validate()
-    assert options.user_id == TestDefaults.user_id
-    assert options.session_id == TestDefaults.session_id
+    assert options.user_id == gpt.model.TestDefaults.USER_ID
+    assert options.session_id == gpt.model.TestDefaults.SESSION_ID
     assert options.interactive is False
 
 

@@ -2,23 +2,18 @@ import asyncio
 from argparse import ArgumentParser, Namespace
 
 from src.app import gpt
-from src.domain.config import Settings, TestDefaults
-
-
-async def setup_system(settings: Settings):
-    system = await gpt.service.GPTSystem.create(settings)
-    return system
+from src.domain.config import Settings
 
 
 class CLIOptions(Namespace):
     question: str | None
-    user_id: str = TestDefaults.user_id
-    session_id: str = TestDefaults.session_id
-    model: str = TestDefaults.model
+    user_id: str = gpt.model.TestDefaults.USER_ID
+    session_id: str = gpt.model.TestDefaults.SESSION_ID
+    model: str = gpt.model.TestDefaults.MODEL
     interactive: bool = False
 
     def validate(self):
-        models = gpt.service.CompletionModels.__args__  # type: ignore
+        models = gpt.model.CompletionModels.__args__  # type: ignore
         if self.model not in models:
             raise ValueError(f"model must be one of {models}")
 
@@ -26,10 +21,40 @@ class CLIOptions(Namespace):
             raise ValueError("question and interactive are mutually exclusive")
 
 
+def cli() -> CLIOptions:
+    parser = ArgumentParser(description="gpt client in zen mode")
+    parser.add_argument("question", type=str, nargs="?")
+    parser.add_argument("--user_id", type=str, nargs="?")
+    parser.add_argument("--session_id", type=str, nargs="?")
+    parser.add_argument("--model", type=str, nargs="?")
+    parser.add_argument("-i", "--interactive", action="store_true")
+    namespace: CLIOptions = parser.parse_args(namespace=CLIOptions())
+    namespace.validate()
+    return namespace
+
+
+async def setup_system(settings: Settings):
+    eventstore = gpt.service.EventStore.build(db_url=settings.db.ASYNC_DB_URL)
+    system_started = gpt.service.SystemStarted(entity_id="system", settings=settings)
+    system: gpt.service.GPTSystem = gpt.service.GPTSystem.apply(system_started)
+    system.create_eventlog()
+    system.create_journal(eventstore=eventstore, mailbox=gpt.service.MailBox.build())
+    # system = await gpt.service.GPTSystem.create(settings)
+    return system
+
+
+async def rebuild_system(engine):
+    from src.infra.eventstore import EventStore
+
+    eventstore: EventStore = EventStore(engine)
+
+    ...
+
+
 async def send_question(question: str, system: gpt.service.GPTSystem):
-    command = gpt.service.SendChatMessage(
-        user_id=TestDefaults.user_id,
-        session_id=TestDefaults.session_id,
+    command = gpt.model.SendChatMessage(
+        user_id=gpt.model.TestDefaults.USER_ID,
+        session_id=gpt.model.TestDefaults.SESSION_ID,
         user_message=question,
     )
 
@@ -56,18 +81,6 @@ async def app(options: CLIOptions):
             quit("\nBye")
         finally:
             await system.stop()
-
-
-def cli() -> CLIOptions:
-    parser = ArgumentParser(description="gpt client in zen mode")
-    parser.add_argument("question", type=str, nargs="?")
-    parser.add_argument("--user_id", type=str, nargs="?")
-    parser.add_argument("--session_id", type=str, nargs="?")
-    parser.add_argument("--model", type=str, nargs="?")
-    parser.add_argument("-i", "--interactive", action="store_true")
-    namespace: CLIOptions = parser.parse_args(namespace=CLIOptions())
-    namespace.validate()
-    return namespace
 
 
 if __name__ == "__main__":

@@ -18,8 +18,7 @@ def declarative(cls: type[T]) -> type[T]:
 
 @declarative
 class TableBase:
-    # __table_args__ = {"mysql_engine": "InnoDB"}
-
+    id = sa.Column("id", sa.Integer, primary_key=True, autoincrement="auto")
     gmt_modified = sa.Column("gmt_modified", sa.DateTime, onupdate=func.now())
     gmt_created = sa.Column("gmt_created", sa.DateTime, server_default=func.now())
 
@@ -65,6 +64,9 @@ class EventSchema(TableBase):
 
 
 class UserSchema(TableBase):
-    ...
-
-
+    username = sa.Column("username", sa.String, unique=True, index=True)
+    email = sa.Column("email", sa.String, unique=True, index=True)
+    password_hash = sa.Column("password_hash", sa.String)
+    last_login = sa.Column("last_login", sa.DateTime, nullable=True)
+    is_active = sa.Column("is_active", sa.Boolean, default=True)
+    is_admin = sa.Column("is_admin", sa.Boolean, default=False)

@@ -117,8 +117,7 @@ class Actor(AbstractActor):
             raise TypeError("Unknown message type")
 
     async def publish(self, event: Event):
-        eventlog = self.system.eventlog
-        await eventlog.receive(event)
+        await self.system.eventlog.receive(event)
 
     @singledispatchmethod
     async def handle(self, command: Command):

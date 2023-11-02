@@ -1,1 +1,1 @@
-from src.app.gpt import service, user
+from src.app.gpt import model, service

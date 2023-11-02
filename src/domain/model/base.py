@@ -7,6 +7,7 @@ from enum import Enum
 from functools import singledispatchmethod
 
 from pydantic import BaseModel, ConfigDict, Field, SerializeAsAny, computed_field
+
 from src.domain.model.name_tools import pascal_to_snake, str_to_snake
 
 utc_datetime = ty.Annotated[datetime.datetime, "UTC_TimeStamp"]
@@ -243,7 +244,7 @@ class EntityABC(abc.ABC):
     def predict_command(self, command: Command) -> Event:
         raise NotImplementedError
 
-    @singledispatchmethod
+    @abc.abstractmethod
     def apply(cls, event: Event):
         raise NotImplementedError
 

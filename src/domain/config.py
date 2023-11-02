@@ -43,11 +43,5 @@ class Settings(SettingsBase):
         return cls(**fileutil.read_file(filename))
 
 
-class TestDefaults:
-    system_id: str = "system"
-    user_id: str = "admin"
-    session_id: str = "default_session"
-    model: str = "gpt-3.5-turbo"
-
 
 # settings = Settings.from_file("settings.toml")
