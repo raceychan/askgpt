@@ -3,7 +3,8 @@ import pathlib
 import typing as ty
 
 
-def value_parser(val: str):
+# def value_parser(val: str) -> ty.Any:
+def value_parser(val: str) -> ty.Any:
     """
     parse a string to a python object
 
@@ -30,7 +31,7 @@ def value_parser(val: str):
         if val[0].isdecimal():  # Float type
             try:
                 value = float(val)
-            except ValueError as ve:
+            except ValueError:
                 pass
             else:
                 return value
@@ -46,14 +47,21 @@ class NotDutyError(Exception):
     ...
 
 
-class LoaderChain(abc.ABC):
-    _handle_chain: ty.ClassVar[list[type["FileLoader"]]] = list()
-    _next_handler: ty.Optional["FileLoader"] = None
+from typing import TypeVar
 
-    def set_next(self, handler: "FileLoader"):
+TNode = TypeVar("TNode", bound="LoaderNode")
+
+
+class LoaderNode(abc.ABC):
+    _handle_chain: ty.ClassVar[list[type["FileLoader"]]] = list()
+
+    def __init__(self) -> None:
+        self._next_handler: ty.Optional["LoaderNode"] = None
+
+    def set_next(self, handler: "FileLoader") -> None:
         self._next_handler = handler
 
-    def append_node(self, handler: "FileLoader"):
+    def append_node(self, handler: "FileLoader") -> None:
         if self._next_handler is None:
             self.set_next(handler)
             return
@@ -72,7 +80,7 @@ class LoaderChain(abc.ABC):
         # reff: https://www.prepbytes.com/blog/python/python-program-to-reverse-a-linked-list/
 
     @property
-    def next_handler(self):
+    def next_handler(self) -> ty.Optional["LoaderNode"]:
         return self._next_handler
 
     @abc.abstractmethod
@@ -80,38 +88,38 @@ class LoaderChain(abc.ABC):
         raise NotImplementedError
 
     @abc.abstractmethod
-    def loads(self, file: pathlib.Path) -> dict:
+    def loads(self, file: pathlib.Path) -> dict[str, ty.Any]:
         raise NotImplementedError
 
-    def validate(self, file: pathlib.Path):
+    def validate(self, file: pathlib.Path) -> None:
         if not file.is_file() or not file.exists():
             raise FileNotFoundError(f"File {file} not found")
         self._validate(file)
 
-    def handle(self, file: pathlib.Path):
+    def handle(self, file: pathlib.Path) -> dict[str, ty.Any]:
         try:
             self.validate(file)
         except NotDutyError as ne:
             if self._next_handler is None:
-                raise EndOfChainError
+                raise EndOfChainError from ne
             result = self._next_handler.handle(file)
         else:
             result = self.loads(file)
         return result
 
 
-class FileLoader(LoaderChain):
-    def _validate(self, file: pathlib.Path):
+class FileLoader(LoaderNode):
+    def _validate(self, file: pathlib.Path) -> None:
         raise NotDutyError
 
-    def loads(self, file: pathlib.Path) -> dict:
+    def loads(self, file: pathlib.Path) -> dict[str, ty.Any]:
         raise NotImplementedError
 
-    def __init_subclass__(cls: type["FileLoader"]):
-        return cls._handle_chain.append(cls)
+    def __init_subclass__(cls: type["FileLoader"]) -> None:
+        cls._handle_chain.append(cls)
 
     @classmethod
-    def from_chain(cls):
+    def from_chain(cls) -> ty.Self:
         head = cls()
 
         for loader in cls._handle_chain:
@@ -121,12 +129,12 @@ class FileLoader(LoaderChain):
 
 
 class ENVFileLoader(FileLoader):
-    def _validate(self, file: pathlib.Path):
+    def _validate(self, file: pathlib.Path) -> None:
         if not file.name.endswith(".env"):
             raise NotDutyError
 
-    def loads(self, file: pathlib.Path):
-        config = {}
+    def loads(self, file: pathlib.Path) -> dict[str, ty.Any]:
+        config: dict[str, ty.Any] = {}
         ln = 1
 
         with file.open() as f:
@@ -143,26 +151,31 @@ class ENVFileLoader(FileLoader):
 
 
 class TOMLFileLoader(FileLoader):
-    def _validate(self, file: pathlib.Path):
+    def _validate(self, file: pathlib.Path) -> None:
         if not file.name.endswith(".toml"):
             raise NotDutyError
 
-    def loads(self, file: pathlib.Path):
-        import tomli
+    def loads(self, file: pathlib.Path) -> dict[str, ty.Any]:
+        import sys
+
+        if sys.version_info.minor >= 11:
+            import tomllib as tomli
+        else:
+            import tomli
 
         config = tomli.loads(file.read_text())
         return config
 
 
 class YAMLFileLoader(FileLoader):
-    def _validate(self, file: pathlib.Path):
+    def _validate(self, file: pathlib.Path) -> None:
         if not file.name.endswith(".yml") or not file.name.endswith(".yaml"):
             raise NotDutyError
 
-    def loads(self, file: pathlib.Path):
+    def loads(self, file: pathlib.Path) -> dict[str, ty.Any]:
         import yaml
 
-        config = yaml.safe_load(file.read_bytes())
+        config: dict[str, ty.Any] = yaml.safe_load(file.read_bytes())
         return config
 
 
@@ -182,13 +195,13 @@ class FileUtil:
             ) from se
         return file
 
-    def read_file(self, file: str | pathlib.Path):
+    def read_file(self, file: str | pathlib.Path) -> dict[str, ty.Any]:
         if isinstance(file, str):
             file = self.find(file)
         return self.file_loader.handle(file)
 
     @classmethod
-    def from_cwd(cls):
+    def from_cwd(cls) -> ty.Self:
         return cls(work_dir=pathlib.Path.cwd(), file_loader=FileLoader.from_chain())
 
 

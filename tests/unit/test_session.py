@@ -31,7 +31,7 @@ def chat_response_received():
     )
 
 
-@pytest.fixture(scope="module")
+@pytest.fixture(scope="function")
 def chatsession(session_created: model.SessionCreated):
     return model.ChatSession.apply(session_created)
 
@@ -52,3 +52,13 @@ def test_rebuild_session_by_events(
 ):
     chatsession.apply(chat_message_sent)
     assert chatsession.messages == [chat_message_sent.chat_message]
+
+
+def test_session_add_message(
+    chatsession: model.ChatSession, chat_messages: list[model.ChatMessage]
+):
+    for msg in chat_messages:
+        chatsession.add_message(msg)
+    assert chatsession.messages == chat_messages
+    assert chatsession.prompt == chat_messages[0]
+    assert chatsession.prompt and chatsession.prompt.is_prompt

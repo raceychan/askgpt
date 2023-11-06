@@ -1,11 +1,12 @@
 import sqlalchemy as sa
 from sqlalchemy.ext import asyncio as sa_aio
 
-from infra.sa_utils import engine_factory
-from infra.schema import EventSchema
+from src.domain import ISettings
+from src.infra.sa_utils import engine_factory
+from src.infra.schema import EventSchema
 
 
-async def test_table_exists(table_name: str, async_engine: sa_aio.AsyncEngine):
+async def test_table_exists(table_name: str, async_engine: sa_aio.AsyncEngine) -> None:
     sql = f"SELECT name FROM sqlite_schema WHERE type='table' and name='{table_name}' ORDER BY name"
     async with async_engine.begin() as cursor:
         cache = await cursor.execute(sa.text(sql))
@@ -15,11 +16,11 @@ async def test_table_exists(table_name: str, async_engine: sa_aio.AsyncEngine):
         raise ValueError(f"Table {table_name} does not exist")
 
 
-async def create_eventstore(async_engine: sa_aio.AsyncEngine):
+async def create_eventstore(async_engine: sa_aio.AsyncEngine) -> None:
     await EventSchema.create_table_async(async_engine)
 
 
-async def setup_eventstore(settings):
+async def setup_eventstore(settings: ISettings) -> None:
     if settings.db.DB_DRIVER == "sqlite":
         if not settings.db.DATABASE.exists():
             raise FileNotFoundError(

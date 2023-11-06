@@ -1,0 +1,1 @@
+from .fmtutils import fprint

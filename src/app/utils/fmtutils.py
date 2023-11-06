@@ -1,7 +1,7 @@
 from sys import stdout
 
 
-def fprint(string: str):
+def fprint(string: str) -> None:
     """
     fast alternative to print(string, end="", flush=True)
     (tested for > 1000 iteration)

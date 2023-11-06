@@ -1,12 +1,11 @@
 import typing as ty
 from functools import singledispatchmethod
 
-from src.domain.model import (
+from src.domain import (  # Message,
     Command,
     Entity,
     Event,
     Field,
-    Message,
     ValueObject,
     computed_field,
     uuid_factory,
@@ -37,6 +36,8 @@ CompletionModels = ty.Literal[
     "gpt-4-32k-0613",
 ]
 
+ChatGPTRoles = ty.Literal["system", "user", "assistant", "functio"]
+
 
 class TestDefaults:
     SYSTEM_ID: str = "system"
@@ -51,37 +52,28 @@ class ChatMessage(ValueObject):
     # user_id: str
 
     @property
-    def is_prompt(self):
+    def is_prompt(self) -> bool:
         return self.role == "system"
 
     @property
-    def is_question(self):
+    def is_question(self) -> bool:
         return self.role == "user"
 
     @property
-    def is_answer(self):
+    def is_answer(self) -> bool:
         return self.role == "assistant"
 
     @classmethod
-    def as_user(cls, content: str):
+    def as_user(cls, content: str) -> ty.Self:
         return cls(role="user", content=content)
 
     @classmethod
-    def as_assistant(cls, content: str):
+    def as_assistant(cls, content: str) -> ty.Self:
         return cls(role="assistant", content=content)
 
     @classmethod
-    def as_prompt(cls, content: str):
+    def as_prompt(cls, content: str) -> ty.Self:
         return cls(role="system", content=content)
-
-
-# class UserChatMessage(ChatMessage):
-#     role: ty.Literal["user"] = "user"
-#     # user_id: str
-
-
-# class AssistantChatMessage(ChatMessage):
-#     role: ty.Literal["assistant"] = "assistant"
 
 
 class CreateSession(Command):
@@ -103,16 +95,17 @@ class UserCreated(Event):
 
 
 class SendChatMessage(Command):
-    user_message: str
+    message_body: str
     model: CompletionModels = "gpt-3.5-turbo"
     stream: bool = True
     entity_id: str = Field(alias="session_id")
     user_id: str
+    role: ChatGPTRoles
 
-    @computed_field
+    @computed_field  # type: ignore
     @property
     def chat_message(self) -> ChatMessage:
-        return ChatMessage(role="user", content=self.user_message)
+        return ChatMessage(role=self.role, content=self.message_body)
 
 
 class ChatMessageSent(Event):
@@ -133,43 +126,45 @@ class ChatSession(Entity):
     messages: list[ChatMessage] = Field(default_factory=list)
 
     @property
-    def prompt(self):
+    def prompt(self) -> ChatMessage | None:
         init_msg = self.messages[0]
         return init_msg if init_msg.is_prompt else None
 
     @prompt.setter
-    def prompt(self, prompt: ChatMessage):
+    def prompt(self, prompt: ChatMessage) -> None:
         if not prompt.is_prompt:
             raise Exception("prompt must be a system message")
 
         self.messages.insert(0, prompt)
 
-    def add_message(self, chat_message: ChatMessage):
+    def add_message(self, chat_message: ChatMessage) -> None:
         self.messages.append(chat_message)
 
-    def change_prompt(self, prompt: str):
+    def change_prompt(self, prompt: str) -> None:
         self.prompt = ChatMessage(role="system", content=prompt)
 
     @singledispatchmethod
-    def handle(self, command: Command):
+    def handle(self, command: Command) -> None:
         raise NotImplementedError
 
     @singledispatchmethod
-    def apply(self, event: Event):
+    def apply(self, event: Event) -> ty.Self:
         raise NotImplementedError
 
     @apply.register
     @classmethod
-    def _(cls, event: SessionCreated):
+    def _(cls, event: SessionCreated) -> ty.Self:
         return cls(session_id=event.entity_id, user_id=event.user_id)
 
     @apply.register
-    def _(self, event: ChatMessageSent):
+    def _(self, event: ChatMessageSent) -> ty.Self:
         self.add_message(event.chat_message)
+        return self
 
     @apply.register
-    def _(self, event: ChatResponseReceived):
+    def _(self, event: ChatResponseReceived) -> ty.Self:
         self.add_message(event.chat_message)
+        return self
 
 
 # aggregate_root
@@ -177,38 +172,37 @@ class User(Entity):
     entity_id: str = Field(alias="user_id")
     chat_sessions: dict[str, ChatSession] = Field(default_factory=dict)
 
-    def add_session(self, session: ChatSession):
+    def add_session(self, session: ChatSession) -> None:
         self.chat_sessions[session.entity_id] = session
 
-    def create_session(self, session_id: str):
+    def create_session(self, session_id: str) -> None:
         self.chat_sessions[session_id] = ChatSession(
             user_id=self.entity_id, session_id=session_id
         )
 
-    def get_session(self, session_id: str):
+    def get_session(self, session_id: str) -> ChatSession | None:
         return self.chat_sessions.get(session_id)
 
     @singledispatchmethod
-    def handle(self, message: Message):
+    def handle(self, command: Command) -> None:
         raise NotImplementedError
 
     @singledispatchmethod
-    def apply(self, event: Event):
+    def apply(self, event: Event) -> ty.Self:
         raise NotImplementedError
-
-    @handle.register
-    @classmethod
-    def _(cls, command: CreateUser):
-        evt = UserCreated(user_id=command.entity_id)
-        user = cls.apply(evt)
-        return user
 
     @apply.register
     @classmethod
-    def _(cls, event: UserCreated):
+    def _(cls, event: UserCreated) -> ty.Self:
         return cls(user_id=event.entity_id)
 
     @apply.register
-    def _(self, event: SessionCreated):
+    def _(self, event: SessionCreated) -> ty.Self:
         session = ChatSession.apply(event)
         self.add_session(session)
+        return self
+
+    @classmethod
+    def create(cls, command: CreateUser) -> ty.Self:
+        evt = UserCreated(user_id=command.entity_id)
+        return cls.apply(evt)

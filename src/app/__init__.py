@@ -4,4 +4,9 @@ Here we implement Features and the Commands/Queries needed in the feature
 orchestrate interactions between domain objects
 """
 
-from src.app.actor import EventLog, Mediator
+
+from .actor import EventLog  # , Mediator
+from .interface import ActorRef
+
+# from .actor import Actor, ActorChilds, System
+# from .journal import EventStore, Journal

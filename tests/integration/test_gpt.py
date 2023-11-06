@@ -3,15 +3,16 @@ import pytest
 from src.app.actor import MailBox
 from src.app.gpt import model, service
 from src.app.journal import EventStore
+from src.domain import config
 
 
 class EchoMailbox(MailBox):
-    async def publish(self, message):
+    async def publish(self, message: str):
         print(message)
 
 
 @pytest.fixture(scope="module")
-async def gpt_system(settings, eventstore):
+async def gpt_system(settings: config.Settings, eventstore: service.EventStore):
     system = await service.GPTSystem.create(settings, eventstore=eventstore)
     return system
 
@@ -33,12 +34,13 @@ def send_chat_message():
     return model.SendChatMessage(
         user_id=model.TestDefaults.USER_ID,
         session_id=model.TestDefaults.SESSION_ID,
-        user_message="hello",
+        message_body="hello",
+        role="user",
     )
 
 
 @pytest.fixture(scope="module")
-def system_started(settings):
+def system_started(settings: config.Settings):
     return service.SystemStarted(
         entity_id=model.TestDefaults.SYSTEM_ID, settings=settings
     )
@@ -71,18 +73,18 @@ async def test_create_user_from_system(
     assert isinstance(user_events[0], model.UserCreated)
 
 
-async def test_system_get_user_actor(gpt_system):
+async def test_system_get_user_actor(gpt_system: service.GPTSystem):
     user = gpt_system.get_actor(model.TestDefaults.USER_ID)
     assert isinstance(user, service.UserActor)
     return user
 
 
-async def test_system_get_journal(gpt_system):
+async def test_system_get_journal(gpt_system: service.GPTSystem):
     journal = gpt_system.get_actor("journal")
     assert isinstance(journal, service.Journal)
 
 
-async def test_user_get_journal(gpt_system):
+async def test_user_get_journal(gpt_system: service.GPTSystem):
     user = gpt_system.get_actor(model.TestDefaults.USER_ID)
     assert isinstance(user, service.UserActor)
 
@@ -128,14 +130,14 @@ async def test_create_session_by_event(session_created: model.SessionCreated):
     assert session.entity_id == session_created.entity_id
 
 
-async def send_message_receive_response(
+async def test_send_message_receive_response(
     gpt_system: service.GPTSystem, send_chat_message: model.SendChatMessage
 ):
     ...
 
 
 async def test_event_unduplicate(
-    eventstore,
+    eventstore: service.EventStore,
     system_started: service.SystemStarted,
     user_created: model.UserCreated,
     session_created: model.SessionCreated,

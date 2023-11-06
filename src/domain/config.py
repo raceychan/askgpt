@@ -1,11 +1,13 @@
 import pathlib
-from dataclasses import dataclass
+import typing as ty
 
 from pydantic import BaseModel, ConfigDict
 
-from src.domain.fileutil import FileUtil
+from .fileutil import FileUtil
+from .interface import EventLogRef, JournalRef, SystemRef
 
-frozen = dataclass(frozen=True, slots=True, kw_only=True, repr=False)
+# from dataclasses import dataclass
+# frozen = dataclass(frozen=True, slots=True, kw_only=True, repr=False)
 
 
 class SettingsBase(BaseModel):
@@ -37,11 +39,14 @@ class Settings(SettingsBase):
 
     db: DB
 
+    class ActorRefs(SettingsBase):
+        SYSTEM: SystemRef = SystemRef("system")
+        EVENTLOG: EventLogRef = EventLogRef("eventlog")
+        JOURNAL: JournalRef = JournalRef("journal")
+
+    actor_refs: ActorRefs
+
     @classmethod
-    def from_file(cls, filename: str = "settings.toml"):
+    def from_file(cls, filename: str = "settings.toml") -> ty.Self:
         fileutil = FileUtil.from_cwd()
         return cls(**fileutil.read_file(filename))
-
-
-
-# settings = Settings.from_file("settings.toml")

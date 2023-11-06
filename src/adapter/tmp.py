@@ -2,14 +2,14 @@ import asyncio
 
 from aiohttp import ClientSession
 
-from src.domain.config import Settings
+from src.domain import Settings
 
 settings = Settings.from_file()
 
 MODEL = "gpt-3.5-turbo"
 
 
-async def send_message(content, session):
+async def send_message(content: str, session: ClientSession) -> None:
     headers = {
         "Content-Type": "application/json",
         "Authorization": f"Bearer {settings.OPENAI_API_KEY}",
@@ -26,25 +26,18 @@ async def send_message(content, session):
         response_json = await resp.json()
         answer = response_json["choices"][0]["message"]["content"]
         print(answer)
-        return answer
+        # return answer
 
 
-async def test():
+async def main() -> None:
     questions = [
         "how is the weather today?",
         "what is water in japanese",
         "are you doing alright?",
     ]
     async with ClientSession() as session:
-        tasks = await asyncio.gather(
-            *[send_message(content, session) for content in questions]
-        )
-
-    # tasks = [
-    #     asyncio.create_task(send_message(question, session)) for question in questions
-    # ]
-    # await asyncio.gather(*tasks)
+        await asyncio.gather(*[send_message(content, session) for content in questions])
 
 
 if __name__ == "__main__":
-    asyncio.run(test())
+    asyncio.run(main())

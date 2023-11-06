@@ -19,13 +19,20 @@ class TestSettings(Settings):
 
     class DB(Settings.DB):
         DB_DRIVER: str = "sqlite"
-        DATABASE: pathlib.Path | str = ":memory:"
-        ENGINE_ECHO: bool = True
+        DATABASE: pathlib.Path = pathlib.Path(":memory:")
+        ENGINE_ECHO: bool = False
+
+    class ActorRefs(Settings.ActorRefs):
+        ...
 
 
 @pytest.fixture(scope="session")
 def settings() -> TestSettings:
-    ss = TestSettings(OPENAI_API_KEY="fake_api_key", db=TestSettings.DB())
+    ss = TestSettings(
+        OPENAI_API_KEY="fake_api_key",
+        db=TestSettings.DB(),
+        actor_refs=TestSettings.ActorRefs(),
+    )
     return ss
 
 

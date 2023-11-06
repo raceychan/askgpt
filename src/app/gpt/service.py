@@ -1,19 +1,27 @@
-import asyncio
 import typing as ty
 from functools import singledispatchmethod
 
 import openai
 
-from src.app.actor import Actor, ActorRef, EventLog, System
-from src.app.gpt import model
-from src.app.journal import EventStore, Journal
-from src.app.utils.fmtutils import fprint
-from src.domain.config import Settings
-from src.domain.model import Command, Event, Message
-from src.infra.mq import MailBox
+from src.domain import (  # JournalRef,
+    Command,
+    Event,
+    ISettings,
+    Message,
+    Settings,
+    ValueObject,
+)
+from src.infra import MailBox
+
+from ..actor import Actor, System
+from ..gpt import model
+
+# from ..interface import ActorRef
+from ..journal import EventStore, Journal
+from ..utils import fprint
 
 
-def display_message(answer: ty.Generator[str, None, None]) -> str:
+def display_message(answer: ty.Generator[str | None, None, None]) -> str:
     str_container = ""
     for chunk in answer:
         if chunk is None:
@@ -24,53 +32,86 @@ def display_message(answer: ty.Generator[str, None, None]) -> str:
     return str_container
 
 
+async def async_display_message(answer: ty.AsyncGenerator[str | None, None]) -> str:
+    str_container = ""
+    async for chunk in answer:
+        if chunk is None:
+            fprint("\n")
+        else:
+            fprint(chunk)
+            str_container += chunk
+    return str_container
+
+
 class CompletionOptions(ty.TypedDict, total=False):
     model: str
-    message: list
-    functions: list
+    message: list[ty.Any]
+    functions: list[ty.Any]
     function_call: str
     temperature: float
     top_p: float
     n: int
     stream: bool
-    stop: str | list | None
+    stop: str | list[ty.Any] | None
     max_tokens: int
     presence_penalty: float
     frequency_penalty: float
-    logit_bias: dict
+    logit_bias: dict[str, ty.Any]
     user: str
 
 
-class OpenAIClient:  # TODO: this might be an (Actor):
+# class AIClient(ty.Protocol):
+#     async def send_chat(self, message: model.ChatMessage, **kwargs: CompletionOptions)->ty.:
+#         ...
+
+
+class ChatResponse(ValueObject):
+    choices: list[dict[str, dict[str, str]]]
+
+    async def __aiter__(self) -> ty.Any:
+        ...
+
+
+class OpenAIClient(Actor):  # TODO: this might be an (Actor):
     # https://medium.com/@colemanhindes/unofficial-gpt-3-developer-faq-fcb770710f42
     # How many concurrent requests can I make to the API?:
 
     # Only 2 concurrent requests can be made per API key at a time.
+    # TODO: implement a token pool to avoid this limitation
     def __init__(self, api_key: str):
+        super().__init__(mailbox=MailBox.build())
         self.__api_key = api_key
         self.client = openai.ChatCompletion
-        self.messages = list()
 
-    def send(
+    async def send_chat(
         self,
-        message: model.ChatMessage,
+        messages: list[model.ChatMessage],
         model: model.CompletionModels,
         stream: bool = True,
         **kwargs: CompletionOptions,
-    ):
-        self.messages.append(message.asdict())
-        resp = self.client.create(
+    ) -> ty.AsyncGenerator[ChatResponse, None]:
+        resp = await self.client.acreate(
             api_key=self.__api_key,
-            messages=self.messages,
+            messages=self.message_adapter(messages),
             model=model,
             stream=stream,
             **kwargs,
         )
+
         return resp
 
+    def message_adapter(
+        self, message: list[model.ChatMessage]
+    ) -> list[dict[str, ty.Any]]:
+        return [message.asdict() for message in message]
+
     @classmethod
-    def from_config(cls, config: Settings):
+    def from_config(cls, config: ISettings) -> ty.Self:
         return cls(api_key=config.OPENAI_API_KEY)
+
+    @singledispatchmethod
+    def apply(self, event: Event) -> ty.Self:
+        raise NotImplementedError
 
 
 class SystemCreated(Event):
@@ -86,11 +127,11 @@ class SystemStoped(Event):
 
 
 class GPTSystem(System):
-    childs: dict[ActorRef, "Actor"]
+    # childs: GPTChilds
 
     def __init__(self, mailbox: MailBox, settings: Settings):
-        super().__init__(mailbox=mailbox)
-        self.settings = settings
+        super().__init__(mailbox=mailbox, settings=settings)  # type: ignore
+        self.__journal_ref = settings.actor_refs.JOURNAL
 
     async def create_child(self, command: model.CreateUser) -> "UserActor":
         event = model.UserCreated(user_id=command.entity_id)
@@ -99,13 +140,20 @@ class GPTSystem(System):
         await self.publish(event)
         return user_actor
 
-    def create_journal(self, eventstore: EventStore, mailbox: MailBox):
-        "journal is part of the application layer, so it should be created here by gptsystem"
+    def create_journal(self, eventstore: EventStore, mailbox: MailBox) -> None:
+        """journal is part of the application layer,
+        so it should be created here by gptsystem"""
         journal = Journal(eventstore, mailbox)
-        self.childs["journal"] = journal
+        self.childs[self.__journal_ref] = journal
+
+    @property
+    def journal(self) -> Journal:
+        return self.childs[self.__journal_ref]
 
     @classmethod
-    async def create(cls, settings: Settings, eventstore: EventStore | None = None):
+    async def create(
+        cls, settings: Settings, eventstore: EventStore | None = None
+    ) -> "GPTSystem":
         if eventstore is None:
             eventstore = EventStore.build(db_url=settings.db.ASYNC_DB_URL)
 
@@ -120,20 +168,20 @@ class GPTSystem(System):
         return system
 
     @singledispatchmethod
-    def apply(self, event: Event):
+    def apply(self, event: Event) -> ty.Self:
         raise NotImplementedError
 
     @apply.register
     @classmethod
-    def _(cls, event: SystemStarted):
+    def _(cls, event: SystemStarted) -> ty.Self:
         return cls(mailbox=MailBox.build(), settings=event.settings)
 
     @singledispatchmethod
-    async def handle(self, command: Command):
+    async def handle(self, command: Command) -> None:
         raise NotImplementedError
 
     @handle.register
-    async def _(self, command: model.SendChatMessage):
+    async def _(self, command: model.SendChatMessage) -> None:
         user = self.get_actor(command.user_id)
         if not user:
             create_user = model.CreateUser(user_id=command.user_id)
@@ -149,17 +197,17 @@ class GPTSystem(System):
         await session.handle(command)
 
     @handle.register
-    async def _(self, command: model.CreateUser):
+    async def _(self, command: model.CreateUser) -> None:
         await self.create_child(command)
 
-    async def stop(self):
+    async def stop(self) -> None:
         ...
         # await self.publish(SystemStoped(entity_id="system"))
 
 
 class UserActor(Actor):
     entity: model.User
-    childs: dict[ActorRef, "SessionActor"]
+    # childs: dict[ActorRef, "SessionActor"]
 
     def __init__(self, user: model.User):
         super().__init__(mailbox=MailBox.build())
@@ -175,51 +223,71 @@ class UserActor(Actor):
         return session_actor
 
     @singledispatchmethod
-    async def handle(self, command: Command):
+    async def handle(self, command: Command) -> None:
         raise NotImplementedError
 
     @singledispatchmethod
-    def apply(self, event: Event):
+    def apply(self, event: Event) -> ty.Self:
         raise NotImplementedError
 
     @handle.register
-    async def _(self, command: model.CreateSession):
+    async def _(self, command: model.CreateSession) -> None:
         session_actor = await self.create_child(command)
         self.entity.add_session(session=session_actor.entity)
 
     @apply.register
     @classmethod
-    def _(cls, event: model.UserCreated):
+    def _(cls, event: model.UserCreated) -> ty.Self:
         return cls(user=model.User.apply(event))
 
 
 class SessionActor(Actor):
     entity: model.ChatSession
+    # childs: dict[ActorRef, "OpenAIClient"]
 
     def __init__(self, chat_session: model.ChatSession):
         super().__init__(mailbox=MailBox.build())
         self.entity = chat_session
-        self.model_client: OpenAIClient = OpenAIClient.from_config(
-            Settings.from_file("settings.toml")
+
+    @property
+    def chat_context(self) -> list[model.ChatMessage]:
+        return self.entity.messages
+
+    def get_model_client(self) -> OpenAIClient:
+        model_client = self.get_child("model_client")
+        if model_client is None:
+            model_client = OpenAIClient.from_config(self.system.settings)
+            self.set_model_client(model_client)
+        return model_client  # type: ignore
+
+    def set_model_client(self, client: OpenAIClient) -> None:
+        if self.get_child("model_client"):
+            raise Exception("model_client already set")
+        self.childs["model_client"] = client
+
+    async def send_chat(
+        self,
+        message: model.ChatMessage,
+        model: model.CompletionModels,
+        stream: bool = True,
+    ) -> ty.AsyncGenerator[str | None, None]:
+        client = self.get_model_client()
+        chunks = await client.send_chat(
+            messages=self.chat_context + [message], model=model, stream=stream
         )
 
-    def send(
-        self, message: model.ChatMessage, model: model.CompletionModels, stream=True
-    ) -> ty.Generator[str, None, None]:
-        chunks = self.model_client.send(message=message, model=model, stream=stream)
-
-        for resp in chunks:
-            for choice in resp.choices:  # type: ignore
+        async for resp in chunks:
+            for choice in resp.choices:
                 content = choice.get("delta", {}).get("content")
                 yield content
 
     @singledispatchmethod
-    async def handle(self, message: Message):
+    async def handle(self, message: Message) -> None:
         raise NotImplementedError
 
     @handle.register
-    async def _(self, command: model.SendChatMessage):
-        chunks = self.send(message=command.chat_message, model=command.model)
+    async def _(self, command: model.SendChatMessage) -> None:
+        chunks = self.send_chat(message=command.chat_message, model=command.model)
         event = model.ChatMessageSent(
             session_id=self.entity_id,
             chat_message=command.chat_message,
@@ -227,19 +295,35 @@ class SessionActor(Actor):
         self.entity.apply(event)
         await self.publish(event)
 
-        answer = display_message(chunks)
-        model.ChatResponseReceived(
+        # answer = display_message(chunks)
+        answer = await async_display_message(chunks)
+        response_received = model.ChatResponseReceived(
             session_id=self.entity_id,
             chat_message=model.ChatMessage(role="assistant", content=answer),
         )
 
-        await self.publish(event)
+        await self.publish(response_received)
 
     @singledispatchmethod
-    def apply(self, event: Event):
+    def apply(self, event: Event) -> ty.Self:
         raise NotImplementedError
 
     @apply.register
+    def _(self, event: model.ChatMessageSent) -> ty.Self:
+        self.entity.apply(event)
+        return self
+
+    @apply.register
     @classmethod
-    def _(cls, event: model.SessionCreated):
+    def _(cls, event: model.SessionCreated) -> ty.Self:
         return cls(chat_session=model.ChatSession.apply(event))
+
+
+async def setup_system(settings: Settings) -> GPTSystem:
+    eventstore = EventStore.build(db_url=settings.db.ASYNC_DB_URL)
+    system_started = SystemStarted(entity_id="system", settings=settings)
+    system = GPTSystem.apply(system_started)
+    system.create_eventlog()
+    system.create_journal(eventstore=eventstore, mailbox=MailBox.build())
+    # system = await gpt.service.GPTSystem.create(settings)
+    return system

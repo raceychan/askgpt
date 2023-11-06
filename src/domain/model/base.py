@@ -6,16 +6,17 @@ from dataclasses import dataclass
 from enum import Enum
 from functools import singledispatchmethod
 
+import sqlalchemy as sa
 from pydantic import BaseModel, ConfigDict, Field, SerializeAsAny, computed_field
 
-from src.domain.model.name_tools import pascal_to_snake, str_to_snake
+from .name_tools import str_to_snake
 
 utc_datetime = ty.Annotated[datetime.datetime, "UTC_TimeStamp"]
 
 frozen = dataclass(frozen=True, slots=True, kw_only=True)
 
 
-def rich_repr(namespace: ty.Mapping, indent="\t"):
+def rich_repr(namespace: ty.Mapping[str, ty.Any], indent: str = "\t") -> str:
     lines = ""
     for key, val in namespace.items():
         if not key.startswith("_"):
@@ -69,7 +70,7 @@ class DomainBase(BaseModel):
         exclude_none: bool = False,
         round_trip: bool = False,
         warnings: bool = True,
-    ):
+    ) -> dict[str, ty.Any]:
         return self.model_dump(
             mode=mode,
             include=include,
@@ -93,7 +94,7 @@ class DomainBase(BaseModel):
         exclude_none: bool = False,
         round_trip: bool = False,
         warnings: bool = True,
-    ):
+    ) -> str:
         return self.model_dump_json(
             indent=indent,
             include=include,
@@ -108,7 +109,7 @@ class DomainBase(BaseModel):
 
     @classmethod
     def model_all_fields(cls) -> dict[str, type]:
-        field_map = dict()
+        field_map: dict[str, ty.Any] = dict()
         computed_fields = cls.model_computed_fields.fget(cls)  # type: ignore
         for fname, finfo in computed_fields.items():
             ppt = finfo.wrapped_property
@@ -120,20 +121,18 @@ class DomainBase(BaseModel):
 
         for fname, finfo in cls.model_fields.items():
             ftype = finfo.annotation
-            if issubclass(ftype, DomainBase):  # type: ignore
+            if ftype and issubclass(ftype, DomainBase):
                 field_map[fname] = ftype.model_all_fields()
 
             field_map[fname] = finfo.annotation
         return field_map
 
     @classmethod
-    def tableclause(cls, table_name: str = ""):
+    def tableclause(cls, table_name: str = "") -> sa.TableClause:
         import decimal
         import uuid
 
-        import sqlalchemy as sa
-
-        types_mapping = {
+        types_mapping: dict[type | None, ty.Any] = {
             str: sa.String,
             int: sa.Integer,
             datetime.datetime: sa.DateTime,
@@ -146,7 +145,7 @@ class DomainBase(BaseModel):
             decimal.Decimal: sa.Numeric,
         }
 
-        tablename = table_name or pascal_to_snake(cls.__name__)
+        tablename = table_name or str_to_snake(cls.__name__)
 
         return sa.table(
             tablename,
@@ -156,7 +155,7 @@ class DomainBase(BaseModel):
             ],
         )
 
-    def __str__(self):
+    def __str__(self) -> str:
         return self.__repr__()
 
 
@@ -179,19 +178,19 @@ class Query(Message):
 
 
 class Event(Message):
-    event_registry: ty.ClassVar[dict] = dict()
+    event_registry: ty.ClassVar[dict[str, type[ty.Self]]] = dict()
 
     entity_id: str
     version: ty.ClassVar[str] = "1.0.0"
     timestamp: utc_datetime = Field(default_factory=timestamp_factory)
     event_id: str = Field(default_factory=uuid_factory, alias="id")
 
-    def __init_subclass__(cls, **kwargs):
-        cls_id = f"{pascal_to_snake(cls.__name__)}"
+    def __init_subclass__(cls, **kwargs: ty.Any):
+        cls_id = f"{str_to_snake(cls.__name__)}"
         cls.event_registry[cls_id] = cls
 
     @classmethod
-    def match_event_type(cls, event_type: str) -> "type[Event]":
+    def match_event_type(cls, event_type: str) -> type["Event"]:
         """
         Current implementation only works when event_type is globally unique
         for more complex application, we might need to consider using event_type of format
@@ -205,19 +204,18 @@ class Event(Message):
         2. import module
         3. getattr(module, entity)
         4. getattr(entity, user_created)
-
         """
         return cls.event_registry[event_type]
 
     @classmethod
-    def rebuild(cls, event_data: ty.Mapping):
+    def rebuild(cls, event_data: ty.Mapping[str, ty.Any]) -> "Event":
         event_type = cls.match_event_type(event_data["event_type"])
         event = event_type(**event_data)
         return event
 
     @computed_field
     def event_type(self) -> str:
-        return pascal_to_snake(self.__class__.__name__)
+        return str_to_snake(self.__class__.__name__)
 
 
 class Envelope(DomainBase):
@@ -229,7 +227,7 @@ class Envelope(DomainBase):
         2. https://codeopinion.com/identify-commands-events/
     """
 
-    headers: dict
+    headers: dict[str, ty.Any]
     event: SerializeAsAny[Message] = Field(alias="payload")
 
     @classmethod
@@ -244,16 +242,14 @@ class EntityABC(abc.ABC):
     def predict_command(self, command: Command) -> Event:
         raise NotImplementedError
 
+    @singledispatchmethod
     @abc.abstractmethod
-    def apply(cls, event: Event):
+    def apply(cls, event: Event) -> ty.Self:
         raise NotImplementedError
 
+    @singledispatchmethod
     @abc.abstractmethod
-    def _(self, event: Event):
-        ...
-
-    @abc.abstractmethod
-    def handle(self, command: Command):
+    def handle(self, command: Command) -> None:
         raise NotImplementedError
 
 

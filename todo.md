@@ -12,6 +12,8 @@
 
 - [ ] enforce correct entity_id for events
 
+- [ ] refactor code with generic
+
 ### P2
 
 - [ ] finish reading [YouTube: Vaughn Vernon: Reactive Domain-Driven Design Made Explicit

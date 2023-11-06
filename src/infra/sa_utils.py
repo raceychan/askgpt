@@ -2,10 +2,11 @@ import typing as ty
 
 import sqlalchemy as sa
 from sqlalchemy.ext import asyncio as sa_aio
-from sqlalchemy.sql import type_api as sa_ty
+
+# from sqlalchemy.sql import type_api as sa_ty
 
 
-def as_sa_types(py_type: type) -> sa_ty.TypeEngine:
+def as_sa_types(py_type: type) -> type:
     import datetime
     import decimal
     import uuid
@@ -27,14 +28,14 @@ def as_sa_types(py_type: type) -> sa_ty.TypeEngine:
 
 
 def engine_factory(
-    db_url,
+    db_url: str,
     *,
     echo: bool | ty.Literal["debug"] = False,
     hide_parameters: bool = False,
     pool_pre_ping: bool = True,
     pool_recycle: int = 3600,
     poolclass: type[sa.Pool] | None = sa.NullPool,
-    execution_options: dict | None = None,
+    execution_options: dict[str, ty.Any] | None = None,
     isolation_level: sa.engine.interfaces.IsolationLevel = "READ COMMITTED",
 ) -> sa_aio.AsyncEngine:
     engine = sa_aio.create_async_engine(
