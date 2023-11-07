@@ -27,7 +27,8 @@ class AbstractActor(abc.ABC):
     def apply(self, event: IEvent) -> ty.Self:
         raise NotImplementedError
 
-    # TODO: this should be generic
+    # NOTE: this is just wrong, generic is not gonna save this
+    # when override parent method, we only gonna make argument more general, return type more specific
     async def create_child(self, command: ICommand) -> ty.Self:
         raise NotImplementedError
 

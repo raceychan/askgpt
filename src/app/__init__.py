@@ -5,7 +5,7 @@ orchestrate interactions between domain objects
 """
 
 
-from .actor import EventLog  # , Mediator
+from .actor import EventLog 
 from .interface import ActorRef
 
 # from .actor import Actor, ActorChilds, System

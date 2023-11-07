@@ -93,9 +93,18 @@ async def test_ask_question(
     assert events[2].__class__ is model.ChatResponseReceived
 
 
-async def test_rebuild_session(gpt_system: service.GPTSystem):
+async def test_session_self_rebuild(gpt_system: service.GPTSystem):
     events = await gpt_system.journal.eventstore.get(model.TestDefaults.SESSION_ID)
-    session_created = events.pop(0)
-    session_actor = service.SessionActor.apply(session_created)
-    for e in events:
-        session_actor.apply(e)
+    session_actor = service.SessionActor.rebuild(events)
+    assert isinstance(session_actor, service.SessionActor)
+    assert session_actor.entity_id == model.TestDefaults.SESSION_ID
+    assert session_actor.entity.messages[0] == events[0].chat_message
+    assert session_actor.entity.messages[1] == events[1].chat_message
+
+
+async def test_user_self_rebuild():
+    ...
+
+
+async def test_user_rebuild_session():
+    ...

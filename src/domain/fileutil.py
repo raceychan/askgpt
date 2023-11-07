@@ -167,16 +167,16 @@ class TOMLFileLoader(FileLoader):
         return config
 
 
-class YAMLFileLoader(FileLoader):
-    def _validate(self, file: pathlib.Path) -> None:
-        if not file.name.endswith(".yml") or not file.name.endswith(".yaml"):
-            raise NotDutyError
+# class YAMLFileLoader(FileLoader):
+#     def _validate(self, file: pathlib.Path) -> None:
+#         if not file.name.endswith(".yml") or not file.name.endswith(".yaml"):
+#             raise NotDutyError
 
-    def loads(self, file: pathlib.Path) -> dict[str, ty.Any]:
-        import yaml
+#     def loads(self, file: pathlib.Path) -> dict[str, ty.Any]:
+#         import yaml
 
-        config: dict[str, ty.Any] = yaml.safe_load(file.read_bytes())
-        return config
+#         config: dict[str, ty.Any] = yaml.safe_load(file.read_bytes())
+#         return config
 
 
 class FileUtil:

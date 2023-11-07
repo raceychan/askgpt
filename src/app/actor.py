@@ -14,16 +14,10 @@ class SystemNotSetError(Exception):
     ...
 
 
-# TODO: make this a generic type
-
-
-# TODO: make this Generic of Command
-# make commmand that belongs to certain actor all subcommand of that actor
-# and make that actor a generic of Command
-
 TEntity = ty.TypeVar("TEntity", bound=Entity)
 
 
+# TODO: seperate entity interface, not every actor needs an entity, and might not have create_child and etc. as well
 class Actor(AbstractActor):
     entity: Entity  # TODO: Actor is a generic of Entity Generic[TEntity]
     mailbox: MailBox
@@ -120,6 +114,14 @@ class Actor(AbstractActor):
         elif sys_ is not system:
             raise Exception("Call set_system twice while system is already set")
 
+    @classmethod
+    def rebuild(cls, events: list[Event]) -> ty.Self:
+        created_event = events.pop(0)
+        self = cls.apply(created_event)
+        for e in events:
+            self.apply(e)
+        return self
+
 
 from src.domain.interface import EventLogRef, JournalRef, SystemRef
 
@@ -162,9 +164,6 @@ class System(Actor):
     def settings(self, value: ISettings) -> None:
         self._settings = value
 
-    # def create_mediator(self, broker: MessageBroker | None = None):
-    #     raise NotImplementedError
-
 
 class EventLog(Actor):
     _event_listener: Actor
@@ -186,22 +185,3 @@ class EventLog(Actor):
     @classmethod
     def build(cls) -> ty.Self:
         return cls(mailbox=MailBox.build())
-
-
-# class Mediator(Actor):
-#     """
-#     In-memory mediator
-#     """
-
-#     def __init__(self, mailbox: MailBox):
-#         super().__init__(mailbox=mailbox)
-
-#     async def handle(self, command: Command):
-#         await self.system.handle(command)
-
-#     def apply(self, event: Event):
-#         raise NotImplementedError
-
-#     @classmethod
-#     def build(cls):
-#         return cls(mailbox=MailBox.build())

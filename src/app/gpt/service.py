@@ -15,8 +15,7 @@ from src.infra import MailBox
 
 from ..actor import Actor, System
 from ..gpt import model
-
-# from ..interface import ActorRef
+from ..interface import ActorRef
 from ..journal import EventStore, Journal
 from ..utils import fprint
 
@@ -90,15 +89,15 @@ class OpenAIClient(Actor):  # TODO: this might be an (Actor):
         stream: bool = True,
         **kwargs: CompletionOptions,
     ) -> ty.AsyncGenerator[ChatResponse, None]:
-        resp = await self.client.acreate(
+        resp = await self.client.acreate(  # type: ignore
             api_key=self.__api_key,
             messages=self.message_adapter(messages),
             model=model,
             stream=stream,
             **kwargs,
-        )
+        )  # TODO: wrap this with ChatResponse
 
-        return resp
+        return resp  # type: ignore
 
     def message_adapter(
         self, message: list[model.ChatMessage]
@@ -136,7 +135,7 @@ class GPTSystem(System):
     async def create_child(self, command: model.CreateUser) -> "UserActor":
         event = model.UserCreated(user_id=command.entity_id)
         user_actor = UserActor.apply(event)
-        self.childs[user_actor.entity.entity_id] = user_actor
+        self.childs[user_actor.entity_id] = user_actor
         await self.publish(event)
         return user_actor
 
@@ -148,7 +147,7 @@ class GPTSystem(System):
 
     @property
     def journal(self) -> Journal:
-        return self.childs[self.__journal_ref]
+        return self.childs[self.__journal_ref]  # type: ignore
 
     @classmethod
     async def create(
@@ -183,6 +182,7 @@ class GPTSystem(System):
     @handle.register
     async def _(self, command: model.SendChatMessage) -> None:
         user = self.get_actor(command.user_id)
+        # TODO: rebuild user before creating them
         if not user:
             create_user = model.CreateUser(user_id=command.user_id)
             user = await self.create_child(create_user)
@@ -243,7 +243,7 @@ class UserActor(Actor):
 
 class SessionActor(Actor):
     entity: model.ChatSession
-    # childs: dict[ActorRef, "OpenAIClient"]
+    childs: dict[ActorRef, "OpenAIClient"]
 
     def __init__(self, chat_session: model.ChatSession):
         super().__init__(mailbox=MailBox.build())
@@ -258,7 +258,7 @@ class SessionActor(Actor):
         if model_client is None:
             model_client = OpenAIClient.from_config(self.system.settings)
             self.set_model_client(model_client)
-        return model_client  # type: ignore
+        return model_client
 
     def set_model_client(self, client: OpenAIClient) -> None:
         if self.get_child("model_client"):
@@ -295,7 +295,6 @@ class SessionActor(Actor):
         self.entity.apply(event)
         await self.publish(event)
 
-        # answer = display_message(chunks)
         answer = await async_display_message(chunks)
         response_received = model.ChatResponseReceived(
             session_id=self.entity_id,
@@ -325,5 +324,4 @@ async def setup_system(settings: Settings) -> GPTSystem:
     system = GPTSystem.apply(system_started)
     system.create_eventlog()
     system.create_journal(eventstore=eventstore, mailbox=MailBox.build())
-    # system = await gpt.service.GPTSystem.create(settings)
     return system
