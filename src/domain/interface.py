@@ -9,6 +9,7 @@ EventLogRef = ty.NewType("EventLogRef", str)
 JournalRef = ty.NewType("JournalRef", str)
 
 
+
 class ISettings(ty.Protocol):
     OPENAI_API_KEY: str
 

@@ -1,4 +1,5 @@
 from .config import Settings
+from .error import SystemNotSetError
 from .interface import EventLogRef, ISettings, JournalRef
 from .model import (
     Command,

@@ -11,32 +11,9 @@ from src.domain import (  # Message,
     uuid_factory,
 )
 
-# TODO: read
-# https://learn.microsoft.com/en-us/dotnet/architecture/microservices/microservice-ddd-cqrs-patterns/domain-events-design-implementation
+from .params import ChatGPTRoles, CompletionModels
 
 
-# class ModelEndpoint(BaseModel):
-#     endpoint: Path
-#     models: tuple[str, ...]
-
-
-# class CompletionEndPoint(ModelEndpoint):
-#     endpoint: Path = Path("/v1/chat/completion")
-#     model: CompletionModels
-
-
-CompletionModels = ty.Literal[
-    "gpt-3.5-turbo",
-    "gpt-3.5-turbo-0613",
-    "gpt-3.5-turbo-16k",
-    "gpt-3.5-turbo-16k-0613",
-    "gpt-4",
-    "gpt-4-0613",
-    "gpt-4-32k",
-    "gpt-4-32k-0613",
-]
-
-ChatGPTRoles = ty.Literal["system", "user", "assistant", "functio"]
 
 
 class TestDefaults:

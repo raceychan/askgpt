@@ -65,7 +65,8 @@ async def test_create_user_from_system(
 ):
     command = model.CreateUser(user_id=model.TestDefaults.USER_ID)
     await gpt_system.receive(command)
-    user = gpt_system.get_actor(command.entity_id)
+
+    user = gpt_system.get_child(command.entity_id)
     assert isinstance(user, service.UserActor)
 
     user_events = await eventstore.get(create_user.entity_id)
@@ -74,21 +75,21 @@ async def test_create_user_from_system(
 
 
 async def test_system_get_user_actor(gpt_system: service.GPTSystem):
-    user = gpt_system.get_actor(model.TestDefaults.USER_ID)
+    user = gpt_system.get_child(model.TestDefaults.USER_ID)
     assert isinstance(user, service.UserActor)
     return user
 
 
 async def test_system_get_journal(gpt_system: service.GPTSystem):
-    journal = gpt_system.get_actor("journal")
+    journal = gpt_system.get_child("journal")
     assert isinstance(journal, service.Journal)
 
 
 async def test_user_get_journal(gpt_system: service.GPTSystem):
-    user = gpt_system.get_actor(model.TestDefaults.USER_ID)
+    user = gpt_system.get_child(model.TestDefaults.USER_ID)
     assert isinstance(user, service.UserActor)
 
-    journal = user.system.get_actor("journal")
+    journal = user.system.get_child("journal")
     assert isinstance(journal, service.Journal)
 
 
@@ -97,7 +98,7 @@ async def test_create_user_by_command(
 ):
     await gpt_system.handle(create_user)
 
-    user = gpt_system.get_actor(create_user.entity_id)
+    user = gpt_system.get_child(create_user.entity_id)
     assert isinstance(user, service.UserActor)
 
 
@@ -106,11 +107,11 @@ async def test_create_session_by_command(
     create_session: model.CreateSession,
     eventstore: EventStore,
 ):
-    user = gpt_system.get_actor(create_session.user_id)
+    user = gpt_system.get_child(create_session.user_id)
     assert isinstance(user, service.UserActor)
 
     await user.handle(create_session)
-    session = user.get_actor(create_session.entity_id)
+    session = user.get_child(create_session.entity_id)
     assert isinstance(session, service.SessionActor)
 
     session_events = await eventstore.get(create_session.entity_id)

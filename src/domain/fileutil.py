@@ -2,41 +2,39 @@ import abc
 import pathlib
 import typing as ty
 
-
 # def value_parser(val: str) -> ty.Any:
-def value_parser(val: str) -> ty.Any:
-    """
-    parse a string to a python object
+#     """
+#     parse a string to a python object
 
-    Examples:
-    ------
-    >>> value_parser("3.5") -> 3.5
-    >>> value_parser("3") -> 2
-    >>> value_parser("0.0.1") -> '0.0.1'
-    """
-    if val[0] in {'"', "'"}:  # Removing quotes if they exist
-        if val[0] == val[-1]:
-            val = val[1:-1]
-        else:
-            raise ValueError(f"{val} inproperly quoted")
+#     Examples:
+#     ------
+#     >>> value_parser("3.5") -> 3.5
+#     >>> value_parser("3") -> 2
+#     >>> value_parser("0.0.1") -> '0.0.1'
+#     """
+#     if val[0] in {'"', "'"}:  # Removing quotes if they exist
+#         if val[0] == val[-1]:
+#             val = val[1:-1]
+#         else:
+#             raise ValueError(f"{val} inproperly quoted")
 
-    # Type casting
-    if val.isdecimal():
-        value = int(val)  # Integer type
-    elif val.lower() in {"true", "false"}:
-        value = val.lower() == "true"  # Boolean type
-    elif val.lower() == "null":
-        value = None
-    else:
-        if val[0].isdecimal():  # Float type
-            try:
-                value = float(val)
-            except ValueError:
-                pass
-            else:
-                return value
-        value = val  # Otherwise, string type
-    return value
+#     # Type casting
+#     if val.isdecimal():
+#         value = int(val)  # Integer type
+#     elif val.lower() in {"true", "false"}:
+#         value = val.lower() == "true"  # Boolean type
+#     elif val.lower() == "null":
+#         value = None
+#     else:
+#         if val[0].isdecimal():  # Float type
+#             try:
+#                 value = float(val)
+#             except ValueError:
+#                 pass
+#             else:
+#                 return value
+#         value = val  # Otherwise, string type
+#     return value
 
 
 class EndOfChainError(Exception):
@@ -128,26 +126,26 @@ class FileLoader(LoaderNode):
         return head
 
 
-class ENVFileLoader(FileLoader):
-    def _validate(self, file: pathlib.Path) -> None:
-        if not file.name.endswith(".env"):
-            raise NotDutyError
+# class ENVFileLoader(FileLoader):
+#     def _validate(self, file: pathlib.Path) -> None:
+#         if not file.name.endswith(".env"):
+#             raise NotDutyError
 
-    def loads(self, file: pathlib.Path) -> dict[str, ty.Any]:
-        config: dict[str, ty.Any] = {}
-        ln = 1
+#     def loads(self, file: pathlib.Path) -> dict[str, ty.Any]:
+#         config: dict[str, ty.Any] = {}
+#         ln = 1
 
-        with file.open() as f:
-            for line in f:
-                line = line.strip()
-                if line and not line.startswith("#"):
-                    try:
-                        key, value = line.split("=", 1)
-                        config[key.strip()] = value_parser(value.strip())
-                    except ValueError as ve:
-                        raise Exception(f"Invalid env line number {ln}: {line}") from ve
-                ln += 1
-        return config
+#         with file.open() as f:
+#             for line in f:
+#                 line = line.strip()
+#                 if line and not line.startswith("#"):
+#                     try:
+#                         key, value = line.split("=", 1)
+#                         config[key.strip()] = value_parser(value.strip())
+#                     except ValueError as ve:
+#                         raise Exception(f"Invalid env line number {ln}: {line}") from ve
+#                 ln += 1
+#         return config
 
 
 class TOMLFileLoader(FileLoader):
@@ -158,10 +156,10 @@ class TOMLFileLoader(FileLoader):
     def loads(self, file: pathlib.Path) -> dict[str, ty.Any]:
         import sys
 
-        if sys.version_info.minor >= 11:
-            import tomllib as tomli
-        else:
-            import tomli
+        if sys.version_info.minor < 11:
+            raise NotImplementedError
+
+        import tomllib as tomli
 
         config = tomli.loads(file.read_text())
         return config

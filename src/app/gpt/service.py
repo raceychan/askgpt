@@ -1,23 +1,17 @@
 import typing as ty
 from functools import singledispatchmethod
 
-import openai
-
-from src.domain import (  # JournalRef,
-    Command,
-    Event,
-    ISettings,
-    Message,
-    Settings,
-    ValueObject,
-)
+from src.domain import Command, Event, Message, Settings
+from src.domain.interface import ISettings
 from src.infra import MailBox
 
-from ..actor import Actor, System
+from ..actor import StatefulActor, System
 from ..gpt import model
-from ..interface import ActorRef
+
+# from ..interface import ActorRef, ActorRegistry
 from ..journal import EventStore, Journal
 from ..utils import fprint
+from .client import OpenAIClient
 
 
 def display_message(answer: ty.Generator[str | None, None, None]) -> str:
@@ -42,75 +36,9 @@ async def async_display_message(answer: ty.AsyncGenerator[str | None, None]) -> 
     return str_container
 
 
-class CompletionOptions(ty.TypedDict, total=False):
-    model: str
-    message: list[ty.Any]
-    functions: list[ty.Any]
-    function_call: str
-    temperature: float
-    top_p: float
-    n: int
-    stream: bool
-    stop: str | list[ty.Any] | None
-    max_tokens: int
-    presence_penalty: float
-    frequency_penalty: float
-    logit_bias: dict[str, ty.Any]
-    user: str
-
-
 # class AIClient(ty.Protocol):
 #     async def send_chat(self, message: model.ChatMessage, **kwargs: CompletionOptions)->ty.:
 #         ...
-
-
-class ChatResponse(ValueObject):
-    choices: list[dict[str, dict[str, str]]]
-
-    async def __aiter__(self) -> ty.Any:
-        ...
-
-
-class OpenAIClient(Actor):  # TODO: this might be an (Actor):
-    # https://medium.com/@colemanhindes/unofficial-gpt-3-developer-faq-fcb770710f42
-    # How many concurrent requests can I make to the API?:
-
-    # Only 2 concurrent requests can be made per API key at a time.
-    # TODO: implement a token pool to avoid this limitation
-    def __init__(self, api_key: str):
-        super().__init__(mailbox=MailBox.build())
-        self.__api_key = api_key
-        self.client = openai.ChatCompletion
-
-    async def send_chat(
-        self,
-        messages: list[model.ChatMessage],
-        model: model.CompletionModels,
-        stream: bool = True,
-        **kwargs: CompletionOptions,
-    ) -> ty.AsyncGenerator[ChatResponse, None]:
-        resp = await self.client.acreate(  # type: ignore
-            api_key=self.__api_key,
-            messages=self.message_adapter(messages),
-            model=model,
-            stream=stream,
-            **kwargs,
-        )  # TODO: wrap this with ChatResponse
-
-        return resp  # type: ignore
-
-    def message_adapter(
-        self, message: list[model.ChatMessage]
-    ) -> list[dict[str, ty.Any]]:
-        return [message.asdict() for message in message]
-
-    @classmethod
-    def from_config(cls, config: ISettings) -> ty.Self:
-        return cls(api_key=config.OPENAI_API_KEY)
-
-    @singledispatchmethod
-    def apply(self, event: Event) -> ty.Self:
-        raise NotImplementedError
 
 
 class SystemCreated(Event):
@@ -126,13 +54,11 @@ class SystemStoped(Event):
 
 
 class GPTSystem(System):
-    # childs: GPTChilds
-
-    def __init__(self, mailbox: MailBox, settings: Settings):
-        super().__init__(mailbox=mailbox, settings=settings)  # type: ignore
+    def __init__(self, mailbox: MailBox, settings: ISettings):
+        super().__init__(mailbox=mailbox, settings=settings)
         self.__journal_ref = settings.actor_refs.JOURNAL
 
-    async def create_child(self, command: model.CreateUser) -> "UserActor":
+    async def create_user(self, command: model.CreateUser) -> "UserActor":
         event = model.UserCreated(user_id=command.entity_id)
         user_actor = UserActor.apply(event)
         self.childs[user_actor.entity_id] = user_actor
@@ -173,7 +99,7 @@ class GPTSystem(System):
     @apply.register
     @classmethod
     def _(cls, event: SystemStarted) -> ty.Self:
-        return cls(mailbox=MailBox.build(), settings=event.settings)
+        return cls(mailbox=MailBox.build(), settings=event.settings)  # type: ignore # pydantic can't handle protocol, event has to have a concrete settings
 
     @singledispatchmethod
     async def handle(self, command: Command) -> None:
@@ -181,39 +107,35 @@ class GPTSystem(System):
 
     @handle.register
     async def _(self, command: model.SendChatMessage) -> None:
-        user = self.get_actor(command.user_id)
+        user: "UserActor" | None = self.get_child(command.user_id)
         # TODO: rebuild user before creating them
         if not user:
             create_user = model.CreateUser(user_id=command.user_id)
-            user = await self.create_child(create_user)
+            user = await self.create_user(create_user)
 
-        session = user.get_actor(command.entity_id)
+        session = user.get_child(command.entity_id)
         if not session:
             create_session = model.CreateSession(
                 user_id=command.user_id, session_id=command.entity_id
             )
-            session = await user.create_child(create_session)
+            session = await user.create_session(create_session)
 
         await session.handle(command)
 
     @handle.register
     async def _(self, command: model.CreateUser) -> None:
-        await self.create_child(command)
+        await self.create_user(command)
 
     async def stop(self) -> None:
         ...
         # await self.publish(SystemStoped(entity_id="system"))
 
 
-class UserActor(Actor):
-    entity: model.User
-    # childs: dict[ActorRef, "SessionActor"]
-
+class UserActor(StatefulActor[model.User]):
     def __init__(self, user: model.User):
-        super().__init__(mailbox=MailBox.build())
-        self.entity = user
+        super().__init__(mailbox=MailBox.build(), entity=user)
 
-    async def create_child(self, command: model.CreateSession) -> "SessionActor":
+    async def create_session(self, command: model.CreateSession) -> "SessionActor":
         event = model.SessionCreated(
             user_id=command.user_id, session_id=command.entity_id
         )
@@ -232,7 +154,7 @@ class UserActor(Actor):
 
     @handle.register
     async def _(self, command: model.CreateSession) -> None:
-        session_actor = await self.create_child(command)
+        session_actor = await self.create_session(command)
         self.entity.add_session(session=session_actor.entity)
 
     @apply.register
@@ -241,13 +163,10 @@ class UserActor(Actor):
         return cls(user=model.User.apply(event))
 
 
-class SessionActor(Actor):
-    entity: model.ChatSession
-    childs: dict[ActorRef, "OpenAIClient"]
-
+class SessionActor(StatefulActor[model.ChatSession]):
     def __init__(self, chat_session: model.ChatSession):
-        super().__init__(mailbox=MailBox.build())
-        self.entity = chat_session
+        super().__init__(mailbox=MailBox.build(), entity=chat_session)
+        # self.childs = ActorRegistry[ActorRef, OpenAIClient]()
 
     @property
     def chat_context(self) -> list[model.ChatMessage]:
@@ -256,7 +175,7 @@ class SessionActor(Actor):
     def get_model_client(self) -> OpenAIClient:
         model_client = self.get_child("model_client")
         if model_client is None:
-            model_client = OpenAIClient.from_config(self.system.settings)
+            model_client = OpenAIClient.from_apikey(self.system.settings.OPENAI_API_KEY)
             self.set_model_client(model_client)
         return model_client
 
@@ -278,7 +197,7 @@ class SessionActor(Actor):
 
         async for resp in chunks:
             for choice in resp.choices:
-                content = choice.get("delta", {}).get("content")
+                content = choice.delta.content
                 yield content
 
     @singledispatchmethod

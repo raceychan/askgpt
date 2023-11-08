@@ -1,8 +1,7 @@
-import typing as ty
-
 import pytest
 
 from src.app.gpt import model, service
+from src.app.gpt.client import ChatResponse, OpenAIClient
 from src.domain import config
 
 
@@ -23,39 +22,44 @@ async def gpt_system(settings: config.Settings, eventstore: service.EventStore):
     return system
 
 
-# @pytest.fixture(scope="module")
-# def create_user():
-#     return model.CreateUser(user_id=model.TestDefaults.USER_ID)
-
-
-# @pytest.fixture(scope="module")
-# def create_session():
-#     return model.CreateSession(
-#         user_id=model.TestDefaults.USER_ID, session_id=model.TestDefaults.SESSION_ID
-#     )
-
-
 @pytest.fixture(scope="module")
 async def user_actor(gpt_system: service.GPTSystem):
     cmd = model.CreateUser(user_id=model.TestDefaults.USER_ID)
-    user = await gpt_system.create_child(cmd)
+    user = await gpt_system.create_user(cmd)
     return user
 
 
 @pytest.fixture(scope="module")
-def openai_client():
-    resp = service.ChatResponse(choices=[dict(delta=dict(content="pong"))])
+def chat_response():
+    from openai.types.chat import ChatCompletionChunk
+    from openai.types.chat.chat_completion_chunk import Choice, ChoiceDelta
 
+    delta = ChoiceDelta(content="pong")
+    choice = Choice(delta=delta, finish_reason="stop", index=0)
+    chunk = ChatCompletionChunk(
+        id="sth",
+        choices=[choice],
+        created=0,
+        model="model",
+        object="chat.completion.chunk",
+    )
+
+    # resp = ChatResponse(choices=[dict(delta=dict(content="pong"))])
+    return chunk
+
+
+@pytest.fixture(scope="module")
+def openai_client(chat_response: ChatResponse):
     async def wrapper():
-        yield resp
+        yield chat_response
 
-    class FakeClient(service.OpenAIClient):
-        async def send_chat(
-            self, messages, model, stream: bool = True, **kwargs  # type: ignore
-        ) -> ty.AsyncGenerator[service.ChatResponse, None]:
+    class FakeClient(OpenAIClient):
+        async def send_chat(  # type: ignore
+            self, **kwargs  # type: ignore
+        ):
             return wrapper()
 
-    return FakeClient(api_key="fake_key")
+    return FakeClient.from_apikey("random")
 
 
 @pytest.fixture(scope="function")
@@ -65,7 +69,7 @@ async def session_actor(
     cmd = model.CreateSession(
         session_id=model.TestDefaults.SESSION_ID, user_id=model.TestDefaults.USER_ID
     )
-    session = await user_actor.create_child(cmd)
+    session = await user_actor.create_session(cmd)
     session.set_model_client(openai_client)
     return session
 
@@ -98,13 +102,21 @@ async def test_session_self_rebuild(gpt_system: service.GPTSystem):
     session_actor = service.SessionActor.rebuild(events)
     assert isinstance(session_actor, service.SessionActor)
     assert session_actor.entity_id == model.TestDefaults.SESSION_ID
-    assert session_actor.entity.messages[0] == events[0].chat_message
-    assert session_actor.entity.messages[1] == events[1].chat_message
-
-
-async def test_user_self_rebuild():
-    ...
+    assert (
+        session_actor.entity.messages[0].asdict() == events[0].asdict()["chat_message"]
+    )
+    assert (
+        session_actor.entity.messages[1].asdict() == events[1].asdict()["chat_message"]
+    )
 
 
 async def test_user_rebuild_session():
-    ...
+    raise NotImplementedError
+
+
+async def test_user_self_rebuild():
+    raise NotImplementedError
+
+
+async def test_system_rebuild_user():
+    raise NotImplementedError

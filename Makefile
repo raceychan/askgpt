@@ -1,10 +1,18 @@
+# #SHELL = /bin/zsh
+# SHELL := /bin/zsh
+# CONDA_ENV := askgpt
+
+# .PHONY: shell
+# shell:
+# 	$(SHELL) conda activate $(CONDA_ENV)
+
 .PHONY: test
 test:
 	pytest -sv --cov-report term-missing --cov=src tests/
 
 .PHONY: typecheck
 typecheck:
-	mypy src/ --explicit-package-bases
+	mypy src/ --explicit-package-bases --enable-incomplete-feature=Unpack
 
 .PHONY: setup
 setup:
