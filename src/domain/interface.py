@@ -4,10 +4,20 @@ import typing as ty
 from .model.interface import ICommand, Identifiable, IEntity, IEvent, IMessage, IQuery
 from .service.interface import IEngine, IEventStore, IRepository, IUnitOfWork
 
-SystemRef = ty.NewType("SystemRef", str)
-EventLogRef = ty.NewType("EventLogRef", str)
-JournalRef = ty.NewType("JournalRef", str)
+T = ty.TypeVar("T")
 
+TState = ty.TypeVar("TState")
+TEntity = ty.TypeVar("TEntity", bound=IEntity)
+
+ActorRef = ty.Annotated[str, "AbstractActorRef", "ActorRef"]
+
+SystemRef = ty.NewType("SystemRef", ActorRef)
+EventLogRef = ty.NewType("EventLogRef", ActorRef)
+JournalRef = ty.NewType("JournalRef", ActorRef)
+
+
+class AbstractActorRef(ty.Protocol):
+    ...
 
 
 class ISettings(ty.Protocol):

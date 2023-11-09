@@ -2,7 +2,7 @@ import asyncio
 import typing as ty
 from functools import cached_property, singledispatchmethod
 
-from src.domain import Command, Entity, Event, ISettings, SystemNotSetError
+from src.domain import Command, Event, ISettings, SystemNotSetError
 from src.infra import MailBox
 
 from .interface import (
@@ -12,17 +12,15 @@ from .interface import (
     ICommand,
     IEvent,
     IMessage,
+    TEntity,
+    TState,
 )
-
-TEntity = ty.TypeVar("TEntity", bound=Entity)
-
-# TChilds = ty.TypeVar("TChilds", bound=Actor)
 
 
 class Actor(AbstractActor):
     mailbox: MailBox
-    childs: ActorRegistry[ActorRef, "Actor"]
     _system: ty.ClassVar["System"]
+    childs: ActorRegistry[ActorRef, "Actor"]
 
     def __init__(self, mailbox: MailBox):
         if not isinstance(self, System):
@@ -39,24 +37,6 @@ class Actor(AbstractActor):
     @property
     def system(self) -> "System":
         return self._system
-
-    # NOW, this should be generic of actor
-    def get_child(self, ref: ActorRef) -> ty.Optional["Actor"]:
-        """
-        Search for child actor recursively
-        """
-        if not self.childs:
-            return None
-
-        if actor := self.childs.get(ref):
-            return actor
-
-        for child_actor in self.childs.values():
-            if (actor := child_actor.childs.get(ref)) is None:
-                continue
-            return actor
-
-        # return None
 
     async def send(self, message: IMessage, other: "Actor") -> None:
         "Send message to other actor, message may contain information about sender id"
@@ -84,6 +64,25 @@ class Actor(AbstractActor):
 
     async def publish(self, event: IEvent) -> None:
         await self.system.eventlog.receive(event)
+
+    def get_child(self, ref: ActorRef) -> ty.Optional["Actor"]:
+        """
+        Search for child actor recursively
+        """
+        if not self.childs:
+            return None
+
+        if actor := self.childs.get(ref):
+            return actor
+
+        for child_actor in self.childs.values():
+            # if isinstance(child_actor, Supervisor):
+            actor = child_actor.get_child(ref)
+            if actor is None:
+                continue
+            return actor
+
+        return None
 
     @singledispatchmethod
     async def handle(self, command: ICommand) -> None:
@@ -113,7 +112,11 @@ class Actor(AbstractActor):
         return self.__class__.__name__.lower()
 
 
-class StatefulActor(Actor, ty.Generic[TEntity]):
+class StatefulActor(Actor, ty.Generic[TState]):
+    ...
+
+
+class EntityActor(StatefulActor[TEntity]):
     def __init__(self, mailbox: MailBox, entity: TEntity):
         super().__init__(mailbox=mailbox)
         self.entity = entity
@@ -136,6 +139,40 @@ class StatefulActor(Actor, ty.Generic[TEntity]):
         return self.entity_id
 
 
+# TChild = ty.TypeVar("TChild", bound="Actor")
+
+
+# class Supervisor(Actor):
+
+#     childs: ActorRegistry[ActorRef, Actor]
+
+#     def __init__(self, mailbox: MailBox):
+#         super().__init__(mailbox=mailbox)
+#         self.childs = ActorRegistry()
+
+
+#     def get_child(self, ref: ActorRef) -> ty.Optional["Actor"]:
+#         """
+#         Search for child actor recursively
+#         """
+#         if not self.childs:
+#             return None
+
+#         if actor := self.childs.get(ref):
+#             return actor
+
+#         for child_actor in self.childs.values():
+#             #if isinstance(child_actor, Supervisor):
+#             actor = child_actor.get_child(ref)
+#             if actor is None:
+#                 continue
+#             return actor
+
+# if (actor := child_actor.childs.get(ref)) is None:
+#    continue
+# return actor
+
+
 class System(Actor):
     def __new__(cls, *args: ty.Any, **kwargs: ty.Any) -> "System":
         if not hasattr(cls, "_system"):
@@ -156,11 +193,12 @@ class System(Actor):
 
     @property
     def eventlog(self) -> "EventLog":
-        return self.childs[self.__eventlog_ref]  # type: ignore
+        # Maybe we should just set this as an attribute?
+        # type hint for this is quite difficult
+        return self.childs[self.__eventlog_ref]
 
-    #    @abc.abstractproperty
     @property
-    def journal(self) -> "Actor":  # This should be generic, return childs["journal"]
+    def journal(self) -> "Actor":
         raise NotImplementedError
 
     @property

@@ -2,17 +2,18 @@ import abc
 import typing as ty
 from functools import singledispatchmethod
 
-from src.domain.interface import ICommand, IEvent, IMessage
+from src.domain.interface import (  # TActor,; TRef,
+    ActorRef,
+    ICommand,
+    IEvent,
+    IMessage,
+    T,
+    TEntity,
+    TState,
+)
 
-
-class AbstractRef(ty.Protocol):
-    ...
-
-
-ActorRef = ty.Annotated[str, AbstractRef, "ActorRef"]
-T = ty.TypeVar("T")
 TRef = ty.TypeVar("TRef", bound=ActorRef)
-TActor = ty.TypeVar("TActor")  # , bound="AbstractActor")
+TActor = ty.TypeVar("TActor", bound="AbstractActor")
 
 
 class ActorRegistry(ty.Generic[TRef, TActor]):
@@ -41,10 +42,7 @@ class ActorRegistry(ty.Generic[TRef, TActor]):
         return self._dict.get(key, default)
 
 
-# TChilds = ty.TypeVar("TChilds", bound=Actor)
 class AbstractActor(abc.ABC):
-    #childs: ActorRegistry[ActorRef, TActor]
-
     @singledispatchmethod
     @abc.abstractmethod
     async def handle(self, command: ICommand) -> None:

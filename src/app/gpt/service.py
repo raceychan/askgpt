@@ -5,7 +5,7 @@ from src.domain import Command, Event, Message, Settings
 from src.domain.interface import ISettings
 from src.infra import MailBox
 
-from ..actor import StatefulActor, System
+from ..actor import EntityActor, System
 from ..gpt import model
 
 # from ..interface import ActorRef, ActorRegistry
@@ -131,7 +131,7 @@ class GPTSystem(System):
         # await self.publish(SystemStoped(entity_id="system"))
 
 
-class UserActor(StatefulActor[model.User]):
+class UserActor(EntityActor[model.User]):
     def __init__(self, user: model.User):
         super().__init__(mailbox=MailBox.build(), entity=user)
 
@@ -163,7 +163,7 @@ class UserActor(StatefulActor[model.User]):
         return cls(user=model.User.apply(event))
 
 
-class SessionActor(StatefulActor[model.ChatSession]):
+class SessionActor(EntityActor[model.ChatSession]):
     def __init__(self, chat_session: model.ChatSession):
         super().__init__(mailbox=MailBox.build(), entity=chat_session)
         # self.childs = ActorRegistry[ActorRef, OpenAIClient]()
