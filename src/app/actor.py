@@ -2,6 +2,7 @@ import asyncio
 import typing as ty
 from functools import cached_property, singledispatchmethod
 
+# from domain.interface import IEntity
 from src.domain import Command, Event, ISettings, SystemNotSetError
 from src.infra import MailBox
 
@@ -10,17 +11,19 @@ from .interface import (
     ActorRef,
     ActorRegistry,
     ICommand,
+    IEntity,
     IEvent,
+    IJournal,
     IMessage,
-    TEntity,
-    TState,
 )
 
+# TListener = ty.TypeVar("TListener", bound="Actor[ty.Any]")
 
-class Actor(AbstractActor):
+
+class Actor[TChild: "Actor[ty.Any]"](AbstractActor):
     mailbox: MailBox
-    _system: ty.ClassVar["System"]
-    childs: ActorRegistry[ActorRef, "Actor"]
+    _system: ty.ClassVar["System[ty.Any]"]
+    childs: ActorRegistry[ActorRef, TChild]
 
     def __init__(self, mailbox: MailBox):
         if not isinstance(self, System):
@@ -34,11 +37,13 @@ class Actor(AbstractActor):
         if not hasattr(self, "system"):
             raise SystemNotSetError("Actor must be created under System")
 
+        self.system.ensure_self()
+
     @property
-    def system(self) -> "System":
+    def system(self) -> "System[TChild]":
         return self._system
 
-    async def send(self, message: IMessage, other: "Actor") -> None:
+    async def send(self, message: IMessage, other: "Actor[ty.Any]") -> None:
         "Send message to other actor, message may contain information about sender id"
         await other.receive(message)
 
@@ -65,7 +70,7 @@ class Actor(AbstractActor):
     async def publish(self, event: IEvent) -> None:
         await self.system.eventlog.receive(event)
 
-    def get_child(self, ref: ActorRef) -> ty.Optional["Actor"]:
+    def get_child(self, ref: ActorRef) -> TChild | None:
         """
         Search for child actor recursively
         """
@@ -76,7 +81,6 @@ class Actor(AbstractActor):
             return actor
 
         for child_actor in self.childs.values():
-            # if isinstance(child_actor, Supervisor):
             actor = child_actor.get_child(ref)
             if actor is None:
                 continue
@@ -89,7 +93,7 @@ class Actor(AbstractActor):
         raise NotImplementedError
 
     @classmethod
-    def set_system(cls, system: "System") -> None:
+    def set_system(cls, system: "System[TChild]") -> None:
         sys_ = getattr(Actor, "_system", None)
 
         if sys_ is None:
@@ -101,10 +105,13 @@ class Actor(AbstractActor):
     def rebuild(cls, events: list[Event]) -> ty.Self:
         if not events:
             raise Exception("No events to rebuild")
+
         created_event = events.pop(0)
         self = cls.apply(created_event)
+
         for e in events:
             self.apply(e)
+
         return self
 
     @cached_property
@@ -112,11 +119,13 @@ class Actor(AbstractActor):
         return self.__class__.__name__.lower()
 
 
-class StatefulActor(Actor, ty.Generic[TState]):
-    ...
+class StatefulActor[TChild: Actor[ty.Any], TState](Actor[TChild]):
+    state: TState
 
 
-class EntityActor(StatefulActor[TEntity]):
+class EntityActor[TChild: Actor[ty.Any], TEntity: IEntity](
+    StatefulActor[TChild, TEntity]
+):
     def __init__(self, mailbox: MailBox, entity: TEntity):
         super().__init__(mailbox=mailbox)
         self.entity = entity
@@ -139,42 +148,11 @@ class EntityActor(StatefulActor[TEntity]):
         return self.entity_id
 
 
-# TChild = ty.TypeVar("TChild", bound="Actor")
+class System[TChild: Actor[ty.Any]](Actor[TChild]):
+    _eventlog: "EventLog[ty.Any]"
+    _journal: IJournal
 
-
-# class Supervisor(Actor):
-
-#     childs: ActorRegistry[ActorRef, Actor]
-
-#     def __init__(self, mailbox: MailBox):
-#         super().__init__(mailbox=mailbox)
-#         self.childs = ActorRegistry()
-
-
-#     def get_child(self, ref: ActorRef) -> ty.Optional["Actor"]:
-#         """
-#         Search for child actor recursively
-#         """
-#         if not self.childs:
-#             return None
-
-#         if actor := self.childs.get(ref):
-#             return actor
-
-#         for child_actor in self.childs.values():
-#             #if isinstance(child_actor, Supervisor):
-#             actor = child_actor.get_child(ref)
-#             if actor is None:
-#                 continue
-#             return actor
-
-# if (actor := child_actor.childs.get(ref)) is None:
-#    continue
-# return actor
-
-
-class System(Actor):
-    def __new__(cls, *args: ty.Any, **kwargs: ty.Any) -> "System":
+    def __new__(cls, *args: ty.Any, **kwargs: ty.Any) -> "System[ty.Any]":
         if not hasattr(cls, "_system"):
             cls._system = super().__new__(cls)
         return cls._system
@@ -183,23 +161,25 @@ class System(Actor):
         super().__init__(mailbox=mailbox)
         self.set_system(self)
         self._settings = settings
-        self.__eventlog_ref = settings.actor_refs.EVENTLOG
         self.__ref = settings.actor_refs.SYSTEM
 
-    def create_eventlog(self, eventlog: ty.Optional["EventLog"] = None) -> None:
+    def ensure_self(self) -> None:
+        """Pre start events"""
+        pass
+
+    def create_eventlog(self, eventlog: ty.Optional["EventLog[ty.Any]"] = None) -> None:
         if eventlog is None:
             eventlog = EventLog(mailbox=MailBox.build())
-        self.childs[self.__eventlog_ref] = eventlog
+        self._eventlog = eventlog
+        # self.childs[self._settings.actor_refs.EVENTLOG] = eventlog
 
     @property
-    def eventlog(self) -> "EventLog":
-        # Maybe we should just set this as an attribute?
-        # type hint for this is quite difficult
-        return self.childs[self.__eventlog_ref]
+    def eventlog(self) -> "EventLog[ty.Any]":
+        return self._eventlog
 
     @property
-    def journal(self) -> "Actor":
-        raise NotImplementedError
+    def journal(self) -> "IJournal":
+        return self._journal
 
     @property
     def settings(self) -> ISettings:
@@ -214,18 +194,26 @@ class System(Actor):
         return self.__ref
 
 
-class EventLog(Actor):
-    _event_listener: Actor
+class EventLog[TListener: Actor[ty.Any]](Actor[TListener]):
+    """
+    a mediator that used to decouple event source(Actors) and event consumer (Journal)
+    """
+
+    _event_listener: TListener
 
     def __init__(self, mailbox: MailBox):
         super().__init__(mailbox=mailbox)
 
-    def register_listener(self, listener: Actor) -> None:
+    def register_listener(self, listener: TListener) -> None:
         self._event_listener = listener
 
     async def on_receive(self) -> None:
         msg = await self.mailbox.get()
         await self._event_listener.receive(msg)
+
+    @property
+    def event_listener(self) -> TListener:
+        return self._event_listener
 
     @singledispatchmethod
     def apply(self, event: Event) -> ty.Self:

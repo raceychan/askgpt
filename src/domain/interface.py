@@ -24,8 +24,6 @@ class ISettings(ty.Protocol):
     OPENAI_API_KEY: str
 
     class IDB(ty.Protocol):
-        ...
-
         @property
         def DB_URL(self) -> str:
             ...

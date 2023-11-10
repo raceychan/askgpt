@@ -14,7 +14,7 @@ from ..gpt import model
 from .params import ChatResponse, CompletionOptions
 
 
-class OpenAIClient(Actor):
+class OpenAIClient(Actor[ty.Any]):
     # https://medium.com/@colemanhindes/unofficial-gpt-3-developer-faq-fcb770710f42
     # How many concurrent requests can I make to the API?:
 

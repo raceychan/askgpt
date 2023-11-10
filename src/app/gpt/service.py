@@ -53,10 +53,9 @@ class SystemStoped(Event):
     ...
 
 
-class GPTSystem(System):
+class GPTSystem(System["UserActor"]):
     def __init__(self, mailbox: MailBox, settings: ISettings):
         super().__init__(mailbox=mailbox, settings=settings)
-        self.__journal_ref = settings.actor_refs.JOURNAL
 
     async def create_user(self, command: model.CreateUser) -> "UserActor":
         event = model.UserCreated(user_id=command.entity_id)
@@ -68,12 +67,10 @@ class GPTSystem(System):
     def create_journal(self, eventstore: EventStore, mailbox: MailBox) -> None:
         """journal is part of the application layer,
         so it should be created here by gptsystem"""
-        journal = Journal(eventstore, mailbox)
-        self.childs[self.__journal_ref] = journal
-
-    @property
-    def journal(self) -> Journal:
-        return self.childs[self.__journal_ref]  # type: ignore
+        journal_ref = self.settings.actor_refs.JOURNAL
+        journal = Journal(eventstore, mailbox, ref=journal_ref)
+        # self.childs[journal_ref] = journal
+        self._journal = journal
 
     @classmethod
     async def create(
@@ -131,7 +128,7 @@ class GPTSystem(System):
         # await self.publish(SystemStoped(entity_id="system"))
 
 
-class UserActor(EntityActor[model.User]):
+class UserActor(EntityActor["SessionActor", model.User]):
     def __init__(self, user: model.User):
         super().__init__(mailbox=MailBox.build(), entity=user)
 
@@ -143,6 +140,10 @@ class UserActor(EntityActor[model.User]):
         self.childs[session_actor.entity_id] = session_actor
         await self.publish(event)
         return session_actor
+
+    async def rebuild_session(self, session_id: str) -> "SessionActor":
+        # self.system.journal
+        raise NotImplementedError
 
     @singledispatchmethod
     async def handle(self, command: Command) -> None:
@@ -163,7 +164,7 @@ class UserActor(EntityActor[model.User]):
         return cls(user=model.User.apply(event))
 
 
-class SessionActor(EntityActor[model.ChatSession]):
+class SessionActor(EntityActor[OpenAIClient, model.ChatSession]):
     def __init__(self, chat_session: model.ChatSession):
         super().__init__(mailbox=MailBox.build(), entity=chat_session)
         # self.childs = ActorRegistry[ActorRef, OpenAIClient]()

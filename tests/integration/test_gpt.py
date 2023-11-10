@@ -81,7 +81,7 @@ async def test_system_get_user_actor(gpt_system: service.GPTSystem):
 
 
 async def test_system_get_journal(gpt_system: service.GPTSystem):
-    journal = gpt_system.get_child("journal")
+    journal = gpt_system.journal
     assert isinstance(journal, service.Journal)
 
 
@@ -89,7 +89,7 @@ async def test_user_get_journal(gpt_system: service.GPTSystem):
     user = gpt_system.get_child(model.TestDefaults.USER_ID)
     assert isinstance(user, service.UserActor)
 
-    journal = user.system.get_child("journal")
+    journal = user.system.journal
     assert isinstance(journal, service.Journal)
 
 

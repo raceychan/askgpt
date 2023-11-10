@@ -1,15 +1,15 @@
 import abc
 import typing as ty
-from functools import singledispatchmethod
+from functools import cached_property, singledispatchmethod
 
-from src.domain.interface import (  # TActor,; TRef,
+from src.domain.interface import (
     ActorRef,
     ICommand,
+    IEntity,
     IEvent,
+    IEventStore,
     IMessage,
     T,
-    TEntity,
-    TState,
 )
 
 TRef = ty.TypeVar("TRef", bound=ActorRef)
@@ -68,3 +68,11 @@ class AbstractActor(abc.ABC):
         self.send(message, message.sender)
         """
         raise NotImplementedError
+
+
+class IJournal(ty.Protocol):
+    eventstore: IEventStore
+
+    @cached_property
+    def ref(self) -> ActorRef:
+        ...

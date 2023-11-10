@@ -1,21 +1,24 @@
 import asyncio
 import typing as ty
-from functools import singledispatchmethod
+from functools import cached_property, singledispatchmethod
 
 from src.domain import Event
-from src.domain.interface import IEvent, IMessage
+from src.domain.interface import IEvent, IEventStore, IMessage
 from src.infra import EventStore, MailBox
 
-from .actor import Actor
+from .actor import Actor, ActorRef
 
 
-class Journal(Actor):
+class Journal(Actor[ty.Any]):
     _loop: asyncio.AbstractEventLoop
 
-    def __init__(self, eventstore: EventStore, mailbox: MailBox) -> None:
+    def __init__(
+        self, eventstore: IEventStore, mailbox: MailBox, ref: ActorRef
+    ) -> None:
         super().__init__(mailbox)
         self.eventstore = eventstore
         self.system.eventlog.register_listener(self)
+        self.__ref = ref
 
     async def on_receive(self) -> None:
         message = await self.mailbox.get()
@@ -41,11 +44,16 @@ class Journal(Actor):
     async def publish(self, event: IEvent) -> None:
         raise NotImplementedError
 
+    @cached_property
+    def ref(self) -> ActorRef:
+        return self.__ref
+
     @classmethod
     def build(
         cls,
         *,
         db_url: str,
+        ref: ActorRef,
     ) -> ty.Self:
         es = EventStore.build(db_url=db_url)
-        return cls(eventstore=es, mailbox=MailBox.build())
+        return cls(eventstore=es, mailbox=MailBox.build(), ref=ref)

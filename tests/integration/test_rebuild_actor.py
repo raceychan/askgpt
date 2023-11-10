@@ -89,7 +89,7 @@ async def test_ask_question(
     prompt = chat_messages[0]
     cmd = command_factory(prompt)
     await session_actor.receive(cmd)
-    journal: service.Journal = session_actor.system.journal  # type: ignore
+    journal = session_actor.system.journal
     events = await journal.eventstore.get(session_actor.entity_id)
 
     assert events[0].__class__ is model.SessionCreated
@@ -97,8 +97,8 @@ async def test_ask_question(
     assert events[2].__class__ is model.ChatResponseReceived
 
 
-async def test_session_self_rebuild(gpt_system: service.GPTSystem):
-    events = await gpt_system.journal.eventstore.get(model.TestDefaults.SESSION_ID)
+async def test_session_self_rebuild(eventstore: service.EventStore):
+    events = await eventstore.get(model.TestDefaults.SESSION_ID)
     session_actor = service.SessionActor.rebuild(events)
     assert isinstance(session_actor, service.SessionActor)
     assert session_actor.entity_id == model.TestDefaults.SESSION_ID
@@ -110,8 +110,11 @@ async def test_session_self_rebuild(gpt_system: service.GPTSystem):
     )
 
 
-# async def test_user_rebuild_session():
-#     raise NotImplementedError
+async def test_user_rebuild_session(user_actor: service.UserActor):
+    await user_actor.rebuild_session(session_id=model.TestDefaults.SESSION_ID)
+
+    child = user_actor.get_child(model.TestDefaults.SESSION_ID)
+    assert isinstance(child, service.SessionActor)
 
 
 # async def test_user_self_rebuild():
