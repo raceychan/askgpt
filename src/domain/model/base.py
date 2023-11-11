@@ -3,55 +3,45 @@ import datetime
 import typing as ty
 import uuid
 from dataclasses import dataclass
-from enum import Enum
 from functools import singledispatchmethod
 
 import sqlalchemy as sa
 from pydantic import BaseModel, ConfigDict, Field, SerializeAsAny, computed_field
 
+from .interface import utc_datetime
 from .name_tools import str_to_snake
-
-utc_datetime = ty.Annotated[datetime.datetime, "UTC_TimeStamp"]
 
 frozen = dataclass(frozen=True, slots=True, kw_only=True)
 
 
-def rich_repr(namespace: ty.Mapping[str, ty.Any], indent: str = "\t") -> str:
-    lines = ""
-    for key, val in namespace.items():
-        if not key.startswith("_"):
-            if isinstance(val, dict):
-                lines += f"{indent}{key}=\n" + rich_repr(val, indent + indent)
-            elif hasattr(val, "__dict__"):
-                lines += f"{indent}{key}=\n" + rich_repr(val.__dict__, indent + indent)
-            else:
-                lines += f"{indent}{key}={val}\n"
-    return lines
+# def rich_repr(namespace: ty.Mapping[str, ty.Any], indent: str = "\t") -> str:
+#     lines = ""
+#     for key, val in namespace.items():
+#         if not key.startswith("_"):
+#             if isinstance(val, dict):
+#                 lines += f"{indent}{key}=\n" + rich_repr(val, indent + indent)  # type: ignore
+#             elif hasattr(val, "__dict__"):
+#                 lines += f"{indent}{key}=\n" + rich_repr(val.__dict__, indent + indent)
+#             else:
+#                 lines += f"{indent}{key}={val}\n"
+#     return lines
 
 
 def uuid_factory() -> str:
     return str(uuid.uuid4())
 
 
-def timestamp_factory() -> utc_datetime:
-    return datetime.datetime.utcnow()
+def utcts_factory(ts: float | None = None) -> utc_datetime:
+    # NOTE: utcnow will be deprecated in future, but rightnow we still need it
+    # pydantic has poor support to timezone
 
+    # NOTE: datetime.datetime.utcnow() is not tz aware
+    # and datetime.datetime.now(datetime.timezone.utc) is tz aware
 
-def enum_generator(
-    **kwargs: dict[str, ty.Iterable[str]]
-) -> ty.Generator["Enum", None, None]:
-    """
-    Example:
-    -----
-    >>> enum_gen = enum_generator(Color=["red", "green", "blue"])
-    Color = next(enum_gen)
-    assert issubclass(Color, Enum)
-    assert isinstance(Color.red, Color)
-    assert Color.red.value == "red"
-    """
+    if ts is not None:
+        return datetime.datetime.fromtimestamp(ts)  # , tz=datetime.UTC)
 
-    for name, values in kwargs.items():
-        yield Enum(name, {str_to_snake(v): v for v in values})
+    return datetime.datetime.utcnow()  # (tz=datetime.UTC)
 
 
 class DomainBase(BaseModel):
@@ -177,12 +167,15 @@ class Query(Message):
     ...
 
 
+# from pydantic import AwareDatetime
+
+
 class Event(Message):
     event_registry: ty.ClassVar[dict[str, type[ty.Self]]] = dict()
 
     entity_id: str
     version: ty.ClassVar[str] = "1.0.0"
-    timestamp: utc_datetime = Field(default_factory=timestamp_factory)
+    timestamp: utc_datetime = Field(default_factory=utcts_factory)
     event_id: str = Field(default_factory=uuid_factory, alias="id")
 
     def __init_subclass__(cls, **kwargs: ty.Any):
@@ -214,6 +207,7 @@ class Event(Message):
         return event
 
     @computed_field
+    @property
     def event_type(self) -> str:
         return str_to_snake(self.__class__.__name__)
 
@@ -234,7 +228,6 @@ class Envelope(DomainBase):
     def from_message(cls, message: Message) -> "Envelope":
         if isinstance(message, Event):
             return cls(payload=message, headers=dict())
-
         raise NotImplementedError
 
 

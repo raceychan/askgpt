@@ -1,8 +1,15 @@
 import pathlib
 import typing as ty
 
-from .model.interface import ICommand, Identifiable, IEntity, IEvent, IMessage, IQuery
-from .service.interface import IEngine, IEventStore, IRepository, IUnitOfWork
+from src.domain.model.interface import (
+    ICommand,
+    Identifiable,
+    IEntity,
+    IEvent,
+    IMessage,
+    IQuery,
+)
+from src.domain.service.interface import IEngine, IEventStore, IRepository, IUnitOfWork
 
 T = ty.TypeVar("T")
 

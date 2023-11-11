@@ -5,7 +5,7 @@ from sqlalchemy import orm as sa_orm
 from sqlalchemy.ext import asyncio as sa_aio
 from sqlalchemy.sql import func
 
-from src.domain import str_to_snake
+from src.domain.model.name_tools import str_to_snake
 
 # from src.infra.sa_utils import engine_factory
 

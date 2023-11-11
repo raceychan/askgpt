@@ -6,12 +6,14 @@ from openai.types.beta import Thread
 from openai.types.beta.assistant import Assistant
 from openai.types.chat import ChatCompletionChunk
 
-from src.domain import Event
-from src.infra import MailBox
+from src.app.actor import Actor
+from src.app.gpt import model, params
+from src.domain.model import Event
+from src.infra.mq import MailBox
 
-from ..actor import Actor
-from ..gpt import model
-from .params import ChatResponse, CompletionOptions
+# from ..actor import Actor
+# from ..gpt import model
+# from .params import ChatResponse, CompletionOptions
 
 
 class OpenAIClient(Actor[ty.Any]):
@@ -39,7 +41,7 @@ class OpenAIClient(Actor[ty.Any]):
         messages: list[model.ChatMessage],
         model: model.CompletionModels,
         stream: bool = True,
-        **options: ty.Unpack[CompletionOptions],
+        **options: ty.Unpack[params.CompletionOptions],
     ) -> ty.AsyncGenerator[ChatCompletionChunk, None]:
         resp: ty.AsyncGenerator[
             ChatCompletionChunk, None

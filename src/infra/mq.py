@@ -3,8 +3,7 @@ import typing as ty
 from collections import deque
 
 from src.domain.interface import IMessage
-
-from .interface import Receivable
+from src.infra.interface import Receivable
 
 TMessages = ty.TypeVar("TMessages", bound=IMessage)
 

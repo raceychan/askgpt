@@ -3,8 +3,8 @@ import typing as ty
 
 from pydantic import BaseModel, ConfigDict
 
-from .fileutil import FileUtil
-from .interface import EventLogRef, JournalRef, SystemRef
+from src.domain.fileutil import FileUtil
+from src.domain.interface import EventLogRef, JournalRef, SystemRef
 
 # from dataclasses import dataclass
 # frozen = dataclass(frozen=True, slots=True, kw_only=True, repr=False)

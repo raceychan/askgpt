@@ -2,14 +2,15 @@ import asyncio
 import typing as ty
 from functools import cached_property, singledispatchmethod
 
-from src.domain import Event
+from src.app.actor import Actor, ActorRef
+from src.app.interface import IJournal
 from src.domain.interface import IEvent, IEventStore, IMessage
-from src.infra import EventStore, MailBox
+from src.domain.model import Event
+from src.infra.eventstore import EventStore
+from src.infra.mq import MailBox
 
-from .actor import Actor, ActorRef
 
-
-class Journal(Actor[ty.Any]):
+class Journal(Actor[ty.Any], IJournal):
     _loop: asyncio.AbstractEventLoop
 
     def __init__(
@@ -57,3 +58,6 @@ class Journal(Actor[ty.Any]):
     ) -> ty.Self:
         es = EventStore.build(db_url=db_url)
         return cls(eventstore=es, mailbox=MailBox.build(), ref=ref)
+
+    async def list_events(self, ref: ActorRef) -> "list[IEvent]":
+        return await self.eventstore.get(entity_id=ref)

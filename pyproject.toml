@@ -28,10 +28,12 @@ addopts = "--strict-markers"
 markers = [
     "integration_test: marks tests as slow integration tests (deselect with '-m \"not integration_test\"')",
 ]
+filterwarnings = ["ignore::DeprecationWarning"]
 
 [tool.pyright]
 include = ["src/*.py"]
 typeCheckingMode = "strict"
+exclude = ["tests"]
 
 [tool.mypy]
 python_version = "3.12"

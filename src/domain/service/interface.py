@@ -2,8 +2,8 @@ import abc
 import typing as ty
 from types import TracebackType
 
-from ..interface import IEntity
-from ..model import Event
+from src.domain.interface import IEntity, IEvent
+from src.domain.model import Event
 
 """
 Remember:
@@ -19,11 +19,11 @@ class IEventStore(abc.ABC):
         ...
 
     @abc.abstractmethod
-    async def add_all(self, events: list[Event]) -> None:
+    async def add_all(self, events: list[IEvent]) -> None:
         ...
 
     @abc.abstractmethod
-    async def get(self, entity_id: str) -> list[Event]:
+    async def get(self, entity_id: str) -> list[IEvent]:
         ...
 
     @abc.abstractmethod

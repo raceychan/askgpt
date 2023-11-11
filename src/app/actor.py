@@ -2,9 +2,12 @@ import asyncio
 import typing as ty
 from functools import cached_property, singledispatchmethod
 
+from src.domain.error import SystemNotSetError
+from src.domain.interface import ISettings
+
 # from domain.interface import IEntity
-from src.domain import Command, Event, ISettings, SystemNotSetError
-from src.infra import MailBox
+from src.domain.model import Command, Event
+from src.infra.mq import MailBox
 
 from .interface import (
     AbstractActor,
@@ -24,6 +27,9 @@ class Actor[TChild: "Actor[ty.Any]"](AbstractActor):
     mailbox: MailBox
     _system: ty.ClassVar["System[ty.Any]"]
     childs: ActorRegistry[ActorRef, TChild]
+
+    def predict_command(self, command: ICommand) -> IEvent:
+        raise NotImplementedError
 
     def __init__(self, mailbox: MailBox):
         if not isinstance(self, System):
@@ -68,6 +74,11 @@ class Actor[TChild: "Actor[ty.Any]"](AbstractActor):
             raise TypeError("Unknown message type")
 
     async def publish(self, event: IEvent) -> None:
+        """
+        apply a event first and then publish the event
+        if publish fail, the actor will die
+        when restart, the lost event won't be applied, and command won't be handled
+        """
         await self.system.eventlog.receive(event)
 
     def get_child(self, ref: ActorRef) -> TChild | None:
@@ -88,6 +99,12 @@ class Actor[TChild: "Actor[ty.Any]"](AbstractActor):
 
         return None
 
+    def select_child(self, ref: ActorRef) -> TChild:
+        """
+        A non-recursive, non-none version of get_child
+        """
+        return self.childs[ref]
+
     @singledispatchmethod
     async def handle(self, command: ICommand) -> None:
         raise NotImplementedError
@@ -102,14 +119,14 @@ class Actor[TChild: "Actor[ty.Any]"](AbstractActor):
             raise Exception("Call set_system twice while system is already set")
 
     @classmethod
-    def rebuild(cls, events: list[Event]) -> ty.Self:
+    def rebuild(cls, events: list[IEvent]) -> ty.Self:
         if not events:
             raise Exception("No events to rebuild")
 
-        created_event = events.pop(0)
+        created_event = events[0]
         self = cls.apply(created_event)
 
-        for e in events:
+        for e in events[1:]:
             self.apply(e)
 
         return self
@@ -194,7 +211,7 @@ class System[TChild: Actor[ty.Any]](Actor[TChild]):
         return self.__ref
 
 
-class EventLog[TListener: Actor[ty.Any]](Actor[TListener]):
+class EventLog[TListener: Actor[ty.Any]](Actor[ty.Any]):
     """
     a mediator that used to decouple event source(Actors) and event consumer (Journal)
     """

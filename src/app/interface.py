@@ -76,3 +76,8 @@ class IJournal(ty.Protocol):
     @cached_property
     def ref(self) -> ActorRef:
         ...
+
+
+    async def list_events(self, ref: ActorRef)->"list[IEvent]":
+        # return await self.eventstore.get(entity_id=ref)
+        ...

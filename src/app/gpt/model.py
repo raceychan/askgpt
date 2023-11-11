@@ -1,7 +1,8 @@
 import typing as ty
 from functools import singledispatchmethod
 
-from src.domain import (  # Message,
+from src.app.gpt.params import ChatGPTRoles, CompletionModels
+from src.domain.model import (
     Command,
     Entity,
     Event,
@@ -10,10 +11,6 @@ from src.domain import (  # Message,
     computed_field,
     uuid_factory,
 )
-
-from .params import ChatGPTRoles, CompletionModels
-
-
 
 
 class TestDefaults:
@@ -61,6 +58,11 @@ class CreateSession(Command):
 class SessionCreated(Event):
     user_id: str
     entity_id: str = Field(alias="session_id")
+
+
+class UserAddedSession(Event):
+    entity_id: str = Field(alias="user_id")
+    session_id: str
 
 
 class CreateUser(Command):
@@ -147,6 +149,7 @@ class ChatSession(Entity):
 # aggregate_root
 class User(Entity):
     entity_id: str = Field(alias="user_id")
+    # should hold session ids
     chat_sessions: dict[str, ChatSession] = Field(default_factory=dict)
 
     def add_session(self, session: ChatSession) -> None:
@@ -159,6 +162,9 @@ class User(Entity):
 
     def get_session(self, session_id: str) -> ChatSession | None:
         return self.chat_sessions.get(session_id)
+
+    def list_sessions(self) -> tuple[ChatSession, ...]:
+        return tuple(self.chat_sessions.values())
 
     @singledispatchmethod
     def handle(self, command: Command) -> None:
@@ -177,6 +183,11 @@ class User(Entity):
     def _(self, event: SessionCreated) -> ty.Self:
         session = ChatSession.apply(event)
         self.add_session(session)
+        return self
+
+    @apply.register
+    def _(self, event: UserAddedSession) -> ty.Self:
+        raise NotImplementedError
         return self
 
     @classmethod

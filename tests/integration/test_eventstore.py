@@ -34,4 +34,13 @@ async def test_list_event(eventstore: EventStore, user_created: model.UserCreate
     e = es[0]
     assert e.event_type == "user_created"
     assert e.event_id == user_created.event_id
+
+    assert e.timestamp == user_created.timestamp
+
     assert hash(e) == hash(user_created)
+
+
+# AssertionError: 
+# assert 
+# datetime.datetime(2023, 11, 10, 0, 30, 45, 26543, tzinfo=datetime.timezone.utc) 
+# datetime.datetime(2023, 11, 10, 8, 30, 45, 26543, tzinfo=datetime.timezone.utc

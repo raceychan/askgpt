@@ -10,9 +10,9 @@
 
 - [ ] Deduplicate events
 
-- [ ] enforce correct entity_id for events
+- [ ] enforce correct entity_id for events, currently there is a bug
 
-- [ ] refactor code with generic
+- [x] refactor code with generic
 
 ### P2
 

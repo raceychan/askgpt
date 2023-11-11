@@ -1,17 +1,17 @@
 import typing as ty
 from functools import singledispatchmethod
 
-from src.domain import Command, Event, Message, Settings
+from src.app.actor import EntityActor, System
+from src.app.gpt import model
+from src.app.gpt.client import OpenAIClient
+from src.app.interface import ICommand  # , IEvent
+from src.app.journal import Journal
+from src.app.utils.fmtutils import fprint
+from src.domain.config import Settings
 from src.domain.interface import ISettings
-from src.infra import MailBox
-
-from ..actor import EntityActor, System
-from ..gpt import model
-
-# from ..interface import ActorRef, ActorRegistry
-from ..journal import EventStore, Journal
-from ..utils import fprint
-from .client import OpenAIClient
+from src.domain.model import Command, Event, Message
+from src.infra.eventstore import EventStore
+from src.infra.mq import MailBox
 
 
 def display_message(answer: ty.Generator[str | None, None, None]) -> str:
@@ -65,12 +65,13 @@ class GPTSystem(System["UserActor"]):
         return user_actor
 
     def create_journal(self, eventstore: EventStore, mailbox: MailBox) -> None:
-        """journal is part of the application layer,
-        so it should be created here by gptsystem"""
+        """
+        journal is part of the application layer, it should be created here by gptsystem
+        """
         journal_ref = self.settings.actor_refs.JOURNAL
         journal = Journal(eventstore, mailbox, ref=journal_ref)
-        # self.childs[journal_ref] = journal
         self._journal = journal
+        # self.childs[journal_ref] = journal
 
     @classmethod
     async def create(
@@ -96,7 +97,7 @@ class GPTSystem(System["UserActor"]):
     @apply.register
     @classmethod
     def _(cls, event: SystemStarted) -> ty.Self:
-        return cls(mailbox=MailBox.build(), settings=event.settings)  # type: ignore # pydantic can't handle protocol, event has to have a concrete settings
+        return cls(mailbox=MailBox.build(), settings=event.settings)  # type: ignore # pydantic forces concrete settings
 
     @singledispatchmethod
     async def handle(self, command: Command) -> None:
@@ -104,18 +105,23 @@ class GPTSystem(System["UserActor"]):
 
     @handle.register
     async def _(self, command: model.SendChatMessage) -> None:
-        user: "UserActor" | None = self.get_child(command.user_id)
         # TODO: rebuild user before creating them
+
+        user: "UserActor" | None = self.get_child(command.user_id)
         if not user:
+            # NOTE: create user before calling this method
+            # user should already exist at this point
             create_user = model.CreateUser(user_id=command.user_id)
-            user = await self.create_user(create_user)
+            await self.handle(create_user)
+            user = self.select_child(create_user.entity_id)
 
         session = user.get_child(command.entity_id)
         if not session:
             create_session = model.CreateSession(
                 user_id=command.user_id, session_id=command.entity_id
             )
-            session = await user.create_session(create_session)
+            await user.handle(create_session)
+            session = user.select_child(command.entity_id)
 
         await session.handle(command)
 
@@ -124,26 +130,32 @@ class GPTSystem(System["UserActor"]):
         await self.create_user(command)
 
     async def stop(self) -> None:
-        ...
         # await self.publish(SystemStoped(entity_id="system"))
+        raise NotImplementedError
 
 
 class UserActor(EntityActor["SessionActor", model.User]):
     def __init__(self, user: model.User):
         super().__init__(mailbox=MailBox.build(), entity=user)
 
-    async def create_session(self, command: model.CreateSession) -> "SessionActor":
-        event = model.SessionCreated(
-            user_id=command.user_id, session_id=command.entity_id
-        )
+    def predict_command(self, command: ICommand) -> model.SessionCreated:
+        if isinstance(command, model.CreateSession):
+            return model.SessionCreated(
+                user_id=command.user_id, session_id=command.entity_id
+            )
+        else:
+            raise NotImplementedError
+
+    def create_session(self, event: model.SessionCreated) -> "SessionActor":
         session_actor = SessionActor.apply(event)
         self.childs[session_actor.entity_id] = session_actor
-        await self.publish(event)
+        self.entity.apply(event)
         return session_actor
 
     async def rebuild_session(self, session_id: str) -> "SessionActor":
-        # self.system.journal
-        raise NotImplementedError
+        events = await self.system.journal.list_events(session_id)
+        session_actor = SessionActor.rebuild(events)
+        return session_actor
 
     @singledispatchmethod
     async def handle(self, command: Command) -> None:
@@ -155,19 +167,31 @@ class UserActor(EntityActor["SessionActor", model.User]):
 
     @handle.register
     async def _(self, command: model.CreateSession) -> None:
-        session_actor = await self.create_session(command)
-        self.entity.add_session(session=session_actor.entity)
+        event = self.predict_command(command)
+        self.create_session(event)
+        await self.publish(event)
 
     @apply.register
     @classmethod
     def _(cls, event: model.UserCreated) -> ty.Self:
         return cls(user=model.User.apply(event))
 
+    # @apply.register
+    # def _(self, event: model.SessionCreated) -> ty.Self:
+    #     "when we rebuild a session, we need to create a new session actor"
+    #     "perhaps we user should not hold chat sessions, but only session ids"
+    #     self.create_session(event)
+    #     return self
+
+    @property
+    def session_count(self):
+        return len(self.entity.chat_sessions)
+
 
 class SessionActor(EntityActor[OpenAIClient, model.ChatSession]):
+    # TODO: openai should be childs of system, not session
     def __init__(self, chat_session: model.ChatSession):
         super().__init__(mailbox=MailBox.build(), entity=chat_session)
-        # self.childs = ActorRegistry[ActorRef, OpenAIClient]()
 
     @property
     def chat_context(self) -> list[model.ChatMessage]:
@@ -185,7 +209,7 @@ class SessionActor(EntityActor[OpenAIClient, model.ChatSession]):
             raise Exception("model_client already set")
         self.childs["model_client"] = client
 
-    async def send_chat(
+    async def _send_chat(
         self,
         message: model.ChatMessage,
         model: model.CompletionModels,
@@ -201,13 +225,25 @@ class SessionActor(EntityActor[OpenAIClient, model.ChatSession]):
                 content = choice.delta.content
                 yield content
 
+    @property
+    def message_count(self) -> int:
+        return len(self.entity.messages)
+
     @singledispatchmethod
     async def handle(self, message: Message) -> None:
         raise NotImplementedError
 
+    def predict_command(self, command: ICommand) -> model.ChatMessageSent:
+        if isinstance(command, model.SendChatMessage):
+            return model.ChatMessageSent(
+                session_id=self.entity_id, chat_message=command.chat_message
+            )
+        else:
+            raise NotImplementedError
+
     @handle.register
     async def _(self, command: model.SendChatMessage) -> None:
-        chunks = self.send_chat(message=command.chat_message, model=command.model)
+        chunks = self._send_chat(message=command.chat_message, model=command.model)
         event = model.ChatMessageSent(
             session_id=self.entity_id,
             chat_message=command.chat_message,
@@ -221,6 +257,7 @@ class SessionActor(EntityActor[OpenAIClient, model.ChatSession]):
             chat_message=model.ChatMessage(role="assistant", content=answer),
         )
 
+        self.entity.apply(response_received)
         await self.publish(response_received)
 
     @singledispatchmethod

@@ -1,9 +1,12 @@
+import datetime
 import typing as ty
 
 import sqlalchemy as sa
 from sqlalchemy.ext import asyncio as sa_aio
 
-from src.domain import Event, IEventStore
+from src.domain.interface import IEvent, IEventStore
+from src.domain.model import Event
+from src.infra.sa_utils import engine_factory
 
 EVENT_TABLE: ty.Final[sa.TableClause] = sa.table(
     "domain_events",
@@ -17,7 +20,7 @@ EVENT_TABLE: ty.Final[sa.TableClause] = sa.table(
 )
 
 
-def dump_event(event: Event) -> dict[str, ty.Any]:
+def dump_event(event: IEvent) -> dict[str, ty.Any]:
     data = event.asdict(by_alias=False)
     return dict(
         id=data.pop("event_id"),
@@ -29,15 +32,19 @@ def dump_event(event: Event) -> dict[str, ty.Any]:
     )
 
 
-def load_event(row_mapping: sa.RowMapping | dict[str, ty.Any]) -> Event:
+def load_event(row_mapping: sa.RowMapping | dict[str, ty.Any]) -> IEvent:
     data = dict(row_mapping)
     matched_type = Event.match_event_type(data["event_type"])
     event_id = data.pop("id")
     entity_id = data.pop("entity_id")
-    timestamp = data.pop("gmt_created")
+    gmt_created: datetime.datetime = data.pop("gmt_created")
     body = data.pop("event_body")
 
-    return matched_type(id=event_id, entity_id=entity_id, timestamp=timestamp, **body)
+    event = matched_type(
+        id=event_id, entity_id=entity_id, timestamp=gmt_created, **body
+    )
+
+    return event
 
 
 class EventStore(IEventStore):
@@ -46,18 +53,18 @@ class EventStore(IEventStore):
     def __init__(self, engine: sa_aio.AsyncEngine):
         self.engine = engine
 
-    async def add(self, event: Event) -> None:
+    async def add(self, event: IEvent) -> None:
         value = dump_event(event)
         stmt = sa.insert(self.table).values(value)
 
         async with self.engine.begin() as cursor:
             await cursor.execute(stmt)
 
-    async def add_all(self, events: list[Event]) -> None:
+    async def add_all(self, events: list[IEvent]) -> None:
         values = [dump_event(event) for event in events]
         sa.insert(self.table).values(values)
 
-    async def get(self, entity_id: str) -> list[Event]:
+    async def get(self, entity_id: str) -> list[IEvent]:
         stmt = sa.select(self.table).where(self.table.c.entity_id == entity_id)
         async with self.engine.begin() as cursor:
             result = await cursor.execute(stmt)
@@ -65,7 +72,7 @@ class EventStore(IEventStore):
             events = [load_event(row._mapping) for row in rows]
         return events
 
-    async def list_all(self) -> list[Event]:
+    async def list_all(self) -> list[IEvent]:
         stmt = sa.select(self.table)
         async with self.engine.begin() as cursor:
             result = await cursor.execute(stmt)
@@ -78,4 +85,4 @@ class EventStore(IEventStore):
 
     @classmethod
     def build(cls, *, db_url: str) -> ty.Self:
-        return cls(engine=sa_aio.create_async_engine(db_url))
+        return cls(engine=engine_factory(db_url))
