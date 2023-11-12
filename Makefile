@@ -1,10 +1,6 @@
-# #SHELL = /bin/zsh
-# SHELL := /bin/zsh
-# CONDA_ENV := askgpt
-
-# .PHONY: shell
-# shell:
-# 	$(SHELL) conda activate $(CONDA_ENV)
+.PHONY: gitlog
+gitlog:
+	git log --graph --oneline --decorate
 
 .PHONY: test
 test:
@@ -20,4 +16,5 @@ typecheck:
 
 .PHONY: setup
 setup:
-	poetry install
+	conda install -c conda-forge poetry=1.7.0
+	poetry install --no-root
