@@ -8,6 +8,7 @@ from src.domain.model.interface import (
     IEvent,
     IMessage,
     IQuery,
+    utc_datetime,
 )
 from src.domain.service.interface import IEngine, IEventStore, IRepository, IUnitOfWork
 

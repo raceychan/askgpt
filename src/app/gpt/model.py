@@ -11,6 +11,7 @@ from src.domain.model import (
     computed_field,
     uuid_factory,
 )
+from src.domain.model.interface import ICommand, IEvent
 
 
 class TestDefaults:
@@ -56,13 +57,8 @@ class CreateSession(Command):
 
 
 class SessionCreated(Event):
-    user_id: str
-    entity_id: str = Field(alias="session_id")
-
-
-class UserAddedSession(Event):
-    entity_id: str = Field(alias="user_id")
     session_id: str
+    entity_id: str = Field(alias="user_id")
 
 
 class CreateUser(Command):
@@ -133,7 +129,7 @@ class ChatSession(Entity):
     @apply.register
     @classmethod
     def _(cls, event: SessionCreated) -> ty.Self:
-        return cls(session_id=event.entity_id, user_id=event.user_id)
+        return cls(session_id=event.session_id, user_id=event.entity_id)
 
     @apply.register
     def _(self, event: ChatMessageSent) -> ty.Self:
@@ -149,22 +145,18 @@ class ChatSession(Entity):
 # aggregate_root
 class User(Entity):
     entity_id: str = Field(alias="user_id")
-    # should hold session ids
-    chat_sessions: dict[str, ChatSession] = Field(default_factory=dict)
+    session_ids: list[str] = Field(default_factory=list)
 
-    def add_session(self, session: ChatSession) -> None:
-        self.chat_sessions[session.entity_id] = session
+    def predict_command(self, command: ICommand) -> list[SessionCreated]:
+        if isinstance(command, CreateSession):
+            return [
+                SessionCreated(session_id=command.entity_id, user_id=self.entity_id)
+            ]
+        else:
+            raise NotImplementedError
 
-    def create_session(self, session_id: str) -> None:
-        self.chat_sessions[session_id] = ChatSession(
-            user_id=self.entity_id, session_id=session_id
-        )
-
-    def get_session(self, session_id: str) -> ChatSession | None:
-        return self.chat_sessions.get(session_id)
-
-    def list_sessions(self) -> tuple[ChatSession, ...]:
-        return tuple(self.chat_sessions.values())
+    def add_session(self, session_id: str) -> None:
+        self.session_ids.append(session_id)
 
     @singledispatchmethod
     def handle(self, command: Command) -> None:
@@ -181,13 +173,7 @@ class User(Entity):
 
     @apply.register
     def _(self, event: SessionCreated) -> ty.Self:
-        session = ChatSession.apply(event)
-        self.add_session(session)
-        return self
-
-    @apply.register
-    def _(self, event: UserAddedSession) -> ty.Self:
-        raise NotImplementedError
+        self.add_session(event.session_id)
         return self
 
     @classmethod

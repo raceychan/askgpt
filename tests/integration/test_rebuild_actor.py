@@ -71,9 +71,8 @@ async def session_actor(
         session_id=model.TestDefaults.SESSION_ID, user_id=model.TestDefaults.USER_ID
     )
     await user_actor.handle(cmd)
-    assert user_actor.entity.chat_sessions
-    session = user_actor.get_child(model.TestDefaults.SESSION_ID)
-    assert session
+    assert user_actor.entity.session_ids
+    session = user_actor.select_child(model.TestDefaults.SESSION_ID)
     session.set_model_client(openai_client)
     return session
 
@@ -96,31 +95,36 @@ async def test_ask_question(
     assert session_actor.message_count == 0
     await session_actor.receive(cmd)
     journal = session_actor.system.journal
-    events = await journal.eventstore.get(session_actor.entity_id)
+    session_events = await journal.eventstore.get(session_actor.entity_id)
 
-    assert events[0].__class__ is model.SessionCreated
-    assert events[1].__class__ is model.ChatMessageSent
-    assert events[2].__class__ is model.ChatResponseReceived
+    assert session_events[0].__class__ is model.ChatMessageSent
+    assert session_events[1].__class__ is model.ChatResponseReceived
 
     assert session_actor.message_count == 2
 
 
 async def test_session_self_rebuild(eventstore: service.EventStore):
     events = await eventstore.get(model.TestDefaults.SESSION_ID)
-    session_actor = service.SessionActor.rebuild(events)
+    created = model.SessionCreated(
+        user_id=model.TestDefaults.USER_ID, session_id=model.TestDefaults.SESSION_ID
+    )
+
+    session_actor = service.SessionActor.apply(created)
+
+    session_actor.rebuild(events)
+
     assert isinstance(session_actor, service.SessionActor)
     assert session_actor.entity_id == model.TestDefaults.SESSION_ID
     assert (
-        session_actor.entity.messages[0].asdict() == events[1].asdict()["chat_message"]
+        session_actor.entity.messages[0].asdict() == events[0].asdict()["chat_message"]
     )
     assert (
-        session_actor.entity.messages[1].asdict() == events[2].asdict()["chat_message"]
+        session_actor.entity.messages[1].asdict() == events[1].asdict()["chat_message"]
     )
 
 
 async def test_user_rebuild_session(user_actor: service.UserActor):
-    current_ss_actor = user_actor.get_child(model.TestDefaults.SESSION_ID)
-    assert isinstance(current_ss_actor, service.SessionActor)
+    current_ss_actor = user_actor.select_child(model.TestDefaults.SESSION_ID)
 
     user_built_session = await user_actor.rebuild_session(
         session_id=model.TestDefaults.SESSION_ID
@@ -140,44 +144,19 @@ async def test_user_rebuild_session(user_actor: service.UserActor):
     assert current_ss_actor.message_count == user_built_session.message_count
 
 
-async def test_user_rebuild_session_same_as_session_rebuild(
-    user_actor: service.UserActor, eventstore: service.EventStore
-):
-    events = await eventstore.get(model.TestDefaults.SESSION_ID)
-
-    self_build = service.SessionActor.rebuild(events)
-    user_build = await user_actor.rebuild_session(
-        session_id=model.TestDefaults.SESSION_ID
-    )
-
-    assert self_build.entity_id == user_build.entity_id == model.TestDefaults.SESSION_ID
-    assert (
-        self_build.entity.user_id
-        == user_build.entity.user_id
-        == model.TestDefaults.USER_ID
-    )
-    assert self_build.message_count == user_build.message_count == 2
-
-
-@pytest.mark.skip("not implemented")
 async def test_user_self_rebuild(eventstore: service.EventStore):
-    # BUG: there is no session created events for user
-    # or maybe we should collect both events for user and session?
-
-    # seems like we should seperate user_added_session events
-    # and sesession_created events
     user_events = await eventstore.get(model.TestDefaults.USER_ID)
 
-    session_events = await eventstore.get(model.TestDefaults.SESSION_ID)
+    user_created = user_events[0]
 
-    events = user_events + session_events
+    # session_events = await eventstore.get(model.TestDefaults.SESSION_ID)
 
-    user_actor = service.UserActor.rebuild(events)
+    user_actor = service.UserActor.apply(user_created)
+    user_actor.rebuild(user_events[1:])
     assert isinstance(user_actor, service.UserActor)
     assert user_actor.entity_id == model.TestDefaults.USER_ID
-
     assert user_actor.session_count == 1
 
 
-# async def test_system_rebuild_user():
-#     raise NotImplementedError
+async def test_system_rebuild_user():
+    raise NotImplementedError

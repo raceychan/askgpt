@@ -28,8 +28,8 @@ class Actor[TChild: "Actor[ty.Any]"](AbstractActor):
     _system: ty.ClassVar["System[ty.Any]"]
     childs: ActorRegistry[ActorRef, TChild]
 
-    def predict_command(self, command: ICommand) -> IEvent:
-        raise NotImplementedError
+    # def predict_command(self, command: ICommand) -> IEvent:
+    #     raise NotImplementedError
 
     def __init__(self, mailbox: MailBox):
         if not isinstance(self, System):
@@ -118,15 +118,12 @@ class Actor[TChild: "Actor[ty.Any]"](AbstractActor):
         elif sys_ is not system:
             raise Exception("Call set_system twice while system is already set")
 
-    @classmethod
-    def rebuild(cls, events: list[IEvent]) -> ty.Self:
+    # @classmethod
+    def rebuild(self, events: list[IEvent]) -> ty.Self:
         if not events:
             raise Exception("No events to rebuild")
 
-        created_event = events[0]
-        self = cls.apply(created_event)
-
-        for e in events[1:]:
+        for e in events:
             self.apply(e)
 
         return self

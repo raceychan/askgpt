@@ -8,8 +8,8 @@ from functools import singledispatchmethod
 import sqlalchemy as sa
 from pydantic import BaseModel, ConfigDict, Field, SerializeAsAny, computed_field
 
-from .interface import utc_datetime
-from .name_tools import str_to_snake
+from src.domain.model.interface import ICommand, IEvent, utc_datetime
+from src.domain.model.name_tools import str_to_snake
 
 frozen = dataclass(frozen=True, slots=True, kw_only=True)
 
@@ -232,7 +232,7 @@ class Envelope(DomainBase):
 
 
 class EntityABC(abc.ABC):
-    def predict_command(self, command: Command) -> Event:
+    def predict_command(self, command: ICommand) -> ty.Sequence[IEvent]:
         raise NotImplementedError
 
     @singledispatchmethod

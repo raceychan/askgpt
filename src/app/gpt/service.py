@@ -138,14 +138,6 @@ class UserActor(EntityActor["SessionActor", model.User]):
     def __init__(self, user: model.User):
         super().__init__(mailbox=MailBox.build(), entity=user)
 
-    def predict_command(self, command: ICommand) -> model.SessionCreated:
-        if isinstance(command, model.CreateSession):
-            return model.SessionCreated(
-                user_id=command.user_id, session_id=command.entity_id
-            )
-        else:
-            raise NotImplementedError
-
     def create_session(self, event: model.SessionCreated) -> "SessionActor":
         session_actor = SessionActor.apply(event)
         self.childs[session_actor.entity_id] = session_actor
@@ -154,7 +146,11 @@ class UserActor(EntityActor["SessionActor", model.User]):
 
     async def rebuild_session(self, session_id: str) -> "SessionActor":
         events = await self.system.journal.list_events(session_id)
-        session_actor = SessionActor.rebuild(events)
+        created = self.entity.predict_command(
+            model.CreateSession(session_id=session_id, user_id=self.entity_id)
+        )[0]
+        session_actor = SessionActor.apply(created)
+        session_actor.rebuild(events)
         return session_actor
 
     @singledispatchmethod
@@ -167,25 +163,24 @@ class UserActor(EntityActor["SessionActor", model.User]):
 
     @handle.register
     async def _(self, command: model.CreateSession) -> None:
-        event = self.predict_command(command)
-        self.create_session(event)
-        await self.publish(event)
+        events = self.entity.predict_command(command)
+        self.create_session(events[0])
+        for e in events:
+            await self.publish(e)
 
     @apply.register
     @classmethod
     def _(cls, event: model.UserCreated) -> ty.Self:
         return cls(user=model.User.apply(event))
 
-    # @apply.register
-    # def _(self, event: model.SessionCreated) -> ty.Self:
-    #     "when we rebuild a session, we need to create a new session actor"
-    #     "perhaps we user should not hold chat sessions, but only session ids"
-    #     self.create_session(event)
-    #     return self
+    @apply.register
+    def _(self, event: model.SessionCreated) -> ty.Self:
+        self.entity.apply(event)
+        return self
 
     @property
     def session_count(self):
-        return len(self.entity.chat_sessions)
+        return len(self.entity.session_ids)
 
 
 class SessionActor(EntityActor[OpenAIClient, model.ChatSession]):

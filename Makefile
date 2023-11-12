@@ -10,6 +10,10 @@
 test:
 	pytest -sv --cov-report term-missing --cov=src tests/
 
+.PHONY: debug
+debug:
+	pytest -svx --pdb tests/
+
 .PHONY: typecheck
 typecheck:
 	mypy src/ --explicit-package-bases --enable-incomplete-feature=Unpack
