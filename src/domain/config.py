@@ -1,3 +1,4 @@
+import functools
 import pathlib
 import typing as ty
 
@@ -5,9 +6,6 @@ from pydantic import BaseModel, ConfigDict
 
 from src.domain.fileutil import FileUtil
 from src.domain.interface import EventLogRef, JournalRef, SystemRef
-
-# from dataclasses import dataclass
-# frozen = dataclass(frozen=True, slots=True, kw_only=True, repr=False)
 
 
 class SettingsBase(BaseModel):
@@ -21,13 +19,22 @@ class SettingsBase(BaseModel):
 
 
 class Settings(SettingsBase):
-    PROJECT_NAME: str = "askgpt"
+    PROJECT_NAME: ty.ClassVar[str] = "askgpt"
+    PROJECT_ROOT: ty.ClassVar[pathlib.Path] = pathlib.Path.cwd()
     OPENAI_API_KEY: str
+    RUNTIME_ENV: ty.Literal["dev", "prod", "test"]
 
     class DB(SettingsBase):
-        DB_DRIVER: str
+        DB_DRIVER: str = "sqlite"
         ASYNC_DB_DRIVER: str = "aiosqlite"
         DATABASE: pathlib.Path
+        ISOLATION_LEVEL: ty.Literal[
+            "SERIALIZABLE",
+            "REPEATABLE READ",
+            "READ COMMITTED",
+            "READ UNCOMMITTED",
+            "AUTOCOMMIT",
+        ] = "SERIALIZABLE"
 
         @property
         def DB_URL(self) -> str:
@@ -46,7 +53,16 @@ class Settings(SettingsBase):
 
     actor_refs: ActorRefs
 
+    @property
+    def is_prod_env(self):
+        return self.RUNTIME_ENV == "prod"
+
     @classmethod
+    @functools.lru_cache(maxsize=1)
     def from_file(cls, filename: str = "settings.toml") -> ty.Self:
         fileutil = FileUtil.from_cwd()
         return cls(**fileutil.read_file(filename))
+
+
+def settings(filename: str = "settings.toml") -> Settings:
+    return Settings.from_file(filename=filename)

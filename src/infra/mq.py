@@ -5,10 +5,8 @@ from collections import deque
 from src.domain.interface import IMessage
 from src.infra.interface import Receivable
 
-TMessages = ty.TypeVar("TMessages", bound=IMessage)
 
-
-class MessageBroker(ty.Generic[TMessages], abc.ABC):
+class MessageBroker[TMessages: IMessage](abc.ABC):
     @abc.abstractmethod
     def __len__(self) -> int:
         raise NotImplementedError
@@ -39,7 +37,6 @@ class MessageBroker(ty.Generic[TMessages], abc.ABC):
         raise NotImplementedError
 
 
-# TODO: this should be generic
 class QueueBroker(MessageBroker[IMessage]):
     def __init__(self, maxsize: int = 0):
         self._queue: deque[IMessage] = deque(maxlen=maxsize or None)

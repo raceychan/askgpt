@@ -1,18 +1,13 @@
-import typing as ty
-
 import sqlalchemy as sa
 from sqlalchemy import orm as sa_orm
 from sqlalchemy.ext import asyncio as sa_aio
 from sqlalchemy.sql import func
 
 from src.domain.model.name_tools import str_to_snake
-
-# from src.infra.sa_utils import engine_factory
-
-T = ty.TypeVar("T")
+from src.infra.sa_utils import test_table_exist
 
 
-def declarative(cls: type[T]) -> type[T]:
+def declarative[T](cls: type[T]) -> type[T]:
     # Reference: https://docs.sqlalchemy.org/en/14/orm/declarative_mixins.html
     return sa_orm.declarative_base(cls=cls)  # type: ignore
 
@@ -43,6 +38,13 @@ class TableBase:
             *[sa.column(c) for c in cls.__table__.columns],  # type: ignore
         )
         return clause
+
+    @classmethod
+    async def assure_table_exist(cls, engine: sa_aio.AsyncEngine) -> bool:
+        row = await test_table_exist(engine, cls.__tablename__)
+        if cls.__tablename__ == row["name"]:
+            return True
+        raise Exception(f"Table {cls.__tablename__} does not exist")
 
 
 class EventSchema(TableBase):

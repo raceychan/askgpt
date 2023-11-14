@@ -12,11 +12,6 @@ from src.domain.model.interface import (
 )
 from src.domain.service.interface import IEngine, IEventStore, IRepository, IUnitOfWork
 
-T = ty.TypeVar("T")
-
-TState = ty.TypeVar("TState")
-TEntity = ty.TypeVar("TEntity", bound=IEntity)
-
 ActorRef = ty.Annotated[str, "AbstractActorRef", "ActorRef"]
 
 SystemRef = ty.NewType("SystemRef", ActorRef)
@@ -43,6 +38,7 @@ class ISettings(ty.Protocol):
         DB_DRIVER: str
         DATABASE: pathlib.Path
         ENGINE_ECHO: bool
+        ISOLATION_LEVEL: str
 
     db: IDB
 

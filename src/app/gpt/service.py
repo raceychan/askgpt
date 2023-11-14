@@ -1,17 +1,20 @@
 import typing as ty
+from contextlib import asynccontextmanager
 from functools import singledispatchmethod
 
 from src.app.actor import EntityActor, System
 from src.app.gpt import model
 from src.app.gpt.client import OpenAIClient
-from src.app.interface import ICommand  # , IEvent
 from src.app.journal import Journal
 from src.app.utils.fmtutils import fprint
+from src.domain._log import logger
 from src.domain.config import Settings
-from src.domain.interface import ISettings
+from src.domain.interface import ICommand, ISettings
 from src.domain.model import Command, Event, Message
 from src.infra.eventstore import EventStore
 from src.infra.mq import MailBox
+from src.infra.sa_utils import async_engine_factory
+from src.infra.schema import EventSchema
 
 
 def display_message(answer: ty.Generator[str | None, None, None]) -> str:
@@ -71,16 +74,18 @@ class GPTSystem(System["UserActor"]):
         journal_ref = self.settings.actor_refs.JOURNAL
         journal = Journal(eventstore, mailbox, ref=journal_ref)
         self._journal = journal
-        # self.childs[journal_ref] = journal
+
+    async def rebuild_user(self, user_id: str):
+        events = await self.journal.list_events(user_id)
+        created = model.UserCreated(user_id=user_id)
+        user_actor = UserActor.apply(created)
+        user_actor.rebuild(events)
+        self.childs[user_actor.entity_id] = user_actor
+        return user_actor
 
     @classmethod
-    async def create(
-        cls, settings: Settings, eventstore: EventStore | None = None
-    ) -> "GPTSystem":
-        if eventstore is None:
-            eventstore = EventStore.build(db_url=settings.db.ASYNC_DB_URL)
-
-        event = SystemStarted(entity_id="system", settings=settings)
+    async def create(cls, settings: Settings, eventstore: EventStore) -> "GPTSystem":
+        event = SystemStarted(entity_id=settings.actor_refs.SYSTEM, settings=settings)
         system: GPTSystem = cls.apply(event)
         system.create_eventlog()
         system.create_journal(
@@ -109,21 +114,19 @@ class GPTSystem(System["UserActor"]):
 
         user: "UserActor" | None = self.get_child(command.user_id)
         if not user:
-            # NOTE: create user before calling this method
-            # user should already exist at this point
-            create_user = model.CreateUser(user_id=command.user_id)
-            await self.handle(create_user)
-            user = self.select_child(create_user.entity_id)
+            user = await self.rebuild_user(command.user_id)
+            # user = self.select_child(command.user_id)
 
-        session = user.get_child(command.entity_id)
-        if not session:
-            create_session = model.CreateSession(
-                user_id=command.user_id, session_id=command.entity_id
-            )
-            await user.handle(create_session)
-            session = user.select_child(command.entity_id)
+        breakpoint()
+        # session = user.get_child(command.entity_id)
+        # if not session:
+        #     create_session = model.CreateSession(
+        #         user_id=command.user_id, session_id=command.entity_id
+        #     )
+        #     await user.handle(create_session)
+        #     session = user.select_child(command.entity_id)
 
-        await session.handle(command)
+        # await session.handle(command)
 
     @handle.register
     async def _(self, command: model.CreateUser) -> None:
@@ -131,7 +134,8 @@ class GPTSystem(System["UserActor"]):
 
     async def stop(self) -> None:
         # await self.publish(SystemStoped(entity_id="system"))
-        raise NotImplementedError
+        logger.info("system stopped")
+        # raise NotImplementedError
 
 
 class UserActor(EntityActor["SessionActor", model.User]):
@@ -144,6 +148,10 @@ class UserActor(EntityActor["SessionActor", model.User]):
         self.entity.apply(event)
         return session_actor
 
+    async def rebuild_sessions(self):
+        for session_id in self.entity.session_ids:
+            await self.rebuild_session(session_id)
+
     async def rebuild_session(self, session_id: str) -> "SessionActor":
         events = await self.system.journal.list_events(session_id)
         created = self.entity.predict_command(
@@ -151,6 +159,7 @@ class UserActor(EntityActor["SessionActor", model.User]):
         )[0]
         session_actor = SessionActor.apply(created)
         session_actor.rebuild(events)
+        self.childs[session_actor.entity_id] = session_actor
         return session_actor
 
     @singledispatchmethod
@@ -270,10 +279,29 @@ class SessionActor(EntityActor[OpenAIClient, model.ChatSession]):
         return cls(chat_session=model.ChatSession.apply(event))
 
 
-async def setup_system(settings: Settings) -> GPTSystem:
-    eventstore = EventStore.build(db_url=settings.db.ASYNC_DB_URL)
-    system_started = SystemStarted(entity_id="system", settings=settings)
-    system = GPTSystem.apply(system_started)
-    system.create_eventlog()
-    system.create_journal(eventstore=eventstore, mailbox=MailBox.build())
-    return system
+@asynccontextmanager
+async def setup_system(settings: Settings):
+    # from sqlalchemy.ext.asyncio import create_async_engine
+
+    engine = async_engine_factory(
+        settings.db.ASYNC_DB_URL,
+        echo=True,
+        isolation_level=settings.db.ISOLATION_LEVEL,
+        pool_pre_ping=True,
+    )
+    await EventSchema.create_table_async(engine)
+    await EventSchema.assure_table_exist(engine)
+
+    eventstore = EventStore(engine=engine)
+    system = await GPTSystem.create(settings=settings, eventstore=eventstore)
+
+    try:
+        yield system
+    except KeyboardInterrupt:
+        logger.info("Quit by user")
+    finally:
+        await system.stop()
+
+
+class GPTService:
+    ...

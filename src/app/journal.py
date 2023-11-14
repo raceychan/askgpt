@@ -6,7 +6,6 @@ from src.app.actor import Actor, ActorRef
 from src.app.interface import IJournal
 from src.domain.interface import IEvent, IEventStore, IMessage
 from src.domain.model import Event
-from src.infra.eventstore import EventStore
 from src.infra.mq import MailBox
 
 
@@ -17,8 +16,8 @@ class Journal(Actor[ty.Any], IJournal):
         self, eventstore: IEventStore, mailbox: MailBox, ref: ActorRef
     ) -> None:
         super().__init__(mailbox)
+        self.system.subscribe_events(self)
         self.eventstore = eventstore
-        self.system.eventlog.register_listener(self)
         self.__ref = ref
 
     async def on_receive(self) -> None:
@@ -49,15 +48,15 @@ class Journal(Actor[ty.Any], IJournal):
     def ref(self) -> ActorRef:
         return self.__ref
 
-    @classmethod
-    def build(
-        cls,
-        *,
-        db_url: str,
-        ref: ActorRef,
-    ) -> ty.Self:
-        es = EventStore.build(db_url=db_url)
-        return cls(eventstore=es, mailbox=MailBox.build(), ref=ref)
+    # @classmethod
+    # def build(
+    #     cls,
+    #     *,
+    #     db_url: str,
+    #     ref: ActorRef,
+    # ) -> ty.Self:
+    #     es = EventStore.build(db_url=db_url)
+    #     return cls(eventstore=es, mailbox=MailBox.build(), ref=ref)
 
     async def list_events(self, ref: ActorRef) -> "list[IEvent]":
         return await self.eventstore.get(entity_id=ref)

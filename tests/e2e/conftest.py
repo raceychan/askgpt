@@ -4,7 +4,6 @@ import pathlib
 import pytest
 
 from src.domain.config import Settings
-from src.domain.fileutil import FileLoader, FileUtil
 
 
 @pytest.fixture(scope="session")
@@ -36,15 +35,3 @@ def settings() -> TestSettings:
         RUNTIME_ENV="test",
     )
     return ss
-
-
-@pytest.fixture(scope="session")
-def fileloader():
-    return FileLoader.from_chain()
-
-
-@pytest.fixture(scope="session")
-def fileutil(fileloader: FileLoader):
-    from pathlib import Path
-
-    return FileUtil(work_dir=Path.cwd(), file_loader=fileloader)

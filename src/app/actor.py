@@ -2,34 +2,24 @@ import asyncio
 import typing as ty
 from functools import cached_property, singledispatchmethod
 
+from src.app.interface import AbstractActor, ActorRegistry, IJournal
 from src.domain.error import SystemNotSetError
-from src.domain.interface import ISettings
-
-# from domain.interface import IEntity
-from src.domain.model import Command, Event
-from src.infra.mq import MailBox
-
-from .interface import (
-    AbstractActor,
+from src.domain.interface import (
     ActorRef,
-    ActorRegistry,
     ICommand,
     IEntity,
     IEvent,
-    IJournal,
     IMessage,
+    ISettings,
 )
-
-# TListener = ty.TypeVar("TListener", bound="Actor[ty.Any]")
+from src.domain.model import Command, Event
+from src.infra.mq import MailBox
 
 
 class Actor[TChild: "Actor[ty.Any]"](AbstractActor):
     mailbox: MailBox
     _system: ty.ClassVar["System[ty.Any]"]
     childs: ActorRegistry[ActorRef, TChild]
-
-    # def predict_command(self, command: ICommand) -> IEvent:
-    #     raise NotImplementedError
 
     def __init__(self, mailbox: MailBox):
         if not isinstance(self, System):
@@ -118,7 +108,6 @@ class Actor[TChild: "Actor[ty.Any]"](AbstractActor):
         elif sys_ is not system:
             raise Exception("Call set_system twice while system is already set")
 
-    # @classmethod
     def rebuild(self, events: list[IEvent]) -> ty.Self:
         if not events:
             raise Exception("No events to rebuild")
@@ -185,11 +174,13 @@ class System[TChild: Actor[ty.Any]](Actor[TChild]):
         if eventlog is None:
             eventlog = EventLog(mailbox=MailBox.build())
         self._eventlog = eventlog
-        # self.childs[self._settings.actor_refs.EVENTLOG] = eventlog
 
     @property
-    def eventlog(self) -> "EventLog[ty.Any]":
+    def eventlog(self) -> "EventLog[TChild]":
         return self._eventlog
+
+    def subscribe_events(self, actor: Actor[TChild]):
+        self._eventlog.register_listener(actor)
 
     @property
     def journal(self) -> "IJournal":

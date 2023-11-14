@@ -2,7 +2,7 @@ import pytest
 
 from src.app.actor import MailBox
 from src.app.gpt import model, service
-from src.app.journal import EventStore
+from src.infra.eventstore import EventStore
 from src.domain import config
 
 

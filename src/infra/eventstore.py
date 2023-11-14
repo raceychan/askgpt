@@ -6,7 +6,7 @@ from sqlalchemy.ext import asyncio as sa_aio
 
 from src.domain.interface import IEvent, IEventStore
 from src.domain.model import Event
-from src.infra.sa_utils import engine_factory
+from src.infra.sa_utils import async_engine_factory
 
 EVENT_TABLE: ty.Final[sa.TableClause] = sa.table(
     "domain_events",
@@ -48,10 +48,9 @@ def load_event(row_mapping: sa.RowMapping | dict[str, ty.Any]) -> IEvent:
 
 
 class EventStore(IEventStore):
-    table: sa.TableClause = EVENT_TABLE
-
-    def __init__(self, engine: sa_aio.AsyncEngine):
+    def __init__(self, engine: sa_aio.AsyncEngine, table: sa.TableClause = EVENT_TABLE):
         self.engine = engine
+        self.table = table
 
     async def add(self, event: IEvent) -> None:
         value = dump_event(event)
@@ -83,6 +82,6 @@ class EventStore(IEventStore):
     async def remove(self, entity_id: str) -> None:
         raise NotImplementedError
 
-    @classmethod
-    def build(cls, *, db_url: str) -> ty.Self:
-        return cls(engine=engine_factory(db_url))
+    # @classmethod
+    # def build(cls, *, db_url: str) -> ty.Self:
+    #     return cls(engine=engine_factory(db_url))

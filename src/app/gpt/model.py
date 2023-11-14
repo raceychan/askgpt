@@ -11,7 +11,7 @@ from src.domain.model import (
     computed_field,
     uuid_factory,
 )
-from src.domain.model.interface import ICommand, IEvent
+from src.domain.model.interface import ICommand  # , IEvent
 
 
 class TestDefaults:

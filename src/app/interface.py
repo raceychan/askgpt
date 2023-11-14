@@ -2,21 +2,10 @@ import abc
 import typing as ty
 from functools import cached_property, singledispatchmethod
 
-from src.domain.interface import (
-    ActorRef,
-    ICommand,
-    IEntity,
-    IEvent,
-    IEventStore,
-    IMessage,
-    T,
-)
-
-TRef = ty.TypeVar("TRef", bound=ActorRef)
-TActor = ty.TypeVar("TActor", bound="AbstractActor")
+from src.domain.interface import ActorRef, ICommand, IEvent, IEventStore, IMessage
 
 
-class ActorRegistry(ty.Generic[TRef, TActor]):
+class ActorRegistry[TRef: ActorRef, TActor: "AbstractActor"]:
     def __init__(self) -> None:
         self._dict: dict[TRef, TActor] = dict()
 
@@ -35,10 +24,13 @@ class ActorRegistry(ty.Generic[TRef, TActor]):
     def __repr__(self) -> str:
         return f"{type(self).__name__}({self._dict})"
 
+    def keys(self):
+        return self._dict.keys()
+
     def values(self) -> list[TActor]:
         return list(self._dict.values())
 
-    def get(self, key: TRef, default: T | None = None) -> TActor | T | None:
+    def get[T](self, key: TRef, default: T | None = None) -> TActor | T | None:
         return self._dict.get(key, default)
 
 
@@ -77,7 +69,6 @@ class IJournal(ty.Protocol):
     def ref(self) -> ActorRef:
         ...
 
-
-    async def list_events(self, ref: ActorRef)->"list[IEvent]":
+    async def list_events(self, ref: ActorRef) -> "list[IEvent]":
         # return await self.eventstore.get(entity_id=ref)
         ...

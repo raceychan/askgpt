@@ -18,15 +18,15 @@ def chat_messages():
 
 
 @pytest.fixture(scope="module")
-async def gpt_system(settings: config.Settings, eventstore: service.EventStore):
+async def gptsystem(settings: config.Settings, eventstore: service.EventStore):
     system = await service.GPTSystem.create(settings, eventstore=eventstore)
     return system
 
 
 @pytest.fixture(scope="module")
-async def user_actor(gpt_system: service.GPTSystem):
+async def user_actor(gptsystem: service.GPTSystem):
     cmd = model.CreateUser(user_id=model.TestDefaults.USER_ID)
-    user = await gpt_system.create_user(cmd)
+    user = await gptsystem.create_user(cmd)
     return user
 
 
@@ -130,6 +130,8 @@ async def test_user_rebuild_session(user_actor: service.UserActor):
         session_id=model.TestDefaults.SESSION_ID
     )
 
+    assert current_ss_actor is not user_built_session
+
     assert (
         current_ss_actor.entity_id
         == user_built_session.entity_id
@@ -144,19 +146,23 @@ async def test_user_rebuild_session(user_actor: service.UserActor):
     assert current_ss_actor.message_count == user_built_session.message_count
 
 
+# async def test_user_rebuild_sessions(user_actor: service.UserActor):
+#     await user_actor.rebuild_sessions()
+
+
 async def test_user_self_rebuild(eventstore: service.EventStore):
     user_events = await eventstore.get(model.TestDefaults.USER_ID)
-
     user_created = user_events[0]
-
-    # session_events = await eventstore.get(model.TestDefaults.SESSION_ID)
-
     user_actor = service.UserActor.apply(user_created)
     user_actor.rebuild(user_events[1:])
-    assert isinstance(user_actor, service.UserActor)
     assert user_actor.entity_id == model.TestDefaults.USER_ID
     assert user_actor.session_count == 1
 
 
-async def test_system_rebuild_user():
-    raise NotImplementedError
+async def test_system_rebuild_user(
+    gptsystem: service.GPTSystem, user_actor: service.UserActor
+):
+    built_user = await gptsystem.rebuild_user(user_actor.entity_id)
+    assert built_user is not user_actor
+    assert built_user.entity_id == user_actor.entity_id == model.TestDefaults.USER_ID
+    assert built_user.session_count == user_actor.session_count == 1

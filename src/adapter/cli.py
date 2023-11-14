@@ -1,10 +1,11 @@
 import asyncio
+
+# from src.app import gpt
 from argparse import ArgumentParser, Namespace
 
 from src.app.gpt import model, service
+from src.domain._log import logger
 from src.domain.config import Settings
-
-#from src.app import gpt
 
 
 class CLIOptions(Namespace):
@@ -22,17 +23,17 @@ class CLIOptions(Namespace):
         if self.question and self.interactive:
             raise ValueError("question and interactive are mutually exclusive")
 
-
-def cli() -> CLIOptions:
-    parser = ArgumentParser(description="gpt client in zen mode")
-    parser.add_argument("question", type=str, nargs="?")
-    parser.add_argument("--user_id", type=str, nargs="?")
-    parser.add_argument("--session_id", type=str, nargs="?")
-    parser.add_argument("--model", type=str, nargs="?")
-    parser.add_argument("-i", "--interactive", action="store_true")
-    namespace: CLIOptions = parser.parse_args(namespace=CLIOptions())  # type: ignore
-    namespace.validate()
-    return namespace
+    @classmethod
+    def parse(cls):
+        parser = ArgumentParser(description="gpt client in zen mode")
+        parser.add_argument("question", type=str, nargs="?")
+        parser.add_argument("--user_id", type=str, nargs="?")
+        parser.add_argument("--session_id", type=str, nargs="?")
+        parser.add_argument("--model", type=str, nargs="?")
+        parser.add_argument("-i", "--interactive", action="store_true")
+        namespace: CLIOptions = parser.parse_args(namespace=CLIOptions())
+        namespace.validate()
+        return namespace
 
 
 # async def rebuild_system(engine):
@@ -61,24 +62,9 @@ async def interactive(system: service.GPTSystem) -> None:
         await send_question(question, system)
 
 
-async def app(options: CLIOptions) -> None:
-    # TODO: make this a method of system
-    # async with gpt.service.set_upsytem(settings) as system:
-    #     if options.question:
-    #         await system.send_question(options.question)
-    #     else:
-    #         await system.interactive()
-
-    settings = Settings.from_file("settings.toml")
-
-    system = await service.setup_system(settings)
-
-    try:
+async def app(options: CLIOptions, settings: Settings) -> None:
+    async with service.setup_system(settings) as system:
         await service_dispatch(options, system)
-    except KeyboardInterrupt:
-        quit("\nBye")
-    finally:
-        await system.stop()
 
 
 async def service_dispatch(options: CLIOptions, system: service.GPTSystem) -> None:
@@ -89,5 +75,6 @@ async def service_dispatch(options: CLIOptions, system: service.GPTSystem) -> No
 
 
 if __name__ == "__main__":
-    namespace = cli()
-    asyncio.run(app(namespace))
+    namespace = CLIOptions.parse()
+    settings = Settings.from_file("settings.toml")
+    asyncio.run(app(namespace, settings))
