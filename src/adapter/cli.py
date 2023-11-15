@@ -64,6 +64,7 @@ async def interactive(system: service.GPTSystem) -> None:
 
 async def app(options: CLIOptions, settings: Settings) -> None:
     async with service.setup_system(settings) as system:
+        logger.info("system started")
         await service_dispatch(options, system)
 
 

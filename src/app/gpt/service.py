@@ -2,7 +2,7 @@ import typing as ty
 from contextlib import asynccontextmanager
 from functools import singledispatchmethod
 
-from src.app.actor import EntityActor, System
+from src.app.actor import EntityActor, EventLog, System
 from src.app.gpt import model
 from src.app.gpt.client import OpenAIClient
 from src.app.journal import Journal
@@ -67,7 +67,7 @@ class GPTSystem(System["UserActor"]):
         await self.publish(event)
         return user_actor
 
-    def create_journal(self, eventstore: EventStore, mailbox: MailBox) -> None:
+    def setup_journal(self, eventstore: EventStore, mailbox: MailBox) -> None:
         """
         journal is part of the application layer, it should be created here by gptsystem
         """
@@ -87,11 +87,8 @@ class GPTSystem(System["UserActor"]):
     async def create(cls, settings: Settings, eventstore: EventStore) -> "GPTSystem":
         event = SystemStarted(entity_id=settings.actor_refs.SYSTEM, settings=settings)
         system: GPTSystem = cls.apply(event)
-        system.create_eventlog()
-        system.create_journal(
-            eventstore=eventstore,
-            mailbox=MailBox.build(),
-        )
+        system.setup_journal(eventstore=eventstore, mailbox=MailBox.build())
+
         # await system.publish(event)
         return system
 
@@ -281,8 +278,6 @@ class SessionActor(EntityActor[OpenAIClient, model.ChatSession]):
 
 @asynccontextmanager
 async def setup_system(settings: Settings):
-    # from sqlalchemy.ext.asyncio import create_async_engine
-
     engine = async_engine_factory(
         settings.db.ASYNC_DB_URL,
         echo=True,

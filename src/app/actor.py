@@ -152,6 +152,10 @@ class EntityActor[TChild: Actor[ty.Any], TEntity: IEntity](
 
 
 class System[TChild: Actor[ty.Any]](Actor[TChild]):
+    """
+    Singleton, should not be used directly, subclass it instead
+    """
+
     _eventlog: "EventLog[ty.Any]"
     _journal: IJournal
 
@@ -163,14 +167,15 @@ class System[TChild: Actor[ty.Any]](Actor[TChild]):
     def __init__(self, mailbox: MailBox, settings: ISettings):
         super().__init__(mailbox=mailbox)
         self.set_system(self)
+        self._eventlog = EventLog(mailbox=MailBox.build())
         self._settings = settings
         self.__ref = settings.actor_refs.SYSTEM
 
     def ensure_self(self) -> None:
         """Pre start events"""
-        pass
+        ...
 
-    def create_eventlog(self, eventlog: ty.Optional["EventLog[ty.Any]"] = None) -> None:
+    def setup_eventlog(self, eventlog: ty.Optional["EventLog[ty.Any]"] = None) -> None:
         if eventlog is None:
             eventlog = EventLog(mailbox=MailBox.build())
         self._eventlog = eventlog

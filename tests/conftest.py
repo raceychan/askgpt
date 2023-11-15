@@ -20,7 +20,7 @@ class TestSettings(Settings):
     class DB(Settings.DB):
         DATABASE: pathlib.Path = pathlib.Path(":memory:")
         # DATABASE: pathlib.Path = pathlib.Path("./database/test.db")
-        ENGINE_ECHO: bool = True
+        ENGINE_ECHO: bool = False
 
     class ActorRefs(Settings.ActorRefs):
         ...
