@@ -1,10 +1,7 @@
 import asyncio
-
-# from src.app import gpt
 from argparse import ArgumentParser, Namespace
 
 from src.app.gpt import model, service
-from src.domain._log import logger
 from src.domain.config import Settings
 
 
@@ -16,66 +13,63 @@ class CLIOptions(Namespace):
     interactive: bool = False
 
     def validate(self) -> None:
+        # BUG: loses all default values
         models = model.CompletionModels.__args__  # type: ignore
         if self.model not in models:
-            raise ValueError(f"model must be one of {models}")
+            raise ValueError(f"model must be one of {models}, received: {self.model}")
 
         if self.question and self.interactive:
             raise ValueError("question and interactive are mutually exclusive")
+        elif not self.question and not self.interactive:
+            raise ValueError("question or interactive is required")
 
     @classmethod
     def parse(cls):
         parser = ArgumentParser(description="gpt client in zen mode")
-        parser.add_argument("question", type=str, nargs="?")
-        parser.add_argument("--user_id", type=str, nargs="?")
-        parser.add_argument("--session_id", type=str, nargs="?")
-        parser.add_argument("--model", type=str, nargs="?")
-        parser.add_argument("-i", "--interactive", action="store_true")
-        namespace: CLIOptions = parser.parse_args(namespace=CLIOptions())
+        sub = parser.add_subparsers(required=True)
+
+        gpt = sub.add_parser("gpt", help="gpt client")
+        gpt.add_argument("question", type=str, nargs="?")
+        gpt.add_argument(
+            "--user_id", default=model.TestDefaults.USER_ID, type=str, nargs="?"
+        )
+        gpt.add_argument(
+            "--session_id", default=model.TestDefaults.SESSION_ID, type=str, nargs="?"
+        )
+        gpt.add_argument(
+            "--model", default=model.TestDefaults.MODEL, type=str, nargs="?"
+        )
+        gpt.add_argument("-i", "--interactive", action="store_true")
+
+        auth = sub.add_parser("auth", help="gpt auth client")
+        auth.add_argument("--user_name", type=str, nargs="?")
+        auth.add_argument("--email", type=str, nargs="?")
+        auth.add_argument("--password", type=str, nargs="?")
+
+        namespace = parser.parse_args(namespace=CLIOptions())
         namespace.validate()
         return namespace
 
 
-# async def rebuild_system(engine):
-#     raise NotImplementedError
-#     from src.infra.eventstore import EventStore
-
-#     eventstore: EventStore = EventStore(engine)
-
-#     ...
-
-
-async def send_question(question: str, system: service.GPTSystem) -> None:
-    command = model.SendChatMessage(
-        user_id=model.TestDefaults.USER_ID,
-        session_id=model.TestDefaults.SESSION_ID,
-        message_body=question,
-        role="user",
-    )
-
-    await system.receive(command)
-
-
-async def interactive(system: service.GPTSystem) -> None:
-    while True:
-        question = input("\nwhat woud you like to ask?\n\n")
-        await send_question(question, system)
+async def service_dispatch(gptservice: service.GPTService, options: CLIOptions) -> None:
+    async with gptservice.setup_system() as gpt:
+        if options.question:
+            await gpt.send_question(options.question)
+        elif options.interactive:
+            await gpt.interactive()
 
 
 async def app(options: CLIOptions, settings: Settings) -> None:
-    async with service.setup_system(settings) as system:
-        logger.info("system started")
-        await service_dispatch(options, system)
+    gpt = service.GPTService(settings)
+    async with gpt.setup_system() as system:
+        await service_dispatch(system, options)
 
 
-async def service_dispatch(options: CLIOptions, system: service.GPTSystem) -> None:
-    if options.question:
-        await send_question(options.question, system)
-    elif options.interactive:
-        await interactive(system)
+def main():
+    options = CLIOptions.parse()
+    settings = Settings.from_file("settings.toml")
+    asyncio.run(app(options, settings))
 
 
 if __name__ == "__main__":
-    namespace = CLIOptions.parse()
-    settings = Settings.from_file("settings.toml")
-    asyncio.run(app(namespace, settings))
+    main()

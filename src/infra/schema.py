@@ -63,6 +63,8 @@ class EventSchema(TableBase):
 
 
 class UserSchema(TableBase):
+    __tablename__: str = "users"  # type: ignore
+
     id = sa.Column("id", sa.Integer, primary_key=True, autoincrement="auto")
     username = sa.Column("username", sa.String, unique=True, index=True)
     email = sa.Column("email", sa.String, unique=True, index=True)

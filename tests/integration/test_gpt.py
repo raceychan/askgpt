@@ -2,8 +2,8 @@ import pytest
 
 from src.app.actor import MailBox
 from src.app.gpt import model, service
-from src.infra.eventstore import EventStore
 from src.domain import config
+from src.infra.eventstore import EventStore
 
 
 class EchoMailbox(MailBox):
@@ -19,7 +19,9 @@ async def gpt_system(settings: config.Settings, eventstore: service.EventStore):
 
 @pytest.fixture(scope="module")
 def create_user():
-    return model.CreateUser(user_id=model.TestDefaults.USER_ID)
+    return model.CreateUser(
+        user_id=model.TestDefaults.USER_ID, user_info=model.TestDefaults.USER_INFO
+    )
 
 
 @pytest.fixture(scope="module")
@@ -48,7 +50,8 @@ def system_started(settings: config.Settings):
 
 @pytest.fixture(scope="module")
 def user_created():
-    return model.UserCreated(user_id=model.TestDefaults.USER_ID)
+    dfs = model.TestDefaults
+    return model.UserCreated(user_id=dfs.USER_ID, user_info=dfs.USER_INFO)
 
 
 @pytest.fixture(scope="module")
@@ -63,7 +66,9 @@ async def test_create_user_from_system(
     eventstore: EventStore,
     create_user: model.CreateUser,
 ):
-    command = model.CreateUser(user_id=model.TestDefaults.USER_ID)
+    defaults = model.TestDefaults
+    command = model.CreateUser(user_id=defaults.USER_ID, user_info=defaults.USER_INFO)
+
     await gpt_system.receive(command)
 
     user = gpt_system.get_child(command.entity_id)

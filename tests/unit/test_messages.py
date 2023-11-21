@@ -4,8 +4,8 @@ from src.app.gpt import model
 
 
 @pytest.fixture(scope="module")
-def create_user():
-    return model.CreateUser(user_id=model.TestDefaults.USER_ID)
+def create_user(user_info: model.UserInfo):
+    return model.CreateUser(user_id=model.TestDefaults.USER_ID, user_info=user_info)
 
 
 @pytest.fixture(scope="module")
@@ -16,18 +16,19 @@ def create_session():
 
 
 @pytest.fixture(scope="module")
-def send_chat_message():
+def send_chat_message(user_info: model.UserInfo):
     # This should raise Exception
     return model.SendChatMessage(
         user_id=model.TestDefaults.USER_ID,
         session_id=model.TestDefaults.SESSION_ID,
-        user_message="hello",
+        message_body="hello",
+        role="user",
     )
 
 
 @pytest.fixture(scope="module")
-def user_created():
-    return model.UserCreated(user_id=model.TestDefaults.USER_ID)
+def user_created(user_info: model.UserInfo):
+    return model.UserCreated(user_id=model.TestDefaults.USER_ID, user_info=user_info)
 
 
 @pytest.fixture(scope="module")

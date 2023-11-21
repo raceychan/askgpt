@@ -2,7 +2,7 @@ import typing as ty
 from contextlib import asynccontextmanager
 from functools import singledispatchmethod
 
-from src.app.actor import EntityActor, EventLog, System
+from src.app.actor import EntityActor, System  # EventLog,
 from src.app.gpt import model
 from src.app.gpt.client import OpenAIClient
 from src.app.journal import Journal
@@ -56,12 +56,18 @@ class SystemStoped(Event):
     ...
 
 
+class UserNotRegisteredError(Exception):
+    ...
+
+
 class GPTSystem(System["UserActor"]):
     def __init__(self, mailbox: MailBox, settings: ISettings):
         super().__init__(mailbox=mailbox, settings=settings)
 
     async def create_user(self, command: model.CreateUser) -> "UserActor":
-        event = model.UserCreated(user_id=command.entity_id)
+        event = model.UserCreated(
+            user_id=command.entity_id, user_info=command.user_info
+        )
         user_actor = UserActor.apply(event)
         self.childs[user_actor.entity_id] = user_actor
         await self.publish(event)
@@ -75,9 +81,11 @@ class GPTSystem(System["UserActor"]):
         journal = Journal(eventstore, mailbox, ref=journal_ref)
         self._journal = journal
 
-    async def rebuild_user(self, user_id: str):
+    async def rebuild_user(self, user_id: str) -> "UserActor":
         events = await self.journal.list_events(user_id)
-        created = model.UserCreated(user_id=user_id)
+        if not events:
+            raise UserNotRegisteredError(f"No events for user: {user_id}")
+        created = events.pop(0)
         user_actor = UserActor.apply(created)
         user_actor.rebuild(events)
         self.childs[user_actor.entity_id] = user_actor
@@ -88,7 +96,6 @@ class GPTSystem(System["UserActor"]):
         event = SystemStarted(entity_id=settings.actor_refs.SYSTEM, settings=settings)
         system: GPTSystem = cls.apply(event)
         system.setup_journal(eventstore=eventstore, mailbox=MailBox.build())
-
         # await system.publish(event)
         return system
 
@@ -131,7 +138,7 @@ class GPTSystem(System["UserActor"]):
 
     async def stop(self) -> None:
         # await self.publish(SystemStoped(entity_id="system"))
-        logger.info("system stopped")
+        ...
         # raise NotImplementedError
 
 
@@ -150,6 +157,9 @@ class UserActor(EntityActor["SessionActor", model.User]):
             await self.rebuild_session(session_id)
 
     async def rebuild_session(self, session_id: str) -> "SessionActor":
+        if session_id not in self.entity.session_ids:
+            raise Exception("session does not belong to user")
+
         events = await self.system.journal.list_events(session_id)
         created = self.entity.predict_command(
             model.CreateSession(session_id=session_id, user_id=self.entity_id)
@@ -165,7 +175,7 @@ class UserActor(EntityActor["SessionActor", model.User]):
 
     @singledispatchmethod
     def apply(self, event: Event) -> ty.Self:
-        raise NotImplementedError
+        raise NotImplementedError(f"apply for {event} is not implemented")
 
     @handle.register
     async def _(self, command: model.CreateSession) -> None:
@@ -276,27 +286,49 @@ class SessionActor(EntityActor[OpenAIClient, model.ChatSession]):
         return cls(chat_session=model.ChatSession.apply(event))
 
 
-@asynccontextmanager
-async def setup_system(settings: Settings):
-    engine = async_engine_factory(
-        settings.db.ASYNC_DB_URL,
-        echo=True,
-        isolation_level=settings.db.ISOLATION_LEVEL,
-        pool_pre_ping=True,
-    )
-    await EventSchema.create_table_async(engine)
-    await EventSchema.assure_table_exist(engine)
-
-    eventstore = EventStore(engine=engine)
-    system = await GPTSystem.create(settings=settings, eventstore=eventstore)
-
-    try:
-        yield system
-    except KeyboardInterrupt:
-        logger.info("Quit by user")
-    finally:
-        await system.stop()
-
-
 class GPTService:
-    ...
+    system: GPTSystem
+
+    def __init__(self, settings: Settings):
+        self._settings = settings
+        self._state = "created"
+
+    async def send_question(self, question: str) -> None:
+        command = model.SendChatMessage(
+            user_id=model.TestDefaults.USER_ID,
+            session_id=model.TestDefaults.SESSION_ID,
+            message_body=question,
+            role="user",
+        )
+
+        await self.system.receive(command)
+
+    async def interactive(self) -> None:
+        while True:
+            question = input("\nwhat woud you like to ask?\n\n")
+            await self.send_question(question)
+
+    @asynccontextmanager
+    async def setup_system(self):
+        engine = async_engine_factory(
+            self._settings.db.ASYNC_DB_URL,
+            echo=True if self._settings.RUNTIME_ENV == "test" else False,
+            isolation_level=self._settings.db.ISOLATION_LEVEL,
+            pool_pre_ping=True,
+        )
+        await EventSchema.create_table_async(engine)
+        await EventSchema.assure_table_exist(engine)
+
+        eventstore = EventStore(engine=engine)
+        self.system = await GPTSystem.create(
+            settings=self._settings, eventstore=eventstore
+        )
+
+        try:
+            logger.info("System started")
+            yield self
+        except KeyboardInterrupt:
+            logger.info("Quit by user")
+        finally:
+            await self.system.stop()
+            logger.info("system stopped")

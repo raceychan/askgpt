@@ -6,25 +6,20 @@ from dataclasses import dataclass
 from functools import singledispatchmethod
 
 import sqlalchemy as sa
-from pydantic import BaseModel, ConfigDict, Field, SerializeAsAny, computed_field
+from pydantic import (
+    BaseModel,
+    ConfigDict,
+    Field,
+    SerializeAsAny,
+    computed_field,
+    validator,
+    field_serializer,
+)
 
 from src.domain.model.interface import ICommand, IEvent, utc_datetime
 from src.domain.model.name_tools import str_to_snake
 
 frozen = dataclass(frozen=True, slots=True, kw_only=True)
-
-
-# def rich_repr(namespace: ty.Mapping[str, ty.Any], indent: str = "\t") -> str:
-#     lines = ""
-#     for key, val in namespace.items():
-#         if not key.startswith("_"):
-#             if isinstance(val, dict):
-#                 lines += f"{indent}{key}=\n" + rich_repr(val, indent + indent)  # type: ignore
-#             elif hasattr(val, "__dict__"):
-#                 lines += f"{indent}{key}=\n" + rich_repr(val.__dict__, indent + indent)
-#             else:
-#                 lines += f"{indent}{key}={val}\n"
-#     return lines
 
 
 def uuid_factory() -> str:
@@ -42,6 +37,24 @@ def utcts_factory(ts: float | None = None) -> utc_datetime:
         return datetime.datetime.fromtimestamp(ts)  # , tz=datetime.UTC)
 
     return datetime.datetime.utcnow()  # (tz=datetime.UTC)
+
+
+class attribute[TOwner, TField]:
+    def __init__(
+        self,
+        fget: ty.Callable[[TOwner], TField] | None = None,
+        fset: ty.Callable[[TOwner, TField], None] | None = None,
+    ):
+        self.fget = fget
+        self.fset = fset
+
+    def __get__(self, instance: ty.Any | None, owner: ty.Any) -> ty.Any:
+        if self.fget:
+            return self.fget(instance) if instance else self.fget(owner)
+        raise AttributeError("unreadable attribute")
+
+    def setter(self, fset: ty.Callable[[TOwner, TField], None]) -> ty.Self:
+        return type(self)(self.fget, fset)
 
 
 class DomainBase(BaseModel):

@@ -63,6 +63,12 @@ class Settings(SettingsBase):
         fileutil = FileUtil.from_cwd()
         return cls(**fileutil.read_file(filename))
 
+    class Security(SettingsBase):
+        SECRET_KEY: str
+        ALGORITHM: str = "HS256"
+        ACCESS_TOKEN_EXPIRE_MINUTES: int = 60 * 24 * 7
+        SALT: str = "askgpt"
+
 
 def settings(filename: str = "settings.toml") -> Settings:
     return Settings.from_file(filename=filename)

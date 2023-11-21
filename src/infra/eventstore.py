@@ -6,7 +6,8 @@ from sqlalchemy.ext import asyncio as sa_aio
 
 from src.domain.interface import IEvent, IEventStore
 from src.domain.model import Event
-from src.infra.sa_utils import async_engine_factory
+
+# from src.infra.sa_utils import async_engine_factory
 
 EVENT_TABLE: ty.Final[sa.TableClause] = sa.table(
     "domain_events",

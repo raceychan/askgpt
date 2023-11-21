@@ -2,13 +2,16 @@ import typing as ty
 from functools import singledispatchmethod
 
 from src.app.gpt.params import ChatGPTRoles, CompletionModels
-from src.domain.model import (
+from src.domain import encrypt
+from src.domain.model.base import (
     Command,
     Entity,
     Event,
     Field,
     ValueObject,
+    attribute,
     computed_field,
+    field_serializer,
     uuid_factory,
 )
 from src.domain.model.interface import ICommand  # , IEvent
@@ -16,9 +19,21 @@ from src.domain.model.interface import ICommand  # , IEvent
 
 class TestDefaults:
     SYSTEM_ID: str = "system"
-    USER_ID: str = "admin"
-    SESSION_ID: str = "default_session"
+    USER_ID: str = "5aba4f79-19f7-4bd2-92fe-f2cdb43635a3"
+    USER_NAME: str = "admin"
+    USER_EMAIL: str = "admin@gmail.com"
+    USER_PASSWORD: bytes = "password".encode()
+    SESSION_ID: str = "e0b5ee4a-ef76-4ed9-89fb-5f7a64122dc8"
+    SESSION_NAME: str = "default_session"
     MODEL: CompletionModels = "gpt-3.5-turbo"
+
+    @attribute
+    def USER_INFO(cls) -> "UserInfo":
+        return UserInfo(
+            user_email=cls.USER_EMAIL,
+            user_name=cls.USER_NAME,
+            hash_password=encrypt.hash_password(cls.USER_PASSWORD),
+        )
 
 
 class ChatMessage(ValueObject):
@@ -58,14 +73,6 @@ class CreateSession(Command):
 
 class SessionCreated(Event):
     session_id: str
-    entity_id: str = Field(alias="user_id")
-
-
-class CreateUser(Command):
-    entity_id: str = Field(alias="user_id")
-
-
-class UserCreated(Event):
     entity_id: str = Field(alias="user_id")
 
 
@@ -142,9 +149,31 @@ class ChatSession(Entity):
         return self
 
 
+class UserInfo(ValueObject):
+    version: ty.ClassVar[str] = "1.0.0"
+    user_email: str
+    user_name: str
+    hash_password: bytes  # this should be hash value of the password
+
+    @field_serializer("hash_password")
+    def serialize_password(self, hash_password: bytes) -> str:
+        return hash_password.decode()
+
+
+class CreateUser(Command):
+    entity_id: str = Field(alias="user_id")
+    user_info: UserInfo
+
+
+class UserCreated(Event):
+    entity_id: str = Field(alias="user_id")
+    user_info: UserInfo
+
+
 # aggregate_root
 class User(Entity):
     entity_id: str = Field(alias="user_id")
+    user_info: UserInfo
     session_ids: list[str] = Field(default_factory=list)
 
     def predict_command(self, command: ICommand) -> list[SessionCreated]:
@@ -169,7 +198,7 @@ class User(Entity):
     @apply.register
     @classmethod
     def _(cls, event: UserCreated) -> ty.Self:
-        return cls(user_id=event.entity_id)
+        return cls(user_id=event.entity_id, user_info=event.user_info)
 
     @apply.register
     def _(self, event: SessionCreated) -> ty.Self:
@@ -178,5 +207,5 @@ class User(Entity):
 
     @classmethod
     def create(cls, command: CreateUser) -> ty.Self:
-        evt = UserCreated(user_id=command.entity_id)
+        evt = UserCreated(user_id=command.entity_id, user_info=command.user_info)
         return cls.apply(evt)

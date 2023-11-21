@@ -25,7 +25,9 @@ async def gptsystem(settings: config.Settings, eventstore: service.EventStore):
 
 @pytest.fixture(scope="module")
 async def user_actor(gptsystem: service.GPTSystem):
-    cmd = model.CreateUser(user_id=model.TestDefaults.USER_ID)
+    cmd = model.CreateUser(
+        user_id=model.TestDefaults.USER_ID, user_info=model.TestDefaults.USER_INFO
+    )
     user = await gptsystem.create_user(cmd)
     return user
 

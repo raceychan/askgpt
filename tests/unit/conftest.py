@@ -1,19 +1,17 @@
 import pytest
 
-from src.app.gpt.model import UserCreated
-from src.domain.model import Event
+from src.app.gpt import model
+from src.domain import encrypt
 
 
 @pytest.fixture(scope="package")
-def entity_id():
-    return "test_id"
+def user_info():
+    e = model.TestDefaults.USER_INFO
+    assert encrypt.verify_password(model.TestDefaults.USER_PASSWORD, e.hash_password)
+
+    return e
 
 
 @pytest.fixture(scope="package")
-def event(entity_id):
-    return Event(entity_id=entity_id)
-
-
-@pytest.fixture(scope="package")
-def user_created(entity_id):
-    return UserCreated(user_id=entity_id)
+def user_created(user_info: model.UserInfo):
+    return model.UserCreated(user_id=model.TestDefaults.USER_ID, user_info=user_info)

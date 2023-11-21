@@ -16,6 +16,10 @@ from src.domain.model import Command, Event
 from src.infra.mq import MailBox
 
 
+class EmptyEvents(Exception):
+    ...
+
+
 class Actor[TChild: "Actor[ty.Any]"](AbstractActor):
     mailbox: MailBox
     _system: ty.ClassVar["System[ty.Any]"]
@@ -110,7 +114,7 @@ class Actor[TChild: "Actor[ty.Any]"](AbstractActor):
 
     def rebuild(self, events: list[IEvent]) -> ty.Self:
         if not events:
-            raise Exception("No events to rebuild")
+            raise EmptyEvents("No events to rebuild")
 
         for e in events:
             self.apply(e)

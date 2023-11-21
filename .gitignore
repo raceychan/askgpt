@@ -3,11 +3,11 @@ settings.toml
 response.json
 answer.md
 dev.ipynb
+tmp.py
 
 .ipynb_checkpoints
 *.vscode
 database
-
 
 # Byte-compiled / optimized / DLL files
 __pycache__/

@@ -1,13 +1,12 @@
 import pytest
 
 from src.app.gpt import model
-
-# from src.infra.mq import MailBox
+from src.domain import encrypt
 
 
 @pytest.fixture(scope="module")
-def create_user():
-    return model.CreateUser(user_id=model.TestDefaults.USER_ID)
+def create_user(user_info: model.UserInfo):
+    return model.CreateUser(user_id=model.TestDefaults.USER_ID, user_info=user_info)
 
 
 @pytest.fixture(scope="module")
@@ -39,3 +38,9 @@ def test_rebuild_user_by_events(
     assert isinstance(user, model.User)
     assert user.entity_id == user_created.entity_id
     assert session_created.session_id in user.session_ids
+
+
+def test_user_password(user_info: model.UserInfo):
+    assert encrypt.verify_password(
+        model.TestDefaults.USER_PASSWORD, user_info.hash_password
+    )

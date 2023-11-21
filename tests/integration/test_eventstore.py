@@ -11,7 +11,9 @@ def test_settins(settings: Settings):
 
 @pytest.fixture(scope="module")
 def user_created():
-    event = model.UserCreated(user_id="race")
+    event = model.UserCreated(
+        user_id=model.TestDefaults.USER_ID, user_info=model.TestDefaults.USER_INFO
+    )
     return event
 
 
@@ -25,7 +27,10 @@ async def test_insert_event(eventstore: EventStore, user_created: model.UserCrea
     await eventstore.add(user_created)
     events = await eventstore.get(user_created.entity_id)
     e = events[0]
+
     assert e.event_id == user_created.event_id
+    # BUG: e.password.verify_password return True
+
     assert hash(e) == hash(user_created)
 
 
@@ -40,7 +45,7 @@ async def test_list_event(eventstore: EventStore, user_created: model.UserCreate
     assert hash(e) == hash(user_created)
 
 
-# AssertionError: 
-# assert 
-# datetime.datetime(2023, 11, 10, 0, 30, 45, 26543, tzinfo=datetime.timezone.utc) 
+# AssertionError:
+# assert
+# datetime.datetime(2023, 11, 10, 0, 30, 45, 26543, tzinfo=datetime.timezone.utc)
 # datetime.datetime(2023, 11, 10, 8, 30, 45, 26543, tzinfo=datetime.timezone.utc

@@ -11,5 +11,5 @@ def cli_options():
 
 @pytest.mark.skip("debugging")
 async def test_cli_app(cli_options: cli.CLIOptions, settings: Settings):
-    # NOTE: this would create a new eventstore table
+    # TODO: create user before calling this
     await cli.app(cli_options, settings)
