@@ -4,6 +4,7 @@ from argparse import ArgumentParser, Namespace
 from dataclasses import dataclass
 
 from src.app.gpt import model, service
+from src.domain._log import logger
 from src.domain.config import Settings
 
 
@@ -24,7 +25,6 @@ class CLIOptions(Namespace):
     command: ty.Literal["gpt", "auth"] = "gpt"
 
     def validate(self) -> None:
-        # BUG: loses all default values
         if self.command == "gpt":
             models = model.CompletionModels.__args__  # type: ignore
             if self.model not in models:
@@ -74,21 +74,29 @@ class CLIOptions(Namespace):
 
 
 async def gpt_dispatch(gpt: service.GPTService, options: CLIOptions) -> None:
-    await gpt.login(options.email, options.password)
+    auth = await gpt.login(options.email, options.password)
+    session_id = options.session_id
+
     if options.question:
-        await gpt.send_question(options.question)
+        await gpt.send_question(auth, session_id, options.question)
     elif options.interactive:
-        await gpt.interactive()
+        await gpt.interactive(auth, session_id)
 
 
 async def auth_dispatch(gptservice: service.GPTService, options: CLIOptions):
+    # TODO: use email as user id
     username = options.username
     email = options.email
     password = options.password
 
     user = await gptservice.find_user(username=username, useremail=email)
+
     if not user:
         await gptservice.create_user(username, email, password)
+    else:
+        logger.info(
+            f"User: {user.user_info.user_email} already exists, user id: {user.entity_id}"
+        )
 
 
 async def app(gpt: service.GPTService, options: CLIOptions) -> None:

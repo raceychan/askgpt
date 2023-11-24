@@ -160,6 +160,9 @@ class UserInfo(ValueObject):
     def serialize_password(self, hash_password: bytes) -> str:
         return hash_password.decode()
 
+    def verify_password(self, password: str) -> bool:
+        return encrypt.verify_password(password.encode(), self.hash_password)
+
 
 class CreateUser(Command):
     entity_id: str = Field(alias="user_id")  # , default_factory=uuid_factory)
@@ -228,4 +231,21 @@ class IUserRepository(IRepository[User]):
         ...
 
     async def list_all(self) -> list[User]:
+        ...
+
+
+class ISessionRepository(IRepository[ChatSession]):
+    async def add(self, entity: ChatSession) -> None:
+        ...
+
+    async def update(self, entity: ChatSession) -> None:
+        ...
+
+    async def get(self, entity_id: str) -> ChatSession | None:
+        ...
+
+    async def remove(self, entity_id: str) -> None:
+        ...
+
+    async def list_all(self) -> list[ChatSession]:
         ...

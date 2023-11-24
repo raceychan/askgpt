@@ -12,6 +12,8 @@ def gpt_options():
         question="ping",
         username=model.TestDefaults.USER_NAME,
         email=model.TestDefaults.USER_EMAIL,
+        password=model.TestDefaults.USER_PASSWORD,
+        session_id=model.TestDefaults.SESSION_ID,
     )
 
 

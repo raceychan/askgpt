@@ -1,7 +1,7 @@
 import pytest
 
 from src.app.actor import MailBox
-from src.app.gpt import model, service
+from src.app.gpt import model, service, system
 from src.domain import config
 from src.infra.eventstore import EventStore
 
@@ -44,7 +44,7 @@ def send_chat_message():
 
 @pytest.fixture(scope="module")
 def system_started(settings: config.Settings):
-    return service.SystemStarted(
+    return system.SystemStarted(
         entity_id=model.TestDefaults.SYSTEM_ID, settings=settings
     )
 
@@ -88,7 +88,7 @@ async def test_system_get_user_actor(gpt_system: service.GPTSystem):
 
 async def test_system_get_journal(gpt_system: service.GPTSystem):
     journal = gpt_system.journal
-    assert isinstance(journal, service.Journal)
+    assert isinstance(journal, system.Journal)
 
 
 async def test_user_get_journal(gpt_system: service.GPTSystem):
@@ -96,7 +96,7 @@ async def test_user_get_journal(gpt_system: service.GPTSystem):
     assert isinstance(user, service.UserActor)
 
     journal = user.system.journal
-    assert isinstance(journal, service.Journal)
+    assert isinstance(journal, system.Journal)
 
 
 async def test_create_user_by_command(
@@ -148,7 +148,7 @@ async def test_send_message_receive_response(
 
 async def test_event_unduplicate(
     eventstore: service.EventStore,
-    system_started: service.SystemStarted,
+    system_started: system.SystemStarted,
     user_created: model.UserCreated,
     session_created: model.SessionCreated,
 ):

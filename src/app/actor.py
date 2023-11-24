@@ -3,7 +3,8 @@ import typing as ty
 from functools import cached_property, singledispatchmethod
 
 from src.app.interface import AbstractActor, ActorRegistry, IJournal
-from src.domain._log import logger
+
+# from src.domain._log import logger
 from src.domain.error import SystemNotSetError
 from src.domain.interface import (
     ActorRef,
@@ -116,7 +117,7 @@ class Actor[TChild: "Actor[ty.Any]"](AbstractActor):
 
     def rebuild(self, events: list[IEvent]) -> ty.Self:
         if not events:
-            raise EmptyEvents("No events to rebuild")
+            raise EmptyEvents(f"No events to rebuild {self.__class__.__name__}")
 
         for e in events:
             self.apply(e)

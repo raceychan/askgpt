@@ -68,9 +68,7 @@ def openai_client(chat_response: ChatResponse):
 
 
 @pytest.fixture(scope="module")
-async def session_actor(
-    user_actor: service.UserActor, openai_client: service.OpenAIClient
-):
+async def session_actor(user_actor: service.UserActor, openai_client: OpenAIClient):
     cmd = model.CreateSession(
         session_id=model.TestDefaults.SESSION_ID, user_id=model.TestDefaults.USER_ID
     )

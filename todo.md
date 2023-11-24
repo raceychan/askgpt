@@ -4,13 +4,13 @@
 
 ### P1
 
-- [ ] build user system, user identity
+- [x] build user system, user identity
 
-- [ ] restore system state from events
+- [x] restore system state from events
 
 - [ ] Deduplicate events
 
-- [ ] enforce correct entity_id for events, currently there is a bug
+- [x] enforce correct entity_id for events, currently there is a bug
 
 - [x] refactor code with generic
 
