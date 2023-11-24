@@ -4,6 +4,7 @@ from functools import cached_property, singledispatchmethod
 
 from src.app.actor import Actor, ActorRef
 from src.app.interface import IJournal
+from src.domain._log import logger
 from src.domain.interface import IEvent, IEventStore, IMessage
 from src.domain.model import Event
 from src.infra.mq import MailBox
@@ -23,9 +24,10 @@ class Journal(Actor[ty.Any], IJournal):
     async def on_receive(self) -> None:
         message = await self.mailbox.get()
         if isinstance(message, Event):
+            logger.debug(f"Journal received event: {message}")
             await self.eventstore.add(message)
         else:
-            raise TypeError("Currently journal only accepts events")
+            raise NotImplementedError("Currently journal only accepts events")
 
     @singledispatchmethod
     async def handle(self, message: IMessage) -> None:
@@ -47,16 +49,6 @@ class Journal(Actor[ty.Any], IJournal):
     @cached_property
     def ref(self) -> ActorRef:
         return self.__ref
-
-    # @classmethod
-    # def build(
-    #     cls,
-    #     *,
-    #     db_url: str,
-    #     ref: ActorRef,
-    # ) -> ty.Self:
-    #     es = EventStore.build(db_url=db_url)
-    #     return cls(eventstore=es, mailbox=MailBox.build(), ref=ref)
 
     async def list_events(self, ref: ActorRef) -> "list[IEvent]":
         return await self.eventstore.get(entity_id=ref)

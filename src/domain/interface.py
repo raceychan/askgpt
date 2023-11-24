@@ -13,10 +13,17 @@ from src.domain.model.interface import (
 from src.domain.service.interface import IEngine, IEventStore, IRepository, IUnitOfWork
 
 ActorRef = ty.Annotated[str, "AbstractActorRef", "ActorRef"]
-
 SystemRef = ty.NewType("SystemRef", ActorRef)
 EventLogRef = ty.NewType("EventLogRef", ActorRef)
 JournalRef = ty.NewType("JournalRef", ActorRef)
+
+type SQL_ISOLATIONLEVEL = ty.Literal[
+    "SERIALIZABLE",
+    "REPEATABLE READ",
+    "READ COMMITTED",
+    "READ UNCOMMITTED",
+    "AUTOCOMMIT",
+]
 
 
 class AbstractActorRef(ty.Protocol):
@@ -38,13 +45,13 @@ class ISettings(ty.Protocol):
         DB_DRIVER: str
         DATABASE: pathlib.Path
         ENGINE_ECHO: bool
-        ISOLATION_LEVEL: str
+        ISOLATION_LEVEL: SQL_ISOLATIONLEVEL
 
     db: IDB
 
-    class ActorRefs(ty.Protocol):
-        SYSTEM: SystemRef = SystemRef("system")
-        EVENTLOG: EventLogRef = EventLogRef("eventlog")
-        JOURNAL: JournalRef = JournalRef("journal")
+    class IActorRefs(ty.Protocol):
+        SYSTEM: SystemRef
+        EVENTLOG: EventLogRef
+        JOURNAL: JournalRef
 
-    actor_refs: ActorRefs
+    actor_refs: IActorRefs

@@ -13,7 +13,8 @@ class EchoMailbox(MailBox):
 
 @pytest.fixture(scope="module")
 async def gpt_system(settings: config.Settings, eventstore: service.EventStore):
-    system = await service.GPTSystem.create(settings, eventstore=eventstore)
+    system = service.GPTSystem(mailbox=MailBox.build(), settings=settings)
+    await system.start(eventstore=eventstore)
     return system
 
 

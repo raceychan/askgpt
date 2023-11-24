@@ -42,5 +42,5 @@ def test_rebuild_user_by_events(
 
 def test_user_password(user_info: model.UserInfo):
     assert encrypt.verify_password(
-        model.TestDefaults.USER_PASSWORD, user_info.hash_password
+        model.TestDefaults.USER_PASSWORD.encode(), user_info.hash_password
     )

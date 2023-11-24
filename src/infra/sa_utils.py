@@ -1,5 +1,6 @@
 import typing as ty
 
+import rich
 import sqlalchemy as sa
 from sqlalchemy.ext import asyncio as sa_aio
 
@@ -76,13 +77,14 @@ def engine_factory(
     return engine
 
 
-class SQLDebuger:
+class SQLDebugger:
     def __init__(self, engine: sa.Engine):
         self.engine = engine
         self.inspector = sa.inspect(engine)
 
     def execute(self, sql: str) -> list[dict[str, ty.Any]]:
         with self.engine.begin() as conn:
+            rich.print(f"{self} is executing sql=:\n {sql}\n")
             result = conn.execute(sa.text(sql))
             rows = result.all()
         return [dict(row._mapping) for row in rows]
@@ -92,12 +94,20 @@ class SQLDebuger:
         engine = engine_factory(db_url, isolation_level="SERIALIZABLE", echo=True)
         return cls(engine)
 
+    def __str__(self):
+        return f"{self.__class__.__name__}({self.engine.url})"
+
     def __call__(self, sql: str) -> list[dict[str, ty.Any]]:
         return self.execute(sql)
 
     @property
     def tables(self):
         return self.inspector.get_table_names()
+
+    @classmethod
+    def from_async_engine(cls, async_engine: sa_aio.AsyncEngine):
+        url = str(async_engine.url).replace("+aiosqlite", "")
+        return cls.build(url)
 
 
 async def test_table_exist(async_engine: sa_aio.AsyncEngine, tablename: str):

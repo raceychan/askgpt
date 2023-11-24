@@ -7,7 +7,9 @@ from src.domain import encrypt
 @pytest.fixture(scope="package")
 def user_info():
     e = model.TestDefaults.USER_INFO
-    assert encrypt.verify_password(model.TestDefaults.USER_PASSWORD, e.hash_password)
+    assert encrypt.verify_password(
+        model.TestDefaults.USER_PASSWORD.encode(), e.hash_password
+    )
 
     return e
 

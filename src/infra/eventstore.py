@@ -49,15 +49,17 @@ def load_event(row_mapping: sa.RowMapping | dict[str, ty.Any]) -> IEvent:
 
 
 class EventStore(IEventStore):
-    def __init__(self, engine: sa_aio.AsyncEngine, table: sa.TableClause = EVENT_TABLE):
-        self.engine = engine
+    def __init__(
+        self, aioengine: sa_aio.AsyncEngine, table: sa.TableClause = EVENT_TABLE
+    ):
+        self.aioengine = aioengine
         self.table = table
 
     async def add(self, event: IEvent) -> None:
         value = dump_event(event)
         stmt = sa.insert(self.table).values(value)
 
-        async with self.engine.begin() as cursor:
+        async with self.aioengine.begin() as cursor:
             await cursor.execute(stmt)
 
     async def add_all(self, events: list[IEvent]) -> None:
@@ -66,7 +68,7 @@ class EventStore(IEventStore):
 
     async def get(self, entity_id: str) -> list[IEvent]:
         stmt = sa.select(self.table).where(self.table.c.entity_id == entity_id)
-        async with self.engine.begin() as cursor:
+        async with self.aioengine.begin() as cursor:
             result = await cursor.execute(stmt)
             rows = result.fetchall()
             events = [load_event(row._mapping) for row in rows]
@@ -74,7 +76,7 @@ class EventStore(IEventStore):
 
     async def list_all(self) -> list[IEvent]:
         stmt = sa.select(self.table)
-        async with self.engine.begin() as cursor:
+        async with self.aioengine.begin() as cursor:
             result = await cursor.execute(stmt)
             rows = result.fetchall()
             events = [load_event(row._mapping) for row in rows]

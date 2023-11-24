@@ -5,7 +5,7 @@ import typing as ty
 from pydantic import BaseModel, ConfigDict
 
 from src.domain.fileutil import FileUtil
-from src.domain.interface import EventLogRef, JournalRef, SystemRef
+from src.domain.interface import SQL_ISOLATIONLEVEL, EventLogRef, JournalRef, SystemRef
 
 
 class SettingsBase(BaseModel):
@@ -28,13 +28,8 @@ class Settings(SettingsBase):
         DB_DRIVER: str = "sqlite"
         ASYNC_DB_DRIVER: str = "aiosqlite"
         DATABASE: pathlib.Path
-        ISOLATION_LEVEL: ty.Literal[
-            "SERIALIZABLE",
-            "REPEATABLE READ",
-            "READ COMMITTED",
-            "READ UNCOMMITTED",
-            "AUTOCOMMIT",
-        ] = "SERIALIZABLE"
+        ISOLATION_LEVEL: SQL_ISOLATIONLEVEL = "SERIALIZABLE"
+        ENGINE_ECHO: bool = False
 
         @property
         def DB_URL(self) -> str:
@@ -67,7 +62,7 @@ class Settings(SettingsBase):
         SECRET_KEY: str
         ALGORITHM: str = "HS256"
         ACCESS_TOKEN_EXPIRE_MINUTES: int = 60 * 24 * 7
-        SALT: str = "askgpt"
+        # SALT: str = "askgpt"
 
 
 def settings(filename: str = "settings.toml") -> Settings:

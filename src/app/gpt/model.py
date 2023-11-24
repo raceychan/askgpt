@@ -3,6 +3,7 @@ from functools import singledispatchmethod
 
 from src.app.gpt.params import ChatGPTRoles, CompletionModels
 from src.domain import encrypt
+from src.domain.interface import ICommand, IRepository
 from src.domain.model.base import (
     Command,
     Entity,
@@ -14,7 +15,6 @@ from src.domain.model.base import (
     field_serializer,
     uuid_factory,
 )
-from src.domain.model.interface import ICommand  # , IEvent
 
 
 class TestDefaults:
@@ -22,7 +22,7 @@ class TestDefaults:
     USER_ID: str = "5aba4f79-19f7-4bd2-92fe-f2cdb43635a3"
     USER_NAME: str = "admin"
     USER_EMAIL: str = "admin@gmail.com"
-    USER_PASSWORD: bytes = "password".encode()
+    USER_PASSWORD: str = "password"  # .encode()
     SESSION_ID: str = "e0b5ee4a-ef76-4ed9-89fb-5f7a64122dc8"
     SESSION_NAME: str = "default_session"
     MODEL: CompletionModels = "gpt-3.5-turbo"
@@ -32,7 +32,7 @@ class TestDefaults:
         return UserInfo(
             user_email=cls.USER_EMAIL,
             user_name=cls.USER_NAME,
-            hash_password=encrypt.hash_password(cls.USER_PASSWORD),
+            hash_password=encrypt.hash_password(cls.USER_PASSWORD.encode()),
         )
 
 
@@ -151,9 +151,10 @@ class ChatSession(Entity):
 
 class UserInfo(ValueObject):
     version: ty.ClassVar[str] = "1.0.0"
-    user_email: str
+
     user_name: str
-    hash_password: bytes  # this should be hash value of the password
+    user_email: str | None = None
+    hash_password: bytes
 
     @field_serializer("hash_password")
     def serialize_password(self, hash_password: bytes) -> str:
@@ -161,17 +162,19 @@ class UserInfo(ValueObject):
 
 
 class CreateUser(Command):
-    entity_id: str = Field(alias="user_id")
+    entity_id: str = Field(alias="user_id")  # , default_factory=uuid_factory)
     user_info: UserInfo
+    # session_id: str
 
 
 class UserCreated(Event):
     entity_id: str = Field(alias="user_id")
     user_info: UserInfo
+    # session_id: str
 
 
-# aggregate_root
 class User(Entity):
+    # aggregate_root
     entity_id: str = Field(alias="user_id")
     user_info: UserInfo
     session_ids: list[str] = Field(default_factory=list)
@@ -184,7 +187,7 @@ class User(Entity):
         else:
             raise NotImplementedError
 
-    def add_session(self, session_id: str) -> None:
+    def _add_session(self, session_id: str) -> None:
         self.session_ids.append(session_id)
 
     @singledispatchmethod
@@ -202,10 +205,27 @@ class User(Entity):
 
     @apply.register
     def _(self, event: SessionCreated) -> ty.Self:
-        self.add_session(event.session_id)
+        self._add_session(event.session_id)
         return self
 
     @classmethod
     def create(cls, command: CreateUser) -> ty.Self:
         evt = UserCreated(user_id=command.entity_id, user_info=command.user_info)
         return cls.apply(evt)
+
+
+class IUserRepository(IRepository[User]):
+    async def add(self, entity: User) -> None:
+        ...
+
+    async def update(self, entity: User) -> None:
+        ...
+
+    async def get(self, entity_id: str) -> User | None:
+        ...
+
+    async def remove(self, entity_id: str) -> None:
+        ...
+
+    async def list_all(self) -> list[User]:
+        ...

@@ -11,9 +11,9 @@ from src.app.gpt import model, params
 from src.domain.model import Event
 from src.infra.mq import MailBox
 
-# from ..actor import Actor
-# from ..gpt import model
-# from .params import ChatResponse, CompletionOptions
+# class AIClient(ty.Protocol):
+#     async def send_chat(self, message: model.ChatMessage, **kwargs: CompletionOptions)->ty.:
+#         ...
 
 
 class OpenAIClient(Actor[ty.Any]):
@@ -43,9 +43,7 @@ class OpenAIClient(Actor[ty.Any]):
         stream: bool = True,
         **options: ty.Unpack[params.CompletionOptions],
     ) -> ty.AsyncGenerator[ChatCompletionChunk, None]:
-        resp: ty.AsyncGenerator[
-            ChatCompletionChunk, None
-        ] = await self._client.chat.completions.create(
+        resp = await self._client.chat.completions.create(
             messages=self.message_adapter(messages),  # type: ignore
             model=model,
             stream=stream,

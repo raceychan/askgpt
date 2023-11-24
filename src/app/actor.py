@@ -3,6 +3,7 @@ import typing as ty
 from functools import cached_property, singledispatchmethod
 
 from src.app.interface import AbstractActor, ActorRegistry, IJournal
+from src.domain._log import logger
 from src.domain.error import SystemNotSetError
 from src.domain.interface import (
     ActorRef,
@@ -73,6 +74,7 @@ class Actor[TChild: "Actor[ty.Any]"](AbstractActor):
         if publish fail, the actor will die
         when restart, the lost event won't be applied, and command won't be handled
         """
+        # logger.info(f"{self} publish event {event}")
         await self.system.eventlog.receive(event)
 
     def get_child(self, ref: ActorRef) -> TChild | None:
@@ -163,7 +165,7 @@ class System[TChild: Actor[ty.Any]](Actor[TChild]):
     _eventlog: "EventLog[ty.Any]"
     _journal: IJournal
 
-    def __new__(cls, *args: ty.Any, **kwargs: ty.Any) -> "System[ty.Any]":
+    def __new__(cls, *args: ty.Any, **kwargs: ty.Any) -> "ty.Self":
         if not hasattr(cls, "_system"):
             cls._system = super().__new__(cls)
         return cls._system

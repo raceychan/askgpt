@@ -65,10 +65,19 @@ class EventSchema(TableBase):
 class UserSchema(TableBase):
     __tablename__: str = "users"  # type: ignore
 
-    id = sa.Column("id", sa.Integer, primary_key=True, autoincrement="auto")
+    id = sa.Column("id", sa.String, primary_key=True)
     username = sa.Column("username", sa.String, unique=True, index=True)
     email = sa.Column("email", sa.String, unique=True, index=True)
     password_hash = sa.Column("password_hash", sa.String)
     last_login = sa.Column("last_login", sa.DateTime, nullable=True)
     is_active = sa.Column("is_active", sa.Boolean, default=True)
     is_admin = sa.Column("is_admin", sa.Boolean, default=False)
+
+
+class SessionSchema(TableBase):
+    __tablename__: str = "sessions"  # type: ignore
+
+    id = sa.Column("id", sa.String, primary_key=True)
+    user_id = sa.Column("user_id", sa.Integer, sa.ForeignKey("users.id"))
+    session_id = sa.Column("session_id", sa.String, unique=True, index=True)
+    is_active = sa.Column("is_active", sa.Boolean, default=True)

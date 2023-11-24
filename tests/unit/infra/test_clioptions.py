@@ -1,6 +1,6 @@
 import pytest
 
-from src.adapter.cli import CLIOptions
+from src.adapter.cli import CLIOptions, InvalidOption
 
 # from src.app import gpt
 from src.app.gpt import model
@@ -16,7 +16,7 @@ def test_validate():
 
 def test_validate_fail():
     options = CLIOptions(question="hello", interactive=True)
-    with pytest.raises(ValueError):
+    with pytest.raises(InvalidOption):
         options.validate()
 
 

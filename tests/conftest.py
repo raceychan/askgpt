@@ -18,8 +18,7 @@ class TestSettings(Settings):
     __test__ = False
 
     class DB(Settings.DB):
-        DATABASE: pathlib.Path = pathlib.Path(":memory:")
-        # DATABASE: pathlib.Path = pathlib.Path("./database/test.db")
+        DATABASE: pathlib.Path
         ENGINE_ECHO: bool = False
 
     class ActorRefs(Settings.ActorRefs):
@@ -28,7 +27,8 @@ class TestSettings(Settings):
 
 @pytest.fixture(scope="session")
 def settings() -> TestSettings:
-    db = TestSettings.DB()
+    db_path = pathlib.Path(":memory:")
+    db = TestSettings.DB(DATABASE=db_path)
     ss = TestSettings(
         OPENAI_API_KEY="fake_api_key",
         db=db,
