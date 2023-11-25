@@ -42,11 +42,28 @@ class Settings(SettingsBase):
     db: DB
 
     class ActorRefs(SettingsBase):
-        SYSTEM: SystemRef = SystemRef("system")
-        EVENTLOG: EventLogRef = EventLogRef("eventlog")
-        JOURNAL: JournalRef = JournalRef("journal")
+        SYSTEM: SystemRef  # = SystemRef("system")
+        EVENTLOG: EventLogRef  # = EventLogRef("eventlog")
+        JOURNAL: JournalRef  # = JournalRef("journal")
 
     actor_refs: ActorRefs
+
+    class Security(SettingsBase):
+        SECRET_KEY: str
+        ALGORITHM: str = "HS256"
+        ACCESS_TOKEN_EXPIRE_MINUTES: int = 60 * 24 * 7
+        SALT: str = "askgpt"
+
+    security: Security
+
+    class API(SettingsBase):
+        API_VERSION: str = "1"
+        API_VERSION_STR: str = f"/v{API_VERSION}"
+        OPEN_API: str = f"{API_VERSION_STR}/openapi.json"
+        DOCS: str = f"{API_VERSION_STR}/docs"
+        REDOC: str = f"{API_VERSION_STR}/redoc"
+
+    api: API
 
     @property
     def is_prod_env(self):
@@ -58,11 +75,9 @@ class Settings(SettingsBase):
         fileutil = FileUtil.from_cwd()
         return cls(**fileutil.read_file(filename))
 
-    class Security(SettingsBase):
-        SECRET_KEY: str
-        ALGORITHM: str = "HS256"
-        ACCESS_TOKEN_EXPIRE_MINUTES: int = 60 * 24 * 7
-        # SALT: str = "askgpt"
+    def get_modulename(self, filename: str) -> str:
+        file_path = pathlib.Path(filename).relative_to(self.PROJECT_ROOT)
+        return str(file_path).replace("/", ".")[:-3]
 
 
 def settings(filename: str = "settings.toml") -> Settings:

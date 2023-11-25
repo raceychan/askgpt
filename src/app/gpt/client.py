@@ -11,9 +11,10 @@ from src.app.gpt import model, params
 from src.domain.model import Event
 from src.infra.mq import MailBox
 
-# class AIClient(ty.Protocol):
-#     async def send_chat(self, message: model.ChatMessage, **kwargs: CompletionOptions)->ty.:
-#         ...
+
+class AIClient(ty.Protocol):
+    async def send_chat(self, message: model.ChatMessage) -> ty.Any:
+        ...
 
 
 class OpenAIClient(Actor[ty.Any]):

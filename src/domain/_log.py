@@ -24,9 +24,8 @@ def prod_sink(msg: loguru.Message):
     record = msg.record
     record_time_utc = record["time"].astimezone(datetime.UTC)
 
-    project_root = settings().PROJECT_ROOT
-    file_path = Path(record["file"].path).relative_to(project_root)
-
+    file_path = settings().get_modulename(record["file"].path)
+    # Path(record["file"].path).relative_to(project_root)
     custom_record = {
         "level": record["level"].name,
         "msg": record["message"],
