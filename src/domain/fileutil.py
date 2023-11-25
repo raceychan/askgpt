@@ -45,11 +45,6 @@ class NotDutyError(Exception):
     ...
 
 
-from typing import TypeVar
-
-TNode = TypeVar("TNode", bound="LoaderNode")
-
-
 class LoaderNode(abc.ABC):
     _handle_chain: ty.ClassVar[list[type["FileLoader"]]] = list()
 

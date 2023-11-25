@@ -4,7 +4,7 @@ import pathlib
 import pytest
 
 from src.domain.config import Settings
-from src.domain.fileutil import FileLoader, FileUtil
+from src.domain.fileutil import fileutil
 
 
 @pytest.fixture(scope="session")
@@ -27,24 +27,16 @@ class TestSettings(Settings):
 
 @pytest.fixture(scope="session")
 def settings() -> TestSettings:
-    db_path = pathlib.Path(":memory:")
+    db_path = pathlib.Path("./database/test.db")
+    # db_path = pathlib.Path(":memory:")
+    # api_key = fileutil.read_file("settings.toml")["OPENAI_API_KEY"]
+    api_key = "fake_api_key"
+
     db = TestSettings.DB(DATABASE=db_path)
     ss = TestSettings(
-        OPENAI_API_KEY="fake_api_key",
+        OPENAI_API_KEY=api_key,
         db=db,
         actor_refs=TestSettings.ActorRefs(),
         RUNTIME_ENV="test",
     )
     return ss
-
-
-@pytest.fixture(scope="session")
-def fileloader():
-    return FileLoader.from_chain()
-
-
-@pytest.fixture(scope="session")
-def fileutil(fileloader: FileLoader):
-    from pathlib import Path
-
-    return FileUtil(work_dir=Path.cwd(), file_loader=fileloader)

@@ -6,7 +6,8 @@ from sqlalchemy.ext import asyncio as sa_aio
 
 from src.domain.interface import IEvent, IEventStore
 from src.domain.model import Event
-from src.infra.sa_utils import engine_factory
+
+# from src.infra.sa_utils import async_engine_factory
 
 EVENT_TABLE: ty.Final[sa.TableClause] = sa.table(
     "domain_events",
@@ -48,16 +49,17 @@ def load_event(row_mapping: sa.RowMapping | dict[str, ty.Any]) -> IEvent:
 
 
 class EventStore(IEventStore):
-    table: sa.TableClause = EVENT_TABLE
-
-    def __init__(self, engine: sa_aio.AsyncEngine):
-        self.engine = engine
+    def __init__(
+        self, aioengine: sa_aio.AsyncEngine, table: sa.TableClause = EVENT_TABLE
+    ):
+        self.aioengine = aioengine
+        self.table = table
 
     async def add(self, event: IEvent) -> None:
         value = dump_event(event)
         stmt = sa.insert(self.table).values(value)
 
-        async with self.engine.begin() as cursor:
+        async with self.aioengine.begin() as cursor:
             await cursor.execute(stmt)
 
     async def add_all(self, events: list[IEvent]) -> None:
@@ -66,7 +68,7 @@ class EventStore(IEventStore):
 
     async def get(self, entity_id: str) -> list[IEvent]:
         stmt = sa.select(self.table).where(self.table.c.entity_id == entity_id)
-        async with self.engine.begin() as cursor:
+        async with self.aioengine.begin() as cursor:
             result = await cursor.execute(stmt)
             rows = result.fetchall()
             events = [load_event(row._mapping) for row in rows]
@@ -74,7 +76,7 @@ class EventStore(IEventStore):
 
     async def list_all(self) -> list[IEvent]:
         stmt = sa.select(self.table)
-        async with self.engine.begin() as cursor:
+        async with self.aioengine.begin() as cursor:
             result = await cursor.execute(stmt)
             rows = result.fetchall()
             events = [load_event(row._mapping) for row in rows]
@@ -83,6 +85,6 @@ class EventStore(IEventStore):
     async def remove(self, entity_id: str) -> None:
         raise NotImplementedError
 
-    @classmethod
-    def build(cls, *, db_url: str) -> ty.Self:
-        return cls(engine=engine_factory(db_url))
+    # @classmethod
+    # def build(cls, *, db_url: str) -> ty.Self:
+    #     return cls(engine=engine_factory(db_url))

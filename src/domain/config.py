@@ -1,13 +1,11 @@
+import functools
 import pathlib
 import typing as ty
 
 from pydantic import BaseModel, ConfigDict
 
 from src.domain.fileutil import FileUtil
-from src.domain.interface import EventLogRef, JournalRef, SystemRef
-
-# from dataclasses import dataclass
-# frozen = dataclass(frozen=True, slots=True, kw_only=True, repr=False)
+from src.domain.interface import SQL_ISOLATIONLEVEL, EventLogRef, JournalRef, SystemRef
 
 
 class SettingsBase(BaseModel):
@@ -21,13 +19,17 @@ class SettingsBase(BaseModel):
 
 
 class Settings(SettingsBase):
-    PROJECT_NAME: str = "askgpt"
+    PROJECT_NAME: ty.ClassVar[str] = "askgpt"
+    PROJECT_ROOT: ty.ClassVar[pathlib.Path] = pathlib.Path.cwd()
     OPENAI_API_KEY: str
+    RUNTIME_ENV: ty.Literal["dev", "prod", "test"]
 
     class DB(SettingsBase):
-        DB_DRIVER: str
+        DB_DRIVER: str = "sqlite"
         ASYNC_DB_DRIVER: str = "aiosqlite"
         DATABASE: pathlib.Path
+        ISOLATION_LEVEL: SQL_ISOLATIONLEVEL = "SERIALIZABLE"
+        ENGINE_ECHO: bool = False
 
         @property
         def DB_URL(self) -> str:
@@ -40,13 +42,43 @@ class Settings(SettingsBase):
     db: DB
 
     class ActorRefs(SettingsBase):
-        SYSTEM: SystemRef = SystemRef("system")
-        EVENTLOG: EventLogRef = EventLogRef("eventlog")
-        JOURNAL: JournalRef = JournalRef("journal")
+        SYSTEM: SystemRef  # = SystemRef("system")
+        EVENTLOG: EventLogRef  # = EventLogRef("eventlog")
+        JOURNAL: JournalRef  # = JournalRef("journal")
 
     actor_refs: ActorRefs
 
+    class Security(SettingsBase):
+        SECRET_KEY: str
+        ALGORITHM: str = "HS256"
+        ACCESS_TOKEN_EXPIRE_MINUTES: int = 60 * 24 * 7
+        SALT: str = "askgpt"
+
+    security: Security
+
+    class API(SettingsBase):
+        API_VERSION: str = "1"
+        API_VERSION_STR: str = f"/v{API_VERSION}"
+        OPEN_API: str = f"{API_VERSION_STR}/openapi.json"
+        DOCS: str = f"{API_VERSION_STR}/docs"
+        REDOC: str = f"{API_VERSION_STR}/redoc"
+
+    api: API
+
+    @property
+    def is_prod_env(self):
+        return self.RUNTIME_ENV == "prod"
+
     @classmethod
+    @functools.lru_cache(maxsize=1)
     def from_file(cls, filename: str = "settings.toml") -> ty.Self:
         fileutil = FileUtil.from_cwd()
         return cls(**fileutil.read_file(filename))
+
+    def get_modulename(self, filename: str) -> str:
+        file_path = pathlib.Path(filename).relative_to(self.PROJECT_ROOT)
+        return str(file_path).replace("/", ".")[:-3]
+
+
+def settings(filename: str = "settings.toml") -> Settings:
+    return Settings.from_file(filename=filename)

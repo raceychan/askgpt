@@ -1,284 +1,181 @@
+import enum
 import typing as ty
-from functools import singledispatchmethod
+from contextlib import asynccontextmanager
 
-from src.app.actor import EntityActor, System
-from src.app.gpt import model
-from src.app.gpt.client import OpenAIClient
-from src.app.interface import ICommand  # , IEvent
-from src.app.journal import Journal
-from src.app.utils.fmtutils import fprint
+from src.app.bootstrap import bootstrap
+from src.app.gpt import model, repository
+from src.app.gpt.system import Authenticator, GPTSystem, SessionActor, UserActor
+from src.domain import encrypt
+from src.domain._log import logger
 from src.domain.config import Settings
-from src.domain.interface import ISettings
-from src.domain.model import Command, Event, Message
 from src.infra.eventstore import EventStore
 from src.infra.mq import MailBox
+from src.infra.sa_utils import async_engine_factory
 
 
-def display_message(answer: ty.Generator[str | None, None, None]) -> str:
-    str_container = ""
-    for chunk in answer:
-        if chunk is None:
-            fprint("\n")
-        else:
-            fprint(chunk)
-            str_container += chunk
-    return str_container
+class ServiceState(enum.Enum):
+    class InvalidStateError(Exception):
+        ...
 
-
-async def async_display_message(answer: ty.AsyncGenerator[str | None, None]) -> str:
-    str_container = ""
-    async for chunk in answer:
-        if chunk is None:
-            fprint("\n")
-        else:
-            fprint(chunk)
-            str_container += chunk
-    return str_container
-
-
-# class AIClient(ty.Protocol):
-#     async def send_chat(self, message: model.ChatMessage, **kwargs: CompletionOptions)->ty.:
-#         ...
-
-
-class SystemCreated(Event):
-    ...
-
-
-class SystemStarted(Event):
-    settings: Settings
-
-
-class SystemStoped(Event):
-    ...
-
-
-class GPTSystem(System["UserActor"]):
-    def __init__(self, mailbox: MailBox, settings: ISettings):
-        super().__init__(mailbox=mailbox, settings=settings)
-
-    async def create_user(self, command: model.CreateUser) -> "UserActor":
-        event = model.UserCreated(user_id=command.entity_id)
-        user_actor = UserActor.apply(event)
-        self.childs[user_actor.entity_id] = user_actor
-        await self.publish(event)
-        return user_actor
-
-    def create_journal(self, eventstore: EventStore, mailbox: MailBox) -> None:
-        """
-        journal is part of the application layer, it should be created here by gptsystem
-        """
-        journal_ref = self.settings.actor_refs.JOURNAL
-        journal = Journal(eventstore, mailbox, ref=journal_ref)
-        self._journal = journal
-        # self.childs[journal_ref] = journal
-
-    @classmethod
-    async def create(
-        cls, settings: Settings, eventstore: EventStore | None = None
-    ) -> "GPTSystem":
-        if eventstore is None:
-            eventstore = EventStore.build(db_url=settings.db.ASYNC_DB_URL)
-
-        event = SystemStarted(entity_id="system", settings=settings)
-        system: GPTSystem = cls.apply(event)
-        system.create_eventlog()
-        system.create_journal(
-            eventstore=eventstore,
-            mailbox=MailBox.build(),
-        )
-        # await system.publish(event)
-        return system
-
-    @singledispatchmethod
-    def apply(self, event: Event) -> ty.Self:
-        raise NotImplementedError
-
-    @apply.register
-    @classmethod
-    def _(cls, event: SystemStarted) -> ty.Self:
-        return cls(mailbox=MailBox.build(), settings=event.settings)  # type: ignore # pydantic forces concrete settings
-
-    @singledispatchmethod
-    async def handle(self, command: Command) -> None:
-        raise NotImplementedError
-
-    @handle.register
-    async def _(self, command: model.SendChatMessage) -> None:
-        # TODO: rebuild user before creating them
-
-        user: "UserActor" | None = self.get_child(command.user_id)
-        if not user:
-            # NOTE: create user before calling this method
-            # user should already exist at this point
-            create_user = model.CreateUser(user_id=command.user_id)
-            await self.handle(create_user)
-            user = self.select_child(create_user.entity_id)
-
-        session = user.get_child(command.entity_id)
-        if not session:
-            create_session = model.CreateSession(
-                user_id=command.user_id, session_id=command.entity_id
-            )
-            await user.handle(create_session)
-            session = user.select_child(command.entity_id)
-
-        await session.handle(command)
-
-    @handle.register
-    async def _(self, command: model.CreateUser) -> None:
-        await self.create_user(command)
-
-    async def stop(self) -> None:
-        # await self.publish(SystemStoped(entity_id="system"))
-        raise NotImplementedError
-
-
-class UserActor(EntityActor["SessionActor", model.User]):
-    def __init__(self, user: model.User):
-        super().__init__(mailbox=MailBox.build(), entity=user)
-
-    def predict_command(self, command: ICommand) -> model.SessionCreated:
-        if isinstance(command, model.CreateSession):
-            return model.SessionCreated(
-                user_id=command.user_id, session_id=command.entity_id
-            )
-        else:
-            raise NotImplementedError
-
-    def create_session(self, event: model.SessionCreated) -> "SessionActor":
-        session_actor = SessionActor.apply(event)
-        self.childs[session_actor.entity_id] = session_actor
-        self.entity.apply(event)
-        return session_actor
-
-    async def rebuild_session(self, session_id: str) -> "SessionActor":
-        events = await self.system.journal.list_events(session_id)
-        session_actor = SessionActor.rebuild(events)
-        return session_actor
-
-    @singledispatchmethod
-    async def handle(self, command: Command) -> None:
-        raise NotImplementedError
-
-    @singledispatchmethod
-    def apply(self, event: Event) -> ty.Self:
-        raise NotImplementedError
-
-    @handle.register
-    async def _(self, command: model.CreateSession) -> None:
-        event = self.predict_command(command)
-        self.create_session(event)
-        await self.publish(event)
-
-    @apply.register
-    @classmethod
-    def _(cls, event: model.UserCreated) -> ty.Self:
-        return cls(user=model.User.apply(event))
-
-    # @apply.register
-    # def _(self, event: model.SessionCreated) -> ty.Self:
-    #     "when we rebuild a session, we need to create a new session actor"
-    #     "perhaps we user should not hold chat sessions, but only session ids"
-    #     self.create_session(event)
-    #     return self
+    created = enum.auto()
+    running = enum.auto()
+    stopped = enum.auto()
 
     @property
-    def session_count(self):
-        return len(self.entity.chat_sessions)
-
-
-class SessionActor(EntityActor[OpenAIClient, model.ChatSession]):
-    # TODO: openai should be childs of system, not session
-    def __init__(self, chat_session: model.ChatSession):
-        super().__init__(mailbox=MailBox.build(), entity=chat_session)
+    def is_running(self) -> bool:
+        return self == ServiceState.running
 
     @property
-    def chat_context(self) -> list[model.ChatMessage]:
-        return self.entity.messages
+    def is_created(self) -> bool:
+        return self == ServiceState.created
 
-    def get_model_client(self) -> OpenAIClient:
-        model_client = self.get_child("model_client")
-        if model_client is None:
-            model_client = OpenAIClient.from_apikey(self.system.settings.OPENAI_API_KEY)
-            self.set_model_client(model_client)
-        return model_client
+    @property
+    def is_stopped(self) -> bool:
+        return self == ServiceState.stopped
 
-    def set_model_client(self, client: OpenAIClient) -> None:
-        if self.get_child("model_client"):
-            raise Exception("model_client already set")
-        self.childs["model_client"] = client
+    def start(self) -> ty.Self:
+        if not self.is_created:
+            raise self.InvalidStateError("system already started")
+        return ServiceState.running
 
-    async def _send_chat(
+    def stop(self) -> ty.Self:
+        if not self.is_running:
+            raise self.InvalidStateError("system already stopped")
+        return ServiceState.stopped
+
+
+class GPTService:
+    def __init__(
         self,
-        message: model.ChatMessage,
-        model: model.CompletionModels,
-        stream: bool = True,
-    ) -> ty.AsyncGenerator[str | None, None]:
-        client = self.get_model_client()
-        chunks = await client.send_chat(
-            messages=self.chat_context + [message], model=model, stream=stream
-        )
-
-        async for resp in chunks:
-            for choice in resp.choices:
-                content = choice.delta.content
-                yield content
+        system: GPTSystem,
+        user_repo: repository.UserRepository,
+        session_repo: repository.SessionRepository,
+    ):
+        self._state = ServiceState.created
+        self._system = system
+        self._user_repo = user_repo
+        self._session_repo = session_repo
 
     @property
-    def message_count(self) -> int:
-        return len(self.entity.messages)
+    def system(self) -> GPTSystem:
+        return self._system  # type: ignore
 
-    @singledispatchmethod
-    async def handle(self, message: Message) -> None:
-        raise NotImplementedError
+    @property
+    def state(self) -> ServiceState:
+        return self._state
 
-    def predict_command(self, command: ICommand) -> model.ChatMessageSent:
-        if isinstance(command, model.SendChatMessage):
-            return model.ChatMessageSent(
-                session_id=self.entity_id, chat_message=command.chat_message
+    @state.setter
+    def state(self, state: ServiceState) -> None:
+        if self._state is ServiceState.stopped:
+            raise Exception("system already stopped")
+        self._state = state
+
+    async def send_question(
+        self, auth: Authenticator, session_id: str, question: str
+    ) -> None:
+        user_actor = await self.system.rebuild_user(auth.user_id)
+
+        if session_id not in user_actor.entity.session_ids:
+            session_actor = await self.user_create_session(
+                user_actor.entity_id, session_id
             )
         else:
-            raise NotImplementedError
+            session_actor = await user_actor.rebuild_session(session_id)
 
-    @handle.register
-    async def _(self, command: model.SendChatMessage) -> None:
-        chunks = self._send_chat(message=command.chat_message, model=command.model)
-        event = model.ChatMessageSent(
-            session_id=self.entity_id,
-            chat_message=command.chat_message,
-        )
-        self.entity.apply(event)
-        await self.publish(event)
-
-        answer = await async_display_message(chunks)
-        response_received = model.ChatResponseReceived(
-            session_id=self.entity_id,
-            chat_message=model.ChatMessage(role="assistant", content=answer),
+        command = model.SendChatMessage(
+            user_id=auth.user_id,
+            session_id=session_id,
+            message_body=question,
+            role="user",
         )
 
-        self.entity.apply(response_received)
-        await self.publish(response_received)
+        await session_actor.receive(command)
 
-    @singledispatchmethod
-    def apply(self, event: Event) -> ty.Self:
-        raise NotImplementedError
+    async def interactive(self, auth: Authenticator, session_id: str) -> None:
+        while True:
+            question = input("\nwhat woud you like to ask?\n\n")
+            await self.send_question(auth, session_id, question)
 
-    @apply.register
-    def _(self, event: model.ChatMessageSent) -> ty.Self:
-        self.entity.apply(event)
-        return self
+    async def login(self, email: str, password: str) -> Authenticator:
+        if not email:
+            raise Exception("email is required")
 
-    @apply.register
+        user = await self._user_repo.search_user_by_email(email)
+
+        if not user:
+            raise Exception("user not found")
+
+        if not user.user_info.verify_password(password):
+            raise Exception("Invalid password")
+
+        logger.success(f"User {user} logged in")
+        auth = Authenticator(user_id=user.entity_id)
+        auth.authenticate()
+        return auth
+
+    async def create_user(
+        self, username: str, useremail: str, password: str
+    ) -> UserActor:
+        user_info: model.UserInfo = model.UserInfo(
+            user_name=username,
+            user_email=useremail,
+            hash_password=encrypt.hash_password(password.encode()),
+        )
+        user_id = model.uuid_factory()
+        create_user = model.CreateUser(user_id=user_id, user_info=user_info)
+        await self.system.receive(create_user)
+        return self.system.select_child(user_id)
+
+    async def user_create_session(self, user_id: str, session_id: str) -> SessionActor:
+        user_actor = self.system.select_child(user_id)
+
+        await user_actor.handle(
+            model.CreateSession(user_id=user_id, session_id=session_id)
+        )
+        return user_actor.select_child(session_id)
+
+    async def find_user(self, username: str, useremail: str) -> model.User | None:
+        """
+        make sure user does not exist
+        """
+        user_or_none = await self._user_repo.search_user_by_email(useremail)
+        return user_or_none
+
+    async def start(self) -> None:
+        if self.state is ServiceState.running:
+            return
+
+        await bootstrap(self._user_repo.aioengine)
+        await self.system.start(
+            eventstore=EventStore(aioengine=self._user_repo.aioengine),
+        )
+        logger.info("System started")
+        self.state = self.state.start()
+
+    async def stop(self):
+        await self.system.stop()
+        self.state.stop()
+
+    @asynccontextmanager
+    async def setup_system(self):
+        try:
+            await self.start()
+            yield self
+        except KeyboardInterrupt:
+            logger.info("Quit by user")
+        finally:
+            await self.stop()
+
     @classmethod
-    def _(cls, event: model.SessionCreated) -> ty.Self:
-        return cls(chat_session=model.ChatSession.apply(event))
-
-
-async def setup_system(settings: Settings) -> GPTSystem:
-    eventstore = EventStore.build(db_url=settings.db.ASYNC_DB_URL)
-    system_started = SystemStarted(entity_id="system", settings=settings)
-    system = GPTSystem.apply(system_started)
-    system.create_eventlog()
-    system.create_journal(eventstore=eventstore, mailbox=MailBox.build())
-    return system
+    def build(cls, settings: Settings) -> ty.Self:
+        engine = async_engine_factory(
+            settings.db.ASYNC_DB_URL,
+            echo=settings.db.ENGINE_ECHO,
+            isolation_level=settings.db.ISOLATION_LEVEL,
+            pool_pre_ping=True,
+        )
+        system = GPTSystem(settings=settings, mailbox=MailBox.build())  # type: ignore
+        user_repo = repository.UserRepository(aioengine=engine)
+        session_repo = repository.SessionRepository(aioengine=engine)
+        service = cls(system=system, user_repo=user_repo, session_repo=session_repo)
+        return service

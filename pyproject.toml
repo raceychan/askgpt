@@ -9,22 +9,26 @@ readme = "README.md"
 [tool.poetry.dependencies]
 python = "^3.12"
 openai = "1.1"
-rich = "^13.5.2"
 aiosqlite = "^0.19.0"
 sqlalchemy = "^2.0.21"
 pydantic = "^2.4.2"
-tomli = "^2.0.1"
-pytest-cov = "^4.1.0"
+loguru = "^0.7.2"
+bcrypt = "^4.0.1"
+fastapi = "^0.104.1"
+uvicorn = { extras = ["standard"], version = "^0.24.0.post1" }
+gunicorn = "^21.2.0"
 
 [tool.poetry.group.dev.dependencies]
 pyright = "^1.1.327"
 pytest = "^7.4.2"
 pytest-asyncio = "^0.21.1"
+pytest-cov = "^4.1.0"
+rich = "^13.5.2"
 
 [tool.pytest.ini_options]
 asyncio_mode = "auto"
 testpaths = ["tests"]
-addopts = "--strict-markers"
+addopts = "--strict-markers --maxfail=1 --pdbcls=IPython.terminal.debugger:Pdb"
 markers = [
     "integration_test: marks tests as slow integration tests (deselect with '-m \"not integration_test\"')",
 ]

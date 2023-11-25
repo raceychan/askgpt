@@ -2,34 +2,30 @@ import asyncio
 import typing as ty
 from functools import cached_property, singledispatchmethod
 
+from src.app.interface import AbstractActor, ActorRegistry, IJournal
+
+# from src.domain._log import logger
 from src.domain.error import SystemNotSetError
-from src.domain.interface import ISettings
-
-# from domain.interface import IEntity
-from src.domain.model import Command, Event
-from src.infra.mq import MailBox
-
-from .interface import (
-    AbstractActor,
+from src.domain.interface import (
     ActorRef,
-    ActorRegistry,
     ICommand,
     IEntity,
     IEvent,
-    IJournal,
     IMessage,
+    ISettings,
 )
+from src.domain.model import Command, Event
+from src.infra.mq import MailBox
 
-# TListener = ty.TypeVar("TListener", bound="Actor[ty.Any]")
+
+class EmptyEvents(Exception):
+    ...
 
 
 class Actor[TChild: "Actor[ty.Any]"](AbstractActor):
     mailbox: MailBox
     _system: ty.ClassVar["System[ty.Any]"]
     childs: ActorRegistry[ActorRef, TChild]
-
-    def predict_command(self, command: ICommand) -> IEvent:
-        raise NotImplementedError
 
     def __init__(self, mailbox: MailBox):
         if not isinstance(self, System):
@@ -79,6 +75,7 @@ class Actor[TChild: "Actor[ty.Any]"](AbstractActor):
         if publish fail, the actor will die
         when restart, the lost event won't be applied, and command won't be handled
         """
+        # logger.info(f"{self} publish event {event}")
         await self.system.eventlog.receive(event)
 
     def get_child(self, ref: ActorRef) -> TChild | None:
@@ -118,15 +115,11 @@ class Actor[TChild: "Actor[ty.Any]"](AbstractActor):
         elif sys_ is not system:
             raise Exception("Call set_system twice while system is already set")
 
-    @classmethod
-    def rebuild(cls, events: list[IEvent]) -> ty.Self:
+    def rebuild(self, events: list[IEvent]) -> ty.Self:
         if not events:
-            raise Exception("No events to rebuild")
+            raise EmptyEvents(f"No events to rebuild {self.__class__.__name__}")
 
-        created_event = events[0]
-        self = cls.apply(created_event)
-
-        for e in events[1:]:
+        for e in events:
             self.apply(e)
 
         return self
@@ -166,10 +159,14 @@ class EntityActor[TChild: Actor[ty.Any], TEntity: IEntity](
 
 
 class System[TChild: Actor[ty.Any]](Actor[TChild]):
+    """
+    Singleton, should not be used directly, subclass it instead
+    """
+
     _eventlog: "EventLog[ty.Any]"
     _journal: IJournal
 
-    def __new__(cls, *args: ty.Any, **kwargs: ty.Any) -> "System[ty.Any]":
+    def __new__(cls, *args: ty.Any, **kwargs: ty.Any) -> "ty.Self":
         if not hasattr(cls, "_system"):
             cls._system = super().__new__(cls)
         return cls._system
@@ -177,22 +174,25 @@ class System[TChild: Actor[ty.Any]](Actor[TChild]):
     def __init__(self, mailbox: MailBox, settings: ISettings):
         super().__init__(mailbox=mailbox)
         self.set_system(self)
+        self._eventlog = EventLog(mailbox=MailBox.build())
         self._settings = settings
         self.__ref = settings.actor_refs.SYSTEM
 
     def ensure_self(self) -> None:
         """Pre start events"""
-        pass
+        ...
 
-    def create_eventlog(self, eventlog: ty.Optional["EventLog[ty.Any]"] = None) -> None:
+    def setup_eventlog(self, eventlog: ty.Optional["EventLog[ty.Any]"] = None) -> None:
         if eventlog is None:
             eventlog = EventLog(mailbox=MailBox.build())
         self._eventlog = eventlog
-        # self.childs[self._settings.actor_refs.EVENTLOG] = eventlog
 
     @property
-    def eventlog(self) -> "EventLog[ty.Any]":
+    def eventlog(self) -> "EventLog[TChild]":
         return self._eventlog
+
+    def subscribe_events(self, actor: Actor[TChild]):
+        self._eventlog.register_listener(actor)
 
     @property
     def journal(self) -> "IJournal":

@@ -31,25 +31,21 @@ class IEventStore(abc.ABC):
         ...
 
 
-class IRepository(abc.ABC):
-    @abc.abstractmethod
-    def add(self, entity: IEntity) -> None:
+class IRepository[TEntity: IEntity](ty.Protocol):
+    async def add(self, entity: TEntity) -> None:
         # Implement user creation logic here
         ...
 
-    @abc.abstractmethod
-    def update(self, entity: IEntity) -> None:
+    async def get(self, entity_id: str) -> TEntity | None:
+        # Implement finding a user by ID logic here
+        ...
+
+    async def update(self, entity: TEntity) -> None:
         # Implement user update logic here
         ...
 
-    @abc.abstractmethod
-    def delete(self, entity: IEntity) -> None:
+    async def remove(self, entity_id: str) -> None:
         # Implement user deletion logic here
-        ...
-
-    @abc.abstractmethod
-    def get(self, entity_id: str) -> IEntity:
-        # Implement finding a user by ID logic here
         ...
 
 
