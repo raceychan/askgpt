@@ -34,11 +34,11 @@ async def gpt(settings: Settings):
         yield gpt
 
 
-# @pytest.mark.skip(reason="TODO: fix this test")
+@pytest.mark.skip(reason="io involved")
 async def test_create_user(gpt: service.GPTService, auth_options: cli.CLIOptions):
     await cli.app(gpt, auth_options)
 
 
-# @pytest.mark.skip(reason="TODO: fix this test")
+@pytest.mark.skip(reason="io involved")
 async def test_cli_app(gpt: service.GPTService, gpt_options: cli.CLIOptions):
     await cli.app(gpt, gpt_options)

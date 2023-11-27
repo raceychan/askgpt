@@ -1,0 +1,28 @@
+[project]
+name = "askgpt"
+version = "0.1.0"
+description = "gpt client in zen mode"
+authors = ["raceychan <raceychan@gmail.com>"]
+channels = ["conda-forge"]
+platforms = ["linux-64"]
+
+[tasks]
+
+[dependencies]
+python = ">=3.12"
+openai = "1.1"
+aiosqlite = ">=0.19.0"
+sqlalchemy = ">=2.0.21"
+pydantic = ">=2.4.2"
+loguru = ">=0.7.2"
+bcrypt = ">=4.0.1"
+fastapi = ">=0.104.1"
+uvicorn-standard = "0.24.0.*"
+gunicorn = ">=21.2.0"
+
+# dev dependencies
+rich = "13.7.0.*"
+pytest = ">=7.4.2"
+pytest-asyncio = ">=0.21.1"
+pytest-cov = ">=4.1.0"
+pyright = ">=1.1.327"

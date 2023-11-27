@@ -1,47 +1,21 @@
-import enum
 import typing as ty
 from contextlib import asynccontextmanager
 
 from src.app.bootstrap import bootstrap
 from src.app.gpt import model, repository
-from src.app.gpt.system import Authenticator, GPTSystem, SessionActor, UserActor
+from src.app.gpt.system import (
+    Authenticator,
+    GPTSystem,
+    SessionActor,
+    SystemState,
+    UserActor,
+)
 from src.domain import encrypt
 from src.domain._log import logger
 from src.domain.config import Settings
 from src.infra.eventstore import EventStore
 from src.infra.mq import MailBox
 from src.infra.sa_utils import async_engine_factory
-
-
-class ServiceState(enum.Enum):
-    class InvalidStateError(Exception):
-        ...
-
-    created = enum.auto()
-    running = enum.auto()
-    stopped = enum.auto()
-
-    @property
-    def is_running(self) -> bool:
-        return self == ServiceState.running
-
-    @property
-    def is_created(self) -> bool:
-        return self == ServiceState.created
-
-    @property
-    def is_stopped(self) -> bool:
-        return self == ServiceState.stopped
-
-    def start(self) -> ty.Self:
-        if not self.is_created:
-            raise self.InvalidStateError("system already started")
-        return ServiceState.running
-
-    def stop(self) -> ty.Self:
-        if not self.is_running:
-            raise self.InvalidStateError("system already stopped")
-        return ServiceState.stopped
 
 
 class GPTService:
@@ -51,7 +25,7 @@ class GPTService:
         user_repo: repository.UserRepository,
         session_repo: repository.SessionRepository,
     ):
-        self._state = ServiceState.created
+        self._service_state = SystemState.created
         self._system = system
         self._user_repo = user_repo
         self._session_repo = session_repo
@@ -61,14 +35,14 @@ class GPTService:
         return self._system  # type: ignore
 
     @property
-    def state(self) -> ServiceState:
-        return self._state
+    def state(self) -> SystemState:
+        return self._service_state
 
     @state.setter
-    def state(self, state: ServiceState) -> None:
-        if self._state is ServiceState.stopped:
+    def state(self, state: SystemState) -> None:
+        if self._service_state is SystemState.stopped:
             raise Exception("system already stopped")
-        self._state = state
+        self._service_state = state
 
     async def send_question(
         self, auth: Authenticator, session_id: str, question: str
@@ -98,15 +72,15 @@ class GPTService:
 
     async def login(self, email: str, password: str) -> Authenticator:
         if not email:
-            raise Exception("email is required")
+            raise ValueError("email is required")
 
         user = await self._user_repo.search_user_by_email(email)
 
         if not user:
-            raise Exception("user not found")
+            raise ValueError("user not found")
 
         if not user.user_info.verify_password(password):
-            raise Exception("Invalid password")
+            raise ValueError("Invalid password")
 
         logger.success(f"User {user} logged in")
         auth = Authenticator(user_id=user.entity_id)
@@ -142,7 +116,7 @@ class GPTService:
         return user_or_none
 
     async def start(self) -> None:
-        if self.state is ServiceState.running:
+        if self.state is SystemState.running:
             return
 
         await bootstrap(self._user_repo.aioengine)
@@ -154,7 +128,7 @@ class GPTService:
 
     async def stop(self):
         await self.system.stop()
-        self.state.stop()
+        self.state = self.state.stop()
 
     @asynccontextmanager
     async def setup_system(self):

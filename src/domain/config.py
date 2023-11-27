@@ -42,9 +42,9 @@ class Settings(SettingsBase):
     db: DB
 
     class ActorRefs(SettingsBase):
-        SYSTEM: SystemRef  # = SystemRef("system")
-        EVENTLOG: EventLogRef  # = EventLogRef("eventlog")
-        JOURNAL: JournalRef  # = JournalRef("journal")
+        SYSTEM: SystemRef = SystemRef("system")
+        EVENTLOG: EventLogRef = EventLogRef("eventlog")
+        JOURNAL: JournalRef = JournalRef("journal")
 
     actor_refs: ActorRefs
 

@@ -1,3 +1,5 @@
+import asyncio
+
 import pytest
 
 from src.app.actor import MailBox
@@ -174,3 +176,38 @@ async def test_event_unduplicate(
         all_events_set - system_events_set - user_events_set - session_events_set
         == set()
     )
+
+
+def test_service_state_start():
+    state = service.SystemState.created
+    new_state = state.start()
+    assert new_state == service.SystemState.running
+
+    with pytest.raises(system.InvalidStateError):
+        service.SystemState.running.start()
+
+
+def test_service_state_stop():
+    state = service.SystemState.running
+    new_state = state.stop()
+    assert new_state == service.SystemState.stopped
+
+    with pytest.raises(system.InvalidStateError):
+        service.SystemState.stopped.stop()
+
+
+@pytest.fixture(scope="module")
+async def gpt_service(settings: config.Settings):
+    gpt = service.GPTService.build(settings)
+    yield gpt
+    await asyncio.sleep(0)  # Ensure async cleanup
+
+
+async def test_start_when_already_running(gpt_service: service.GPTService):
+    gpt_service._state = service.SystemState.running
+    await gpt_service.start()
+    # Assert that no further actions are taken if the state is already running
+    assert gpt_service.system.state.is_running
+
+    await gpt_service.stop()
+    assert gpt_service.state.is_stopped

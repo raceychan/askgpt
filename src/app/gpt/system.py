@@ -1,3 +1,4 @@
+import enum
 import typing as ty
 from functools import singledispatchmethod
 
@@ -24,6 +25,38 @@ class SystemStoped(Event):
 
 class UserNotRegisteredError(Exception):
     ...
+
+
+class InvalidStateError(Exception):
+    ...
+
+
+class SystemState(enum.Enum):
+    created = enum.auto()
+    running = enum.auto()
+    stopped = enum.auto()
+
+    @property
+    def is_running(self) -> bool:
+        return self == type(self).running
+
+    @property
+    def is_created(self) -> bool:
+        return self == type(self).created
+
+    @property
+    def is_stopped(self) -> bool:
+        return self == type(self).stopped
+
+    def start(self) -> ty.Self:
+        if not self.is_created:
+            raise InvalidStateError("system already started")
+        return type(self).running
+
+    def stop(self) -> ty.Self:
+        if not self.is_running:
+            raise InvalidStateError("system already stopped")
+        return type(self).stopped
 
 
 class OrphanSessionError(Exception):
@@ -191,6 +224,17 @@ class Authenticator:
 class GPTSystem(System[UserActor]):
     def __init__(self, mailbox: MailBox, settings: ISettings):
         super().__init__(mailbox=mailbox, settings=settings)
+        self._system_state = SystemState.created
+
+    @property
+    def state(self) -> SystemState:
+        return self._system_state
+
+    @state.setter
+    def state(self, state: SystemState) -> None:
+        if self._system_state is SystemState.stopped:
+            raise InvalidStateError("system already stopped")
+        self._system_state = state
 
     async def create_user(self, command: model.CreateUser) -> "UserActor":
         event = model.UserCreated(
@@ -220,13 +264,16 @@ class GPTSystem(System[UserActor]):
         self.childs[user_actor.entity_id] = user_actor
         return user_actor
 
-    # @classmethod
     async def start(self, eventstore: EventStore) -> "GPTSystem":
+        if self._system_state.is_running:
+            raise InvalidStateError("system already started")
+
         event = SystemStarted(
             entity_id=self.settings.actor_refs.SYSTEM, settings=self.settings  # type: ignore
         )
         self.apply(event)
         self.setup_journal(eventstore=eventstore, mailbox=MailBox.build())
+        self.state = self.state.start()
         return self
 
     @singledispatchmethod
@@ -260,4 +307,5 @@ class GPTSystem(System[UserActor]):
 
     async def stop(self) -> None:
         logger.info("system stopped")
+        self.state = self.state.stop()
         # await self.publish(SystemStoped(entity_id="system"))

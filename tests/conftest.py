@@ -34,6 +34,8 @@ def settings() -> TestSettings:
         db=db,
         actor_refs=TestSettings.ActorRefs(),
         RUNTIME_ENV="test",
+        api=TestSettings.API(),
+        security=TestSettings.Security(SECRET_KEY="test"),
     )
     return ss
 

@@ -4,6 +4,7 @@ response.json
 answer.md
 dev.ipynb
 tmp.py
+.pixi
 
 .ipynb_checkpoints
 *.vscode

@@ -1,6 +1,5 @@
 import typing as ty
 
-import rich
 import sqlalchemy as sa
 from sqlalchemy.ext import asyncio as sa_aio
 
@@ -83,6 +82,8 @@ class SQLDebugger:
         self.inspector = sa.inspect(engine)
 
     def execute(self, sql: str) -> list[dict[str, ty.Any]]:
+        import rich
+
         with self.engine.begin() as conn:
             rich.print(f"{self} is executing sql=:\n {sql}\n")
             result = conn.execute(sa.text(sql))
