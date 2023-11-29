@@ -1,10 +1,8 @@
 import typing as ty
+from functools import lru_cache
 
 import sqlalchemy as sa
 from sqlalchemy.ext import asyncio as sa_aio
-
-# from sqlalchemy.sql import type_api as sa_ty
-
 
 # def as_sa_types(py_type: type) -> type:
 #     import datetime
@@ -27,6 +25,7 @@ from sqlalchemy.ext import asyncio as sa_aio
 #     return TYPES_MAPPING[py_type]
 
 
+@lru_cache(maxsize=1)
 def async_engine_factory(
     db_url: str,
     *,
@@ -34,11 +33,14 @@ def async_engine_factory(
     hide_parameters: bool = False,
     pool_pre_ping: bool = True,
     pool_recycle: int = 3600,
-    poolclass: type[sa.Pool]
-    | None = None,  # = sa.NullPool, NullPool is incompatible with sqlite(:memory:), cause every connection is a new db
+    # NOTE: NullPool is incompatible with sqlite(:memory:), wiht it every connection creates a new db
+    poolclass: type[sa.Pool] | None = None,
     execution_options: dict[str, ty.Any] | None = None,
     isolation_level: sa.engine.interfaces.IsolationLevel = "READ COMMITTED",
 ) -> sa_aio.AsyncEngine:
+    """
+    lru-cached async engine factory
+    """
     engine = sa_aio.create_async_engine(
         db_url,
         echo=echo,
@@ -52,6 +54,7 @@ def async_engine_factory(
     return engine
 
 
+@lru_cache(maxsize=1)
 def engine_factory(
     db_url: str,
     *,
@@ -59,7 +62,7 @@ def engine_factory(
     hide_parameters: bool = False,
     pool_pre_ping: bool = True,
     pool_recycle: int = 3600,
-    poolclass: type[sa.Pool] | None = sa.NullPool,
+    poolclass: type[sa.Pool] | None = None,
     execution_options: dict[str, ty.Any] | None = None,
     isolation_level: sa.engine.interfaces.IsolationLevel = "READ COMMITTED",
 ):
@@ -86,8 +89,8 @@ class SQLDebugger:
 
         with self.engine.begin() as conn:
             rich.print(f"{self} is executing sql=:\n {sql}\n")
-            result = conn.execute(sa.text(sql))
-            rows = result.all()
+            res = conn.execute(sa.text(sql))
+            rows = res.all()
         return [dict(row._mapping) for row in rows]
 
     @classmethod
@@ -124,7 +127,7 @@ async def test_table_exist(async_engine: sa_aio.AsyncEngine, tablename: str):
     """.strip()
 
     async with async_engine.begin() as cursor:
-        cache = await cursor.execute(sa.text(sql))
-        row = cache.one()
+        res = await cursor.execute(sa.text(sql))
+        row = res.one()
 
     return dict(row._mapping)

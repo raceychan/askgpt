@@ -3,17 +3,9 @@ import typing as ty
 from functools import cached_property, singledispatchmethod
 
 from src.app.interface import AbstractActor, ActorRegistry, IJournal
-
-# from src.domain._log import logger
+from src.domain.config import Settings
 from src.domain.error import SystemNotSetError
-from src.domain.interface import (
-    ActorRef,
-    ICommand,
-    IEntity,
-    IEvent,
-    IMessage,
-    ISettings,
-)
+from src.domain.interface import ActorRef, ICommand, IEntity, IEvent, IMessage
 from src.domain.model import Command, Event
 from src.infra.mq import MailBox
 
@@ -70,12 +62,6 @@ class Actor[TChild: "Actor[ty.Any]"](AbstractActor):
             raise TypeError("Unknown message type")
 
     async def publish(self, event: IEvent) -> None:
-        """
-        apply a event first and then publish the event
-        if publish fail, the actor will die
-        when restart, the lost event won't be applied, and command won't be handled
-        """
-        # logger.info(f"{self} publish event {event}")
         await self.system.eventlog.receive(event)
 
     def get_child(self, ref: ActorRef) -> TChild | None:
@@ -171,7 +157,7 @@ class System[TChild: Actor[ty.Any]](Actor[TChild]):
             cls._system = super().__new__(cls)
         return cls._system
 
-    def __init__(self, mailbox: MailBox, settings: ISettings):
+    def __init__(self, mailbox: MailBox, settings: Settings):
         super().__init__(mailbox=mailbox)
         self.set_system(self)
         self._eventlog = EventLog(mailbox=MailBox.build())
@@ -199,11 +185,11 @@ class System[TChild: Actor[ty.Any]](Actor[TChild]):
         return self._journal
 
     @property
-    def settings(self) -> ISettings:
+    def settings(self) -> Settings:
         return self._settings
 
     @settings.setter
-    def settings(self, value: ISettings) -> None:
+    def settings(self, value: Settings) -> None:
         self._settings = value
 
     @cached_property
@@ -214,6 +200,10 @@ class System[TChild: Actor[ty.Any]](Actor[TChild]):
 class EventLog[TListener: Actor[ty.Any]](Actor[ty.Any]):
     """
     a mediator that used to decouple event source(Actors) and event consumer (Journal)
+
+    Actors.publish -> EventLog.receive -> Journal.receive
+
+    coudld be refactor to a kafka publisher if needed
     """
 
     _event_listener: TListener

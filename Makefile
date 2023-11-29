@@ -14,7 +14,11 @@ debug:
 typecheck:
 	mypy src/ --explicit-package-bases --enable-incomplete-feature=Unpack
 
-.PHONY: setup
+.PHONY: install
 setup:
-	conda install -c conda-forge poetry=1.7.0
-	poetry install --no-root
+	pixi install
+
+.PHONY: shell
+shell:
+	pixi shell
+

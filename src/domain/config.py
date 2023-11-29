@@ -1,5 +1,6 @@
 import functools
 import pathlib
+import secrets
 import typing as ty
 
 from pydantic import BaseModel, ConfigDict
@@ -52,7 +53,6 @@ class Settings(SettingsBase):
         SECRET_KEY: str
         ALGORITHM: str = "HS256"
         ACCESS_TOKEN_EXPIRE_MINUTES: int = 60 * 24 * 7
-        SALT: str = "askgpt"
 
     security: Security
 
@@ -62,6 +62,8 @@ class Settings(SettingsBase):
         OPEN_API: str = f"{API_VERSION_STR}/openapi.json"
         DOCS: str = f"{API_VERSION_STR}/docs"
         REDOC: str = f"{API_VERSION_STR}/redoc"
+        SECRET_KEY: str = secrets.token_urlsafe(32)
+        ACCESS_TOKEN_EXPIRE_MINUTES: int = 60 * 24 * 8
 
     api: API
 
@@ -71,14 +73,20 @@ class Settings(SettingsBase):
 
     @classmethod
     @functools.lru_cache(maxsize=1)
-    def from_file(cls, filename: str = "settings.toml") -> ty.Self:
+    def from_file(cls, filename: str) -> ty.Self:
         fileutil = FileUtil.from_cwd()
         return cls(**fileutil.read_file(filename))
 
     def get_modulename(self, filename: str) -> str:
+        """
+        >>> get_modulename(/src/domain/config.py) -> src.domain.config
+        """
         file_path = pathlib.Path(filename).relative_to(self.PROJECT_ROOT)
         return str(file_path).replace("/", ".")[:-3]
 
 
-def settings(filename: str = "settings.toml") -> Settings:
+def get_setting(filename: str = "settings.toml") -> Settings:
+    """
+    offcial factory of settings, same as Settings.from_file()
+    """
     return Settings.from_file(filename=filename)

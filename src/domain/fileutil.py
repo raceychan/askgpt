@@ -2,40 +2,6 @@ import abc
 import pathlib
 import typing as ty
 
-# def value_parser(val: str) -> ty.Any:
-#     """
-#     parse a string to a python object
-
-#     Examples:
-#     ------
-#     >>> value_parser("3.5") -> 3.5
-#     >>> value_parser("3") -> 2
-#     >>> value_parser("0.0.1") -> '0.0.1'
-#     """
-#     if val[0] in {'"', "'"}:  # Removing quotes if they exist
-#         if val[0] == val[-1]:
-#             val = val[1:-1]
-#         else:
-#             raise ValueError(f"{val} inproperly quoted")
-
-#     # Type casting
-#     if val.isdecimal():
-#         value = int(val)  # Integer type
-#     elif val.lower() in {"true", "false"}:
-#         value = val.lower() == "true"  # Boolean type
-#     elif val.lower() == "null":
-#         value = None
-#     else:
-#         if val[0].isdecimal():  # Float type
-#             try:
-#                 value = float(val)
-#             except ValueError:
-#                 pass
-#             else:
-#                 return value
-#         value = val  # Otherwise, string type
-#     return value
-
 
 class EndOfChainError(Exception):
     ...

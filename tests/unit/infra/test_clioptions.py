@@ -1,9 +1,8 @@
 import pytest
 
-from src.adapter.cli import CLIOptions, InvalidOption
-
 # from src.app import gpt
 from src.app.gpt import model
+from src.cli import CLIOptions, InvalidOption
 
 
 def test_validate():

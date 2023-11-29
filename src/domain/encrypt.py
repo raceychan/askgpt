@@ -1,4 +1,7 @@
+import typing as ty
+
 import bcrypt
+from jose import jwt
 
 SALT = bcrypt.gensalt()
 
@@ -9,3 +12,8 @@ def hash_password(password: bytes) -> bytes:
 
 def verify_password(password: bytes, hashed: bytes) -> bool:
     return bcrypt.checkpw(password, hashed)
+
+
+def create_jwt(content: dict[str, ty.Any], secret_key: str, algorithm: str):
+    token = jwt.encode(content, secret_key, algorithm=algorithm)
+    return token

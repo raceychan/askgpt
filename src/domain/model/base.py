@@ -12,8 +12,8 @@ from pydantic import (
     Field,
     SerializeAsAny,
     computed_field,
-    validator,
     field_serializer,
+    validator,
 )
 
 from src.domain.model.interface import ICommand, IEvent, utc_datetime

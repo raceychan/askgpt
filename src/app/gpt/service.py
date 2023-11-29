@@ -1,33 +1,25 @@
 import typing as ty
 from contextlib import asynccontextmanager
 
-from src.app.bootstrap import bootstrap
+from src.app import factory
+from src.app.auth.service import Authenticator
 from src.app.gpt import model, repository
-from src.app.gpt.system import (
-    Authenticator,
-    GPTSystem,
-    SessionActor,
-    SystemState,
-    UserActor,
-)
+from src.app.gpt.system import GPTSystem, SessionActor, SystemState, UserActor
 from src.domain import encrypt
 from src.domain._log import logger
 from src.domain.config import Settings
 from src.infra.eventstore import EventStore
 from src.infra.mq import MailBox
-from src.infra.sa_utils import async_engine_factory
 
 
 class GPTService:
     def __init__(
         self,
         system: GPTSystem,
-        user_repo: repository.UserRepository,
         session_repo: repository.SessionRepository,
     ):
         self._service_state = SystemState.created
         self._system = system
-        self._user_repo = user_repo
         self._session_repo = session_repo
 
     @property
@@ -70,23 +62,6 @@ class GPTService:
             question = input("\nwhat woud you like to ask?\n\n")
             await self.send_question(auth, session_id, question)
 
-    async def login(self, email: str, password: str) -> Authenticator:
-        if not email:
-            raise ValueError("email is required")
-
-        user = await self._user_repo.search_user_by_email(email)
-
-        if not user:
-            raise ValueError("user not found")
-
-        if not user.user_info.verify_password(password):
-            raise ValueError("Invalid password")
-
-        logger.success(f"User {user} logged in")
-        auth = Authenticator(user_id=user.entity_id)
-        auth.authenticate()
-        return auth
-
     async def create_user(
         self, username: str, useremail: str, password: str
     ) -> UserActor:
@@ -108,20 +83,12 @@ class GPTService:
         )
         return user_actor.select_child(session_id)
 
-    async def find_user(self, username: str, useremail: str) -> model.User | None:
-        """
-        make sure user does not exist
-        """
-        user_or_none = await self._user_repo.search_user_by_email(useremail)
-        return user_or_none
-
     async def start(self) -> None:
         if self.state is SystemState.running:
             return
 
-        await bootstrap(self._user_repo.aioengine)
         await self.system.start(
-            eventstore=EventStore(aioengine=self._user_repo.aioengine),
+            eventstore=EventStore(aioengine=self._session_repo.aioengine),
         )
         logger.info("System started")
         self.state = self.state.start()
@@ -142,14 +109,8 @@ class GPTService:
 
     @classmethod
     def build(cls, settings: Settings) -> ty.Self:
-        engine = async_engine_factory(
-            settings.db.ASYNC_DB_URL,
-            echo=settings.db.ENGINE_ECHO,
-            isolation_level=settings.db.ISOLATION_LEVEL,
-            pool_pre_ping=True,
-        )
-        system = GPTSystem(settings=settings, mailbox=MailBox.build())  # type: ignore
-        user_repo = repository.UserRepository(aioengine=engine)
-        session_repo = repository.SessionRepository(aioengine=engine)
-        service = cls(system=system, user_repo=user_repo, session_repo=session_repo)
+        aioengine = factory.get_async_engine(settings)
+        system = GPTSystem(settings=settings, mailbox=MailBox.build())
+        session_repo = repository.SessionRepository(aioengine)
+        service = cls(system=system, session_repo=session_repo)
         return service

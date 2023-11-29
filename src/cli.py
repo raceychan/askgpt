@@ -3,9 +3,10 @@ import typing as ty
 from argparse import ArgumentParser, Namespace
 from dataclasses import dataclass
 
+from src.app.auth.service import AuthService
 from src.app.gpt import model, service
 from src.domain._log import logger
-from src.domain.config import Settings
+from src.domain.config import get_setting
 
 
 class InvalidOption(Exception):
@@ -74,7 +75,6 @@ class CLIOptions(Namespace):
 
 
 async def gpt_dispatch(gpt: service.GPTService, options: CLIOptions) -> None:
-    auth = await gpt.login(options.email, options.password)
     session_id = options.session_id
 
     if options.question:
@@ -83,16 +83,16 @@ async def gpt_dispatch(gpt: service.GPTService, options: CLIOptions) -> None:
         await gpt.interactive(auth, session_id)
 
 
-async def auth_dispatch(gptservice: service.GPTService, options: CLIOptions):
+async def auth_dispatch(auth: AuthService, options: CLIOptions):
     # TODO: use email as user id
     username = options.username
     email = options.email
     password = options.password
 
-    user = await gptservice.find_user(username=username, useremail=email)
+    user = await auth.find_user(username=username, useremail=email)
 
     if not user:
-        await gptservice.create_user(username, email, password)
+        await auth.create_user(username, email, password)
     else:
         logger.info(
             f"User: {user.user_info.user_email} already exists, user id: {user.entity_id}"
@@ -101,17 +101,19 @@ async def auth_dispatch(gptservice: service.GPTService, options: CLIOptions):
 
 async def app(gpt: service.GPTService, options: CLIOptions) -> None:
     async with gpt.setup_system() as system:
-        if options.command == "auth":
-            await auth_dispatch(system, options)
-        elif options.command == "gpt":
-            await gpt_dispatch(system, options)
+        await gpt_dispatch(system, options)
 
 
 def main():
     options = CLIOptions.parse()
-    settings = Settings.from_file("settings.toml")
+    settings = get_setting()
     gpt = service.GPTService.build(settings)
-    asyncio.run(app(gpt, options))
+    auth = AuthService.build(settings)
+
+    if options.command == "auth":
+        asyncio.run(auth_dispatch(auth, options))
+    elif options.command == "gpt":
+        asyncio.run(app(gpt, options))
 
 
 if __name__ == "__main__":

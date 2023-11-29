@@ -167,13 +167,11 @@ class UserInfo(ValueObject):
 class CreateUser(Command):
     entity_id: str = Field(alias="user_id")  # , default_factory=uuid_factory)
     user_info: UserInfo
-    # session_id: str
 
 
 class UserCreated(Event):
     entity_id: str = Field(alias="user_id")
     user_info: UserInfo
-    # session_id: str
 
 
 class User(Entity):

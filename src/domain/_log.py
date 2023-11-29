@@ -1,14 +1,13 @@
-from __future__ import annotations
+from __future__ import annotations  # annotations become strings at runtime
 
 import datetime
 import sys
 import traceback
-from pathlib import Path
 
 import loguru
-from loguru import logger as _logger
+from loguru import logger as logger_
 
-from src.domain.config import Settings, settings
+from src.domain.config import Settings, get_setting
 
 __all__ = ["logger"]
 
@@ -23,9 +22,7 @@ def log_sink(settings: Settings):
 def prod_sink(msg: loguru.Message):
     record = msg.record
     record_time_utc = record["time"].astimezone(datetime.UTC)
-
-    file_path = settings().get_modulename(record["file"].path)
-    # Path(record["file"].path).relative_to(project_root)
+    file_path = get_setting().get_modulename(record["file"].path)
     custom_record = {
         "level": record["level"].name,
         "msg": record["message"],
@@ -43,10 +40,10 @@ def prod_sink(msg: loguru.Message):
     print(custom_record)
 
 
-_logger.remove(0)
-_logger.add(
-    log_sink(settings()),
+logger_.remove(0)
+logger_.add(
+    log_sink(get_setting()),
     level="TRACE",
 )
 
-logger = _logger
+logger = logger_

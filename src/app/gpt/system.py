@@ -9,7 +9,7 @@ from src.app.journal import Journal
 from src.app.utils.fmtutils import async_receiver
 from src.domain._log import logger
 from src.domain.config import Settings
-from src.domain.interface import ICommand, ISettings
+from src.domain.interface import ICommand
 from src.domain.model import Command, Event, Message
 from src.infra.eventstore import EventStore
 from src.infra.mq import MailBox
@@ -208,21 +208,8 @@ class SessionActor(EntityActor[OpenAIClient, model.ChatSession]):
         return cls(chat_session=model.ChatSession.apply(event))
 
 
-class Authenticator:
-    def __init__(self, user_id: str):
-        self.user_id = user_id
-        self._is_authenticated = False
-
-    @property
-    def is_authenticated(self) -> bool:
-        return self._is_authenticated
-
-    def authenticate(self):
-        self._is_authenticated = True
-
-
 class GPTSystem(System[UserActor]):
-    def __init__(self, mailbox: MailBox, settings: ISettings):
+    def __init__(self, mailbox: MailBox, settings: Settings):
         super().__init__(mailbox=mailbox, settings=settings)
         self._system_state = SystemState.created
 
@@ -247,8 +234,10 @@ class GPTSystem(System[UserActor]):
 
     def setup_journal(self, eventstore: EventStore, mailbox: MailBox) -> None:
         """
-        journal is part of the application layer, it should be created here by gptsystem
+        journal is part of the application layer,
+        so it should be created here by gptsystem, not by system actor
         """
+
         journal_ref = self.settings.actor_refs.JOURNAL
         journal = Journal(eventstore, mailbox, ref=journal_ref)
         self._journal = journal
@@ -269,7 +258,7 @@ class GPTSystem(System[UserActor]):
             raise InvalidStateError("system already started")
 
         event = SystemStarted(
-            entity_id=self.settings.actor_refs.SYSTEM, settings=self.settings  # type: ignore
+            entity_id=self.settings.actor_refs.SYSTEM, settings=self.settings
         )
         self.apply(event)
         self.setup_journal(eventstore=eventstore, mailbox=MailBox.build())
@@ -283,7 +272,7 @@ class GPTSystem(System[UserActor]):
     @apply.register
     @classmethod
     def _(cls, event: SystemStarted) -> ty.Self:
-        return cls(mailbox=MailBox.build(), settings=event.settings)  # type: ignore # pydantic forces concrete settings
+        return cls(mailbox=MailBox.build(), settings=event.settings)
 
     @singledispatchmethod
     async def handle(self, command: Command) -> None:
@@ -308,4 +297,3 @@ class GPTSystem(System[UserActor]):
     async def stop(self) -> None:
         logger.info("system stopped")
         self.state = self.state.stop()
-        # await self.publish(SystemStoped(entity_id="system"))

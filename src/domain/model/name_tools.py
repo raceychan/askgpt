@@ -24,13 +24,6 @@ def str_to_snake(string: str) -> str:
     return snake_string
 
 
-# def pascal_to_snake(string: str):
-#     "works for both camelCase and PascalCase"
-#     if not string:
-#         return string
-#     return "".join(["_" + c.lower() if c.isupper() else c for c in string]).lstrip("_")
-
-
 def snake_to_pascal(snake_string: str) -> str:
     words = snake_string.split("_")
     pascal_string = "".join([word.capitalize() for word in words])

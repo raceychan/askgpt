@@ -1,6 +1,6 @@
 import pytest
 
-from src.adapter import cli
+from src import cli
 from src.app.gpt import model, service
 from src.domain.config import Settings
 

@@ -12,17 +12,6 @@ def fprint(string: str) -> None:
     stdout.flush()
 
 
-# def display_message(answer: ty.Generator[str | None, None, None]) -> str:
-#     str_container = ""
-#     for chunk in answer:
-#         if chunk is None:
-#             fprint("\n")
-#         else:
-#             fprint(chunk)
-#             str_container += chunk
-#     return str_container
-
-
 async def async_receiver(answer: ty.AsyncGenerator[str | None, None]) -> str:
     str_container = ""
     async for chunk in answer:

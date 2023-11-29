@@ -3,14 +3,17 @@ import typing as ty
 from functools import cached_property, singledispatchmethod
 
 from src.app.actor import Actor, ActorRef
-from src.app.interface import IJournal
 from src.domain._log import logger
 from src.domain.interface import IEvent, IEventStore, IMessage
 from src.domain.model import Event
 from src.infra.mq import MailBox
 
 
-class Journal(Actor[ty.Any], IJournal):
+class Journal(Actor[ty.Any]):
+    """
+    Consumer that consumes events from event bus and persist them to event store
+    """
+
     _loop: asyncio.AbstractEventLoop
 
     def __init__(
