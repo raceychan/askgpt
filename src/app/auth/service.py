@@ -71,7 +71,7 @@ class AuthService:
         """
         make sure user does not exist
         """
-        user = repository.User.create(username, useremail, password)
+        user = repository.User.create()
         await self._user_repo.add(user)
         return user
 

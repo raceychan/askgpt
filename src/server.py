@@ -4,8 +4,8 @@ import uvicorn
 from fastapi import APIRouter, FastAPI
 
 from src.app.bootstrap import bootstrap
+from src.app.factory import get_async_engine
 from src.app.gpt.api import gpt_router
-from src.app.gpt.factory import get_async_engine
 from src.domain._log import logger
 from src.domain.config import get_setting
 

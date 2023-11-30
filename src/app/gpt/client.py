@@ -37,21 +37,21 @@ class OpenAIClient(Actor[ty.Any]):
         # https://platform.openai.com/docs/assistants/overview
         return await self._client.beta.threads.create()
 
-    async def send_chat(  # type: ignore
+    async def send_chat(
         self,
         messages: list[model.ChatMessage],
         model: model.CompletionModels,
         stream: bool = True,
         **options: ty.Unpack[params.CompletionOptions],
     ) -> ty.AsyncGenerator[ChatCompletionChunk, None]:
-        resp = await self._client.chat.completions.create(
+        resp = await self._client.chat.completions.create(  # type: ignore
             messages=self.message_adapter(messages),  # type: ignore
             model=model,
             stream=stream,
             **options,
         )
 
-        return resp
+        return resp  # type: ignore
 
     def message_adapter(
         self, message: list[model.ChatMessage]
