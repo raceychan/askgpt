@@ -1,6 +1,7 @@
 import pytest
 
 from src.app.gpt import model
+from src.app.model import TestDefaults
 
 
 @pytest.fixture(scope="module")
@@ -11,14 +12,14 @@ def chat_message():
 @pytest.fixture(scope="module")
 def session_created():
     return model.SessionCreated(
-        session_id=model.TestDefaults.SESSION_ID, user_id=model.TestDefaults.USER_ID
+        session_id=TestDefaults.SESSION_ID, user_id=TestDefaults.USER_ID
     )
 
 
 @pytest.fixture(scope="module")
-def chat_message_sent(chat_message):
+def chat_message_sent(chat_message: model.ChatMessage):
     return model.ChatMessageSent(
-        session_id=model.TestDefaults.SESSION_ID,
+        session_id=TestDefaults.SESSION_ID,
         chat_message=chat_message,
     )
 
@@ -26,7 +27,7 @@ def chat_message_sent(chat_message):
 @pytest.fixture(scope="module")
 def chat_response_received():
     return model.ChatResponseReceived(
-        session_id=model.TestDefaults.SESSION_ID,
+        session_id=TestDefaults.SESSION_ID,
         chat_message=model.ChatMessage(role="system", content="pong"),
     )
 

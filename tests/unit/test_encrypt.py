@@ -1,7 +1,9 @@
 import pytest
 
-from src.app.gpt import model
+from src.app import model
 from src.domain import encrypt
+
+
 
 password = model.TestDefaults.USER_PASSWORD
 

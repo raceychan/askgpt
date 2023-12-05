@@ -9,6 +9,15 @@ platforms = ["linux-64"]
 [tasks]
 
 [dependencies]
+# dev dependencies
+rich = "13.7.0.*"
+pytest = ">=7.4.2"
+pytest-asyncio = ">=0.21.1"
+pytest-cov = ">=4.1.0"
+pyright = ">=1.1.327"
+ipython = "8.18.1.*"
+
+# prod
 python = ">=3.12"
 openai = "1.1"
 aiosqlite = ">=0.19.0"
@@ -19,11 +28,5 @@ bcrypt = ">=4.0.1"
 fastapi = ">=0.104.1"
 uvicorn-standard = "0.24.0.*"
 gunicorn = ">=21.2.0"
-
-# dev dependencies
-rich = "13.7.0.*"
-pytest = ">=7.4.2"
-pytest-asyncio = ">=0.21.1"
-pytest-cov = ">=4.1.0"
-pyright = ">=1.1.327"
 python-jose = "3.3.0.*"
+email-validator = "2.1.0.post1.*"

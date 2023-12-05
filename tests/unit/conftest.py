@@ -1,19 +1,23 @@
 import pytest
 
 from src.app.gpt import model
+from src.app.model import TestDefaults
 from src.domain import encrypt
 
 
+
+
+
 @pytest.fixture(scope="package")
-def user_info():
-    e = model.TestDefaults.USER_INFO
+def user_info(test_defaults: TestDefaults):
+    e = test_defaults.USER_INFO
     assert encrypt.verify_password(
-        model.TestDefaults.USER_PASSWORD.encode(), e.hash_password
+        test_defaults.USER_PASSWORD.encode(), e.hash_password
     )
 
     return e
 
 
 @pytest.fixture(scope="package")
-def user_created(user_info: model.UserInfo):
-    return model.UserCreated(user_id=model.TestDefaults.USER_ID, user_info=user_info)
+def user_created(test_defaults: TestDefaults, user_info: model.UserInfo):
+    return model.UserCreated(user_id=test_defaults.USER_ID, user_info=user_info)

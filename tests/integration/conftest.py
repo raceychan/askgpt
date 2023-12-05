@@ -1,9 +1,14 @@
+import datetime
+
 import pytest
 from sqlalchemy.ext import asyncio as sa_aio
 
+from src.app.auth.repository import UserAuth
+from src.app.bootstrap import bootstrap
+from src.app.model import TestDefaults
 from src.domain.interface import ISettings
+from src.infra.cache import LocalCache
 from src.infra.eventstore import EventStore
-from src.infra.schema import EventSchema
 
 
 @pytest.fixture(scope="module")
@@ -17,13 +22,24 @@ def async_engine(settings: ISettings):
     return engine
 
 
+@pytest.fixture(scope="module")
+def local_cache():
+    return LocalCache.from_singleton()
+
+
 @pytest.fixture(scope="module", autouse=True)
-async def event_table(async_engine: sa_aio.AsyncEngine):
-    await EventSchema.create_table_async(async_engine)
-    await EventSchema.assure_table_exist(async_engine)
+async def tables(async_engine: sa_aio.AsyncEngine):
+    await bootstrap(async_engine)
 
 
 @pytest.fixture(scope="module")
 async def eventstore(async_engine: sa_aio.AsyncEngine) -> EventStore:
     es = EventStore(async_engine)
     return es
+
+
+@pytest.fixture(scope="module")
+def user_auth(test_defaults: TestDefaults):
+    return UserAuth(
+        user_info=test_defaults.USER_INFO, last_login=datetime.datetime.utcnow()
+    )

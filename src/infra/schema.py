@@ -14,6 +14,11 @@ def declarative[T](cls: type[T]) -> type[T]:
 
 @declarative
 class TableBase:
+    """
+    Representation of actual tables in database,
+    used for DDL and data migrations only
+    """
+
     gmt_modified = sa.Column("gmt_modified", sa.DateTime, onupdate=func.now())
     gmt_created = sa.Column("gmt_created", sa.DateTime, server_default=func.now())
 
@@ -44,6 +49,7 @@ class TableBase:
         row = await test_table_exist(engine, cls.__tablename__)
         if cls.__tablename__ == row["name"]:
             return True
+
         raise Exception(f"Table {cls.__tablename__} does not exist")
 
 
@@ -52,10 +58,9 @@ class EventSchema(TableBase):
     This should be our single source of truth for table
     """
 
-    id = sa.Column("id", sa.String, primary_key=True)
-
     __tablename__: str = "domain_events"  # type: ignore
 
+    id = sa.Column("id", sa.String, primary_key=True)
     event_type = sa.Column("event_type", sa.String, index=True)
     event_body = sa.Column("event_body", sa.JSON)
     entity_id = sa.Column("entity_id", sa.String, index=True)
@@ -66,12 +71,12 @@ class UserSchema(TableBase):
     __tablename__: str = "users"  # type: ignore
 
     id = sa.Column("id", sa.String, primary_key=True)
-    username = sa.Column("username", sa.String, unique=True, index=True)
+    username = sa.Column("username", sa.String, unique=False, index=True)
     email = sa.Column("email", sa.String, unique=True, index=True)
-    password_hash = sa.Column("password_hash", sa.String)
+    password_hash = sa.Column("password_hash", sa.String, nullable=False)
     last_login = sa.Column("last_login", sa.DateTime, nullable=True)
+    role = sa.Column("role", sa.String, nullable=False)
     is_active = sa.Column("is_active", sa.Boolean, default=True)
-    is_admin = sa.Column("is_admin", sa.Boolean, default=False)
 
 
 class SessionSchema(TableBase):

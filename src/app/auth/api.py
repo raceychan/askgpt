@@ -1,31 +1,32 @@
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, Depends
 
-accounts = APIRouter(prefix="/accounts")
-
-import typing as ty
-
+from src.app.auth.model import CreateUserRequest
 from src.app.auth.service import AuthService
+from src.domain.config import get_setting
+
+auth = APIRouter(prefix="/auth")
 
 
-@accounts.get("/login")
-async def login(auth: AuthService, form_data: ty.Any):
-    user = await auth.authenticate(
-        email=form_data.username, password=form_data.password
-    )
+def get_auth_service():
+    settings = get_setting()
+    return AuthService.build(settings)
 
-    if not user:
-        raise HTTPException(status_code=400, detail="Incorrect email or password")
 
-    if not await auth.is_active(user):
-        raise HTTPException(status_code=400, detail="Inactive user")
-
+@auth.get("/login")
+async def login(
+    email: str, password: str, service: AuthService = Depends(get_auth_service)
+) -> dict[str, str]:
+    token = await service.login(email=email, password=password)
     res = {
-        "access_token": auth.create_access_token(user.entity_id),
+        "access_token": token,
         "token_type": "bearer",
     }
     return res
 
 
-@accounts.post("/signup/user")
-def create_user():
-    ...
+@auth.post("/signup")
+async def create_user(
+    create_req: CreateUserRequest,
+    service: AuthService = Depends(get_auth_service),
+):
+    await service.create_user(create_req)

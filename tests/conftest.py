@@ -3,6 +3,7 @@ import pathlib
 
 import pytest
 
+from src.app.model import TestDefaults
 from src.domain.config import Settings
 from src.domain.fileutil import FileLoader, FileUtil
 
@@ -50,3 +51,8 @@ def fileutil(fileloader: FileLoader):
     from pathlib import Path
 
     return FileUtil(work_dir=Path.cwd(), file_loader=fileloader)
+
+
+@pytest.fixture(scope="session")
+def test_defaults():
+    return TestDefaults

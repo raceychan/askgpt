@@ -1,45 +1,75 @@
-import json
 import typing as ty
 
 import sqlalchemy as sa
 from sqlalchemy.ext import asyncio as sa_aio
 
-from src.app.gpt.model import IUserRepository, User
+from src.app.auth.model import IUserRepository, UserAuth, UserInfo
+
+USER_TABLE: ty.Final[sa.TableClause] = sa.table(
+    "users",
+    sa.column("id", sa.String),
+    sa.column("username", sa.String),
+    sa.column("email", sa.String),
+    sa.column("password_hash"),
+    sa.column("last_login", sa.DateTime),
+    sa.column("role", sa.String),
+    sa.column("is_active", sa.Boolean),
+    sa.column("gmt_modified", sa.DateTime),
+    sa.column("gmt_created", sa.DateTime),
+)
 
 
-def user_deserializer(user_data: dict[str, ty.Any]) -> User:
-    user_id: str = user_data["entity_id"]
-    event_body: str = user_data["event_body"]
-    user_info = json.loads(event_body)["user_info"]
-    return User(user_id=user_id, user_info=user_info)
+def dump_userauth(user: UserAuth) -> dict[str, ty.Any]:
+    data = user.asdict(by_alias=False)
+    return dict(
+        id=data["entity_id"],
+        username=data["user_info"]["user_name"],
+        email=data["user_info"]["user_email"],
+        role=data["role"],
+        password_hash=data["user_info"]["hash_password"],
+        last_login=data["last_login"],
+        is_active=data["is_active"],
+    )
+
+
+def load_userauth(user_data: dict[str, ty.Any]) -> UserAuth:
+    user_info = UserInfo(
+        user_name=user_data["username"],
+        user_email=user_data["email"],
+        hash_password=user_data["password_hash"],
+    )
+    return UserAuth(
+        user_id=user_data["id"],
+        user_info=user_info,
+        role=user_data["role"],
+        last_login=user_data["last_login"],
+    )
 
 
 class UserRepository(IUserRepository):
     def __init__(self, aioengine: sa_aio.AsyncEngine):
         self._aioengine = aioengine
 
-    async def add(self, entity: User) -> None:
-        ...
+    async def add(self, entity: UserAuth) -> None:
+        data = dump_userauth(entity)
+        stmt = sa.insert(USER_TABLE).values(data)
 
-    async def get(self, entity_id: str) -> User:
-        ...
+        async with self._aioengine.begin() as cursor:
+            await cursor.execute(stmt)
 
-    @property
-    def aioengine(self) -> sa_aio.AsyncEngine:
-        return self._aioengine
+    async def get(self, entity_id: str) -> UserAuth | None:
+        stmt = sa.select(USER_TABLE).where(USER_TABLE.c.id == entity_id)
+        async with self._aioengine.begin() as cursor:
+            res = await cursor.execute(stmt)
+            row = res.one_or_none()
+            if not row:
+                return None
+        return load_userauth(dict(row._mapping))  # type: ignore
 
-    async def search_user_by_email(self, useremail: str) -> User | None:
-        sql = """
-        SELECT 
-            * 
-        FROM 
-            domain_events 
-        WHERE 
-            event_body->>'user_info'->>'user_email' = :useremail
-        """
-        stmt = sa.text(sql).bindparams(useremail=useremail)
+    async def search_user_by_email(self, useremail: str) -> UserAuth | None:
+        stmt = sa.select(USER_TABLE).where(USER_TABLE.c.email == useremail)
 
-        async with self.aioengine.begin() as conn:
+        async with self._aioengine.begin() as conn:
             cursor = await conn.execute(stmt)
             res = cursor.one_or_none()
 
@@ -47,4 +77,4 @@ class UserRepository(IUserRepository):
             return None
 
         user_data = dict(res._mapping)  # type: ignore
-        return user_deserializer(user_data)
+        return load_userauth(user_data)

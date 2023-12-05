@@ -15,10 +15,15 @@ typecheck:
 	mypy src/ --explicit-package-bases --enable-incomplete-feature=Unpack
 
 .PHONY: install
-setup:
+install:
+	curl -fsSL https://pixi.sh/install.sh | bash
 	pixi install
 
 .PHONY: shell
 shell:
 	pixi shell
 
+
+.PHONY: server
+server:
+	pixi run python -m src.server

@@ -1,82 +1,128 @@
-from datetime import datetime, timedelta
+from datetime import datetime
 
 from src.app import factory
 from src.app.auth import repository
-from src.app.auth.model import AccessToken
-from src.domain.config import Settings, get_setting
-from src.domain.encrypt import create_jwt
+from src.app.auth.model import AccessToken, CreateUserRequest, UserAuth, UserRoles
+from src.app.error import ClientSideError
+from src.app.model import UserInfo
+from src.domain import encrypt
+from src.domain._log import logger
+from src.domain.config import Settings
+from src.infra.cache import Cache, LocalCache
 
 
 class Authenticator:
-    def __init__(self, user_id: str):
-        self.user_id = user_id
-        self._is_authenticated = False
+    """
+    On every user request for content that might need authentication,
+    ensure that token is in the user's Redis store i.e ${userId}-tokens. If the token is not in the Redis store, then it is not a valid token anymore.
+    """
 
-    @property
-    def is_authenticated(self) -> bool:
-        return self._is_authenticated
+    def __init__(
+        self,
+        token_cache: Cache[str, str],
+        security: Settings.Security,
+    ):
+        self._token_cache = token_cache
+        self._secrete_key = security.SECRET_KEY
+        self._encode_algo = security.ALGORITHM
+        self._ttl_m = security.ACCESS_TOKEN_EXPIRE_MINUTES
 
-    def authenticate(self):
-        self._is_authenticated = True
+    async def is_authenticated(self, access_token: str) -> bool:
+        token = encrypt.decode_jwt(
+            access_token, secret_key=self._secrete_key, algorithm=self._encode_algo
+        )
+        cached_token = await self._token_cache.get(token["user_id"])
+        return bool(cached_token)
+
+    async def authenticate(self, user_auth: UserAuth) -> str:
+        """
+        Use this to grant privilege to user, change its role
+        """
+        token = self.create_access_token(user_auth.entity_id, user_auth.role)
+        await self._token_cache.set(user_auth.entity_id, token)
+        return token
+
+    def create_jwt(self, content: dict[str, str]):
+        return encrypt.create_jwt(
+            content, secret_key=self._secrete_key, algorithm=self._encode_algo
+        )
+
+    def create_access_token(self, user_id: str, user_role: UserRoles) -> str:
+        token = AccessToken(ttl_m=self._ttl_m, user_id=user_id, role=user_role)
+        encoded_jwt = self.create_jwt(token.asdict())
+        return encoded_jwt
+
+    async def revoke_token(self, user_id: str, token: str) -> None:
+        """
+        revoke token from user
+        """
+        await self._token_cache.remove(user_id)
+
+
+class AuthenticationError(ClientSideError):
+    service: str = "auth"
+
+
+class UserNotFoundError(AuthenticationError):
+    """
+    Unable to find user with the same email
+    """
+
+
+class InvalidPasswordError(AuthenticationError):
+    """
+    User email and password does not match
+    """
 
 
 class AuthService:
-    def __init__(self, user_repo: repository.UserRepository):
+    def __init__(
+        self, user_repo: repository.UserRepository, authenticator: Authenticator
+    ):
         self._user_repo = user_repo
-        self.settings = get_setting().security
+        self._auth = authenticator
 
-    def create_access_token(self, user_id: str) -> str:
-        expire = datetime.utcnow() + timedelta(
-            minutes=self.settings.ACCESS_TOKEN_EXPIRE_MINUTES
-        )
-        token = AccessToken(expire_at=expire, user_id=user_id)
-        encoded_jwt = create_jwt(
-            token.asdict(), self.settings.SECRET_KEY, self.settings.ALGORITHM
-        )
-        return encoded_jwt
-
-    async def authenticate(self, email: str, password: str) -> repository.User:
-        ...
-
-    async def is_active(self, user: repository.User) -> bool:
-        ...
-
-    async def login(self, email: str, password: str) -> Authenticator:
-        if not email:
-            raise ValueError("email is required")
-
+    async def login(self, email: str, password: str) -> str:
         user = await self._user_repo.search_user_by_email(email)
 
-        if not user:
-            raise ValueError("user not found")
+        if user is None:
+            raise UserNotFoundError("user not found")
 
         if not user.user_info.verify_password(password):
-            raise ValueError("Invalid password")
+            raise InvalidPasswordError("Invalid password")
 
-        # logger.success(f"User {user} logged in")
-        auth = Authenticator(user_id=user.entity_id)
-        auth.authenticate()
-        return auth
+        user.login()
 
-    async def find_user(self, username: str, useremail: str) -> repository.User | None:
+        logger.success(f"User {user} logged in")
+        return await self._auth.authenticate(user)
+
+    async def is_user_authenticated(self, access_token: str) -> bool:
+        return await self._auth.is_authenticated(access_token=access_token)
+
+    async def find_user(self, username: str, useremail: str) -> UserAuth | None:
         """
         make sure user does not exist
         """
         user_or_none = await self._user_repo.search_user_by_email(useremail)
         return user_or_none
 
-    async def create_user(
-        self, username: str, useremail: str, password: str
-    ) -> repository.User:
+    async def create_user(self, req: CreateUserRequest) -> None:
         """
         make sure user does not exist
         """
-        user = repository.User.create()
-        await self._user_repo.add(user)
-        return user
+        hash_password = encrypt.hash_password(req.password.encode())
+        user_info = UserInfo(
+            user_name=req.user_name, user_email=req.email, hash_password=hash_password
+        )
+        user_auth = UserAuth(user_info=user_info, last_login=datetime.utcnow())
+        await self._user_repo.add(user_auth)
 
     @classmethod
     def build(cls, settings: Settings) -> "AuthService":
         aioengine = factory.get_async_engine(settings)
         user_repo = repository.UserRepository(aioengine)
-        return cls(user_repo=user_repo)
+        cache = LocalCache[str, str].from_singleton()
+        return cls(
+            user_repo=user_repo,
+            authenticator=Authenticator(token_cache=cache, security=settings.security),
+        )

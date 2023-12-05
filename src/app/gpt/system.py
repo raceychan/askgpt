@@ -6,9 +6,9 @@ from src.app.actor import EntityActor, System
 from src.app.gpt import model
 from src.app.gpt.client import OpenAIClient
 from src.app.journal import Journal
-from src.app.utils.fmtutils import async_receiver
 from src.domain._log import logger
 from src.domain.config import Settings
+from src.domain.fmtutils import async_receiver
 from src.domain.interface import ICommand
 from src.domain.model import Command, Event, Message
 from src.infra.eventstore import EventStore
@@ -32,6 +32,10 @@ class InvalidStateError(Exception):
 
 
 class SystemState(enum.Enum):
+    """
+    TODO: refactor this using state pattern
+    """
+
     created = enum.auto()
     running = enum.auto()
     stopped = enum.auto()
@@ -54,6 +58,8 @@ class SystemState(enum.Enum):
         return type(self).running
 
     def stop(self) -> ty.Self:
+        if self.is_created:
+            raise InvalidStateError("system not started yet")
         if not self.is_running:
             raise InvalidStateError("system already stopped")
         return type(self).stopped

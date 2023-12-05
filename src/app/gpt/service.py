@@ -2,7 +2,6 @@ import typing as ty
 from contextlib import asynccontextmanager
 
 from src.app import factory
-from src.app.auth.service import Authenticator
 from src.app.gpt import model, repository
 from src.app.gpt.system import GPTSystem, SessionActor, SystemState, UserActor
 from src.domain import encrypt
@@ -36,10 +35,8 @@ class GPTService:
             raise Exception("system already stopped")
         self._service_state = state
 
-    async def send_question(
-        self, auth: Authenticator, session_id: str, question: str
-    ) -> None:
-        user_actor = await self.system.rebuild_user(auth.user_id)
+    async def send_question(self, user_id: str, session_id: str, question: str) -> None:
+        user_actor = await self.system.rebuild_user(user_id)
 
         if session_id not in user_actor.entity.session_ids:
             session_actor = await self.user_create_session(
@@ -49,7 +46,7 @@ class GPTService:
             session_actor = await user_actor.rebuild_session(session_id)
 
         command = model.SendChatMessage(
-            user_id=auth.user_id,
+            user_id=user_id,
             session_id=session_id,
             message_body=question,
             role="user",
@@ -57,10 +54,10 @@ class GPTService:
 
         await session_actor.receive(command)
 
-    async def interactive(self, auth: Authenticator, session_id: str) -> None:
+    async def interactive(self, user_id: str, session_id: str) -> None:
         while True:
             question = input("\nwhat woud you like to ask?\n\n")
-            await self.send_question(auth, session_id, question)
+            await self.send_question(user_id, session_id, question)
 
     async def create_user(
         self, username: str, useremail: str, password: str
@@ -84,7 +81,7 @@ class GPTService:
         return user_actor.select_child(session_id)
 
     async def start(self) -> None:
-        if self.state is SystemState.running:
+        if self.state.is_running:
             return
 
         await self.system.start(

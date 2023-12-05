@@ -1,6 +1,7 @@
 import pytest
 
 from src.app.gpt import model
+from src.app.model import TestDefaults
 from src.domain.config import Settings
 from src.infra.eventstore import EventStore, dump_event, load_event
 
@@ -12,7 +13,7 @@ def test_settins(settings: Settings):
 @pytest.fixture(scope="module")
 def user_created():
     event = model.UserCreated(
-        user_id=model.TestDefaults.USER_ID, user_info=model.TestDefaults.USER_INFO
+        user_id=TestDefaults.USER_ID, user_info=TestDefaults.USER_INFO
     )
     return event
 

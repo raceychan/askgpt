@@ -1,11 +1,11 @@
 import pytest
 
-from src.domain.model.base import DomainBase
+from src.domain.model.base import DomainModel
 
 
 @pytest.fixture
 def domain_model():
-    class TestDomain(DomainBase):
+    class TestDomain(DomainModel):
         name: str
         email: str
 
@@ -13,7 +13,6 @@ def domain_model():
     return dm
 
 
-def test_domain_model(domain_model: DomainBase):
+def test_domain_model(domain_model: DomainModel):
     domain_model.model_all_fields()
-
     domain_model.tableclause()

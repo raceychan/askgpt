@@ -3,9 +3,11 @@ from contextlib import asynccontextmanager
 import uvicorn
 from fastapi import APIRouter, FastAPI
 
+from src.app.api.api import api_router
+from src.app.api.error_handlers import HandlerRegistry
+from src.app.api.middleware import LoggingMiddleware, TraceMiddleware
 from src.app.bootstrap import bootstrap
 from src.app.factory import get_async_engine
-from src.app.gpt.api import gpt_router
 from src.domain._log import logger
 from src.domain.config import get_setting
 
@@ -18,13 +20,17 @@ async def lifespan(app: FastAPI):
 
 
 def add_exception_handlers(app: FastAPI):
-    return
-    app.add_exception_handler()
+    registry: HandlerRegistry[Exception] = HandlerRegistry()
+    for exc, handler in registry:
+        app.add_exception_handler(exc, handler)  # type: ignore
 
 
 def add_middlewares(app: FastAPI):
-    return
-    app.add_middleware()
+    """
+    FILO
+    """
+    app.add_middleware(LoggingMiddleware)
+    app.add_middleware(TraceMiddleware)
 
 
 def main():
@@ -38,7 +44,7 @@ def main():
     )
 
     root_router = APIRouter()
-    root_router.include_router(gpt_router, tags=["gpt client service"])
+    root_router.include_router(api_router)
     root_router.add_api_route("/health", lambda: "health", tags=["health check"])
 
     app.include_router(root_router, prefix=settings.api.API_VERSION_STR)

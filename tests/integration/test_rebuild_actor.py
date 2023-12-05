@@ -1,5 +1,6 @@
 import pytest
 
+from src.app.model import TestDefaults
 from src.app.gpt import model, service
 from src.app.gpt.client import OpenAIClient
 from src.app.gpt.params import ChatResponse
@@ -28,7 +29,7 @@ async def gptsystem(settings: config.Settings, eventstore: service.EventStore):
 @pytest.fixture(scope="module")
 async def user_actor(gptsystem: service.GPTSystem):
     cmd = model.CreateUser(
-        user_id=model.TestDefaults.USER_ID, user_info=model.TestDefaults.USER_INFO
+        user_id=TestDefaults.USER_ID, user_info=TestDefaults.USER_INFO
     )
     user = await gptsystem.create_user(cmd)
     return user
@@ -70,19 +71,19 @@ def openai_client(chat_response: ChatResponse):
 @pytest.fixture(scope="module")
 async def session_actor(user_actor: service.UserActor, openai_client: OpenAIClient):
     cmd = model.CreateSession(
-        session_id=model.TestDefaults.SESSION_ID, user_id=model.TestDefaults.USER_ID
+        session_id=TestDefaults.SESSION_ID, user_id=TestDefaults.USER_ID
     )
     await user_actor.handle(cmd)
     assert user_actor.entity.session_ids
-    session = user_actor.select_child(model.TestDefaults.SESSION_ID)
+    session = user_actor.select_child(TestDefaults.SESSION_ID)
     session.set_model_client(openai_client)
     return session
 
 
 def command_factory(chat_message: model.ChatMessage):
     return model.SendChatMessage(
-        session_id=model.TestDefaults.SESSION_ID,
-        user_id=model.TestDefaults.USER_ID,
+        session_id=TestDefaults.SESSION_ID,
+        user_id=TestDefaults.USER_ID,
         message_body=chat_message.content,
         role=chat_message.role,
     )
@@ -106,9 +107,9 @@ async def test_ask_question(
 
 
 async def test_session_self_rebuild(eventstore: service.EventStore):
-    events = await eventstore.get(model.TestDefaults.SESSION_ID)
+    events = await eventstore.get(TestDefaults.SESSION_ID)
     created = model.SessionCreated(
-        user_id=model.TestDefaults.USER_ID, session_id=model.TestDefaults.SESSION_ID
+        user_id=TestDefaults.USER_ID, session_id=TestDefaults.SESSION_ID
     )
 
     session_actor = service.SessionActor.apply(created)
@@ -116,7 +117,7 @@ async def test_session_self_rebuild(eventstore: service.EventStore):
     session_actor.rebuild(events)
 
     assert isinstance(session_actor, service.SessionActor)
-    assert session_actor.entity_id == model.TestDefaults.SESSION_ID
+    assert session_actor.entity_id == TestDefaults.SESSION_ID
     assert (
         session_actor.entity.messages[0].asdict() == events[0].asdict()["chat_message"]
     )
@@ -126,10 +127,10 @@ async def test_session_self_rebuild(eventstore: service.EventStore):
 
 
 async def test_user_rebuild_session(user_actor: service.UserActor):
-    current_ss_actor = user_actor.select_child(model.TestDefaults.SESSION_ID)
+    current_ss_actor = user_actor.select_child(TestDefaults.SESSION_ID)
 
     user_built_session = await user_actor.rebuild_session(
-        session_id=model.TestDefaults.SESSION_ID
+        session_id=TestDefaults.SESSION_ID
     )
 
     assert current_ss_actor is not user_built_session
@@ -137,12 +138,12 @@ async def test_user_rebuild_session(user_actor: service.UserActor):
     assert (
         current_ss_actor.entity_id
         == user_built_session.entity_id
-        == model.TestDefaults.SESSION_ID
+        == TestDefaults.SESSION_ID
     )
     assert (
         current_ss_actor.entity.user_id
         == user_built_session.entity.user_id
-        == model.TestDefaults.USER_ID
+        == TestDefaults.USER_ID
     )
 
     assert current_ss_actor.message_count == user_built_session.message_count
@@ -153,11 +154,11 @@ async def test_user_rebuild_session(user_actor: service.UserActor):
 
 
 async def test_user_self_rebuild(eventstore: service.EventStore):
-    user_events = await eventstore.get(model.TestDefaults.USER_ID)
+    user_events = await eventstore.get(TestDefaults.USER_ID)
     user_created = user_events[0]
     user_actor = service.UserActor.apply(user_created)
     user_actor.rebuild(user_events[1:])
-    assert user_actor.entity_id == model.TestDefaults.USER_ID
+    assert user_actor.entity_id == TestDefaults.USER_ID
     assert user_actor.session_count == 1
 
 
@@ -166,5 +167,5 @@ async def test_system_rebuild_user(
 ):
     built_user = await gptsystem.rebuild_user(user_actor.entity_id)
     assert built_user is not user_actor
-    assert built_user.entity_id == user_actor.entity_id == model.TestDefaults.USER_ID
+    assert built_user.entity_id == user_actor.entity_id == TestDefaults.USER_ID
     assert built_user.session_count == user_actor.session_count == 1

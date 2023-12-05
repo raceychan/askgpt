@@ -1,10 +1,13 @@
 from fastapi import APIRouter, Depends
 
-from src.app.auth.auth import Authenticator
-from src.app.gpt.factory import get_setting
+from src.app.auth.service import Authenticator
 from src.app.gpt.service import GPTService
+from src.domain.config import get_setting
 
-gpt_router = APIRouter(prefix="/gpt")
+gpt = APIRouter(prefix="/gpt")
+
+# TODO: 1. instead of using GPTService.build system and then inject it into both
+# GPTService and AuthService ?
 
 
 async def get_service():
@@ -13,12 +16,15 @@ async def get_service():
         yield service
 
 
-@gpt_router.get("/{question}")
+@gpt.get("/{question}")
 async def ask(
     question: str,
     user_id: str,
     session_id: str,
     service: GPTService = Depends(get_service),
 ):
-    auth = Authenticator(user_id)
+    auth = service.auth(user_id)
     await service.send_question(auth, question, session_id)
+
+
+from sqlalchemy.pool import NullPool

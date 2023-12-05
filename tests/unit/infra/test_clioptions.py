@@ -1,15 +1,14 @@
 import pytest
 
-# from src.app import gpt
-from src.app.gpt import model
+from src.app.model import TestDefaults
 from src.cli import CLIOptions, InvalidOption
 
 
-def test_validate():
+def test_validate(test_defaults: TestDefaults):
     options = CLIOptions(question="hello", interactive=False)
     options.validate()
-    assert options.user_id == model.TestDefaults.USER_ID
-    assert options.session_id == model.TestDefaults.SESSION_ID
+    assert options.user_id == test_defaults.USER_ID
+    assert options.session_id == test_defaults.SESSION_ID
     assert options.interactive is False
 
 

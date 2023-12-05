@@ -1,7 +1,6 @@
-from . import base, enum_generator, factory, interface, name_tools
 from .base import (  # rich_repr,
     Command,
-    DomainBase,
+    DomainModel,
     Entity,
     Envelope,
     Event,
@@ -16,5 +15,3 @@ from .base import (  # rich_repr,
     uuid_factory,
     validator,
 )
-
-# from .name_tools import snake_to_pascal, str_to_snake

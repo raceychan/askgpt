@@ -1,0 +1,119 @@
+import inspect
+import types
+import typing as ty
+
+from fastapi import Request
+from starlette.background import BackgroundTask
+from starlette.responses import JSONResponse, Response
+
+from src.app.api.xheaders import XHeaders
+from src.app.auth.service import (
+    AuthenticationError,
+    InvalidPasswordError,
+    UserNotFoundError,
+)
+from src.app.error import DomainError, ErrorDetail
+from src.domain._log import logger
+
+
+class ServerResponse(Response):
+    media_type = "application/json"
+
+
+class ErrorResponse(JSONResponse):
+    def __init__(
+        self,
+        detail: ErrorDetail,
+        request_id: str,
+        headers: dict[str, str] | None = None,
+        status_code: int = 500,
+        background: BackgroundTask | None = None,
+    ) -> None:
+        content = dict(detail=detail.asdict(), request_id=request_id)
+        headers = headers or {XHeaders.ERROR: detail.error_code}
+        super().__init__(
+            content=content,
+            status_code=status_code,
+            headers=headers,
+            media_type=self.media_type,
+            background=background,
+        )
+
+
+type ExceptionHandler[E] = ty.Callable[[Request, E], ErrorResponse]
+
+
+class HandlerRegistry[E: Exception | int]:
+    """
+    add error handler to fastapi according to their signature
+    """
+
+    _registry: dict[E, ExceptionHandler[E]] = {}
+
+    @classmethod
+    def register(cls, handler: ExceptionHandler[E]) -> None:
+        exc_type = cls.extra_exception_handler(handler)
+        tp_args = ty.get_args(exc_type)
+        if tp_args:
+            for t in tp_args:
+                t = ty.cast(E, t)
+                cls._registry[t] = handler
+        else:
+            exc_type = ty.cast(E, exc_type)
+            cls._registry[exc_type] = handler
+
+    @classmethod
+    def extra_exception_handler(
+        cls, handler: ExceptionHandler[E]
+    ) -> E | types.UnionType:
+        sig = inspect.signature(handler)
+
+        params = [p for p in sig.parameters.values()]
+        exc_type = params[1].annotation
+        if exc_type is inspect._empty:  # type: ignore
+            raise ValueError
+        return exc_type
+
+    def __iter__(
+        self,
+    ) -> ty.Iterator[tuple[E, ExceptionHandler[E]]]:
+        return iter(self._registry.items())
+
+
+@HandlerRegistry.register
+def any_error_handler(request: Request, exc: Exception) -> ErrorResponse:
+    request_id = request.headers[XHeaders.REQUEST_ID]
+    detail = ErrorDetail(
+        error_code="InternalUnknownError",
+        description="unknow error occured, please report",
+        source="server",
+        service="unkown",
+    )
+    return ErrorResponse(
+        detail=detail,
+        status_code=500,
+        request_id=request_id,
+    )
+
+
+@HandlerRegistry.register
+def domain_error_handler(request: Request, exc: DomainError) -> ErrorResponse:
+    request_id = request.headers[XHeaders.REQUEST_ID]
+    return ErrorResponse(
+        detail=exc.detail,
+        status_code=500,
+        request_id=request_id,
+    )
+
+
+@HandlerRegistry.register
+def authentication_error_handler(
+    request: Request, exc: AuthenticationError
+) -> ErrorResponse:
+    request_id = request.headers[XHeaders.REQUEST_ID]
+    # logger.exception("something went wrong")
+    return ErrorResponse(
+        detail=exc.detail,
+        status_code=401,
+        request_id=request_id,
+    )

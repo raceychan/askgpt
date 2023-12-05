@@ -5,6 +5,7 @@ from dataclasses import dataclass
 
 from src.app.auth.service import AuthService
 from src.app.gpt import model, service
+from src.app.model import TestDefaults
 from src.domain._log import logger
 from src.domain.config import get_setting
 
@@ -19,9 +20,9 @@ class CLIOptions(Namespace):
     email: str = ""
     password: str = ""
     question: str = ""
-    user_id: str = model.TestDefaults.USER_ID
-    session_id: str = model.TestDefaults.SESSION_ID
-    model: str = model.TestDefaults.MODEL
+    user_id: str = TestDefaults.USER_ID
+    session_id: str = TestDefaults.SESSION_ID
+    model: str = TestDefaults.MODEL
     interactive: bool = False
     command: ty.Literal["gpt", "auth"] = "gpt"
 
@@ -53,15 +54,11 @@ class CLIOptions(Namespace):
 
         gpt = sub.add_parser("gpt", help="gpt client")
         gpt.add_argument("question", type=str, nargs="?")
+        gpt.add_argument("--user_id", default=TestDefaults.USER_ID, type=str, nargs="?")
         gpt.add_argument(
-            "--user_id", default=model.TestDefaults.USER_ID, type=str, nargs="?"
+            "--session_id", default=TestDefaults.SESSION_ID, type=str, nargs="?"
         )
-        gpt.add_argument(
-            "--session_id", default=model.TestDefaults.SESSION_ID, type=str, nargs="?"
-        )
-        gpt.add_argument(
-            "--model", default=model.TestDefaults.MODEL, type=str, nargs="?"
-        )
+        gpt.add_argument("--model", default=TestDefaults.MODEL, type=str, nargs="?")
         gpt.add_argument("-i", "--interactive", action="store_true")
 
         auth = sub.add_parser("auth", help="gpt auth client")

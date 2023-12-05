@@ -17,3 +17,7 @@ def verify_password(password: bytes, hashed: bytes) -> bool:
 def create_jwt(content: dict[str, ty.Any], secret_key: str, algorithm: str):
     token = jwt.encode(content, secret_key, algorithm=algorithm)
     return token
+
+
+def decode_jwt(token: str, secret_key: str, algorithm: str) -> dict[str, ty.Any]:
+    return jwt.decode(token, secret_key, algorithms=[algorithm])

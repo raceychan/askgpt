@@ -9,6 +9,7 @@ import sqlalchemy as sa
 from pydantic import (
     BaseModel,
     ConfigDict,
+    EmailStr,
     Field,
     SerializeAsAny,
     computed_field,
@@ -40,6 +41,7 @@ def utcts_factory(ts: float | None = None) -> utc_datetime:
 
 
 class attribute[TOwner, TField]:
+    # same thing as types.DynamicClassAttribute
     def __init__(
         self,
         fget: ty.Callable[[TOwner], TField] | None = None,
@@ -57,7 +59,7 @@ class attribute[TOwner, TField]:
         return type(self)(self.fget, fset)
 
 
-class DomainBase(BaseModel):
+class DomainModel(BaseModel):
     "Base Model for domain objects, provide helper methods for serialization"
 
     model_config = ConfigDict(populate_by_name=True)
@@ -118,13 +120,13 @@ class DomainBase(BaseModel):
             ppt = finfo.wrapped_property
             getter = ppt.fget if isinstance(ppt, property) else ppt.func
             ftype = getter.__annotations__["return"]
-            if issubclass(ftype, DomainBase):
+            if issubclass(ftype, DomainModel):
                 field_map[fname] = ftype.model_all_fields()
             field_map[fname] = ftype
 
         for fname, finfo in cls.model_fields.items():
             ftype = finfo.annotation
-            if ftype and issubclass(ftype, DomainBase):
+            if ftype and issubclass(ftype, DomainModel):
                 field_map[fname] = ftype.model_all_fields()
 
             field_map[fname] = finfo.annotation
@@ -162,11 +164,11 @@ class DomainBase(BaseModel):
         return self.__repr__()
 
 
-class ValueObject(DomainBase):
+class ValueObject(DomainModel):
     model_config = ConfigDict(frozen=True)
 
 
-class Message(DomainBase):
+class Message(DomainModel):
     model_config = ConfigDict(frozen=True, populate_by_name=True)
 
     entity_id: str
@@ -184,7 +186,7 @@ class Query(Message):
 
 
 class Event(Message):
-    event_registry: ty.ClassVar[dict[str, type[ty.Self]]] = dict()
+    _event_registry: ty.ClassVar[dict[str, type[ty.Self]]] = dict()
 
     entity_id: str
     version: ty.ClassVar[str] = "1.0.0"
@@ -193,7 +195,7 @@ class Event(Message):
 
     def __init_subclass__(cls, **kwargs: ty.Any):
         cls_id = f"{str_to_snake(cls.__name__)}"
-        cls.event_registry[cls_id] = cls
+        cls._event_registry[cls_id] = cls
 
     @classmethod
     def match_event_type(cls, event_type: str) -> type["Event"]:
@@ -203,15 +205,10 @@ class Event(Message):
         <module>.<entity>.<event_type>
         or even
         <source>.<module>.<entity>.<event_type>
+        eg:
         askgpt.user_service.user.user_created
-
-        then when parse
-        1. assert source == project_name
-        2. import module
-        3. getattr(module, entity)
-        4. getattr(entity, user_created)
         """
-        return cls.event_registry[event_type]
+        return cls._event_registry[event_type]
 
     @classmethod
     def rebuild(cls, event_data: ty.Mapping[str, ty.Any]) -> "Event":
@@ -225,7 +222,7 @@ class Event(Message):
         return str_to_snake(self.__class__.__name__)
 
 
-class Envelope(DomainBase):
+class Envelope(DomainModel):
     """
     Provide Meta data for event before sent to MQ,
     including data format, schema, etc.
@@ -259,14 +256,14 @@ class EntityABC(abc.ABC):
         raise NotImplementedError
 
 
-class Entity(DomainBase, EntityABC):
+class Entity(DomainModel, EntityABC):
     """
     Base Model for domain entities,
     subclass could mark domain id as entity_id by setting alias=True in field
     >>> Example:
     --------
     class User(Entity):
-        usr_id: str = Field(alias="entity_id")
+        user_id: str = Field(alias="entity_id")
 
     Configs:
     --------
