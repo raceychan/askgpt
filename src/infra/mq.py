@@ -1,12 +1,13 @@
 import abc
-import typing as ty
 from collections import deque
 
 from src.domain.interface import IMessage
 from src.infra.interface import Receivable
 
 
-class MessageBroker[TMessages: IMessage](abc.ABC):
+class MessageBroker[TMessage](abc.ABC):
+    "Pull-based MQ"
+
     @abc.abstractmethod
     def __len__(self) -> int:
         raise NotImplementedError
@@ -16,18 +17,39 @@ class MessageBroker[TMessages: IMessage](abc.ABC):
         raise NotImplementedError
 
     @abc.abstractmethod
-    async def put(self, message: TMessages) -> None:
+    async def get(self) -> TMessage | None:
+        # self.consumer.get()
         raise NotImplementedError
 
     @abc.abstractmethod
-    async def get(self) -> TMessages:
+    async def put(self, message: TMessage) -> None:
+        # self.producer.send()
         raise NotImplementedError
+
+    async def start(self) -> None:
+        raise NotImplementedError
+
+    async def stop(self) -> None:
+        raise NotImplementedError
+
+
+class MessageProducer[TMessage](abc.ABC):
+    @abc.abstractmethod
+    async def publish(self, message: TMessage) -> None:
+        raise NotImplementedError
+
+
+class MessageConsumer[TMessage](abc.ABC):
+    @abc.abstractmethod
+    async def get(self) -> TMessage | None:
+        raise NotImplementedError
+
+
+class DeliveryBroker[TMessages](abc.ABC):
+    "Push-based MQ"
 
     @abc.abstractmethod
-    def register(self, subscriber: Receivable) -> None:
-        raise NotImplementedError
-
-    async def broadcast(self, message: TMessages) -> None:
+    async def publish(self, message: TMessages) -> None:
         """
         Optional method to broadcast message to all subscribers,
         only push-based MQ should implement this method
@@ -36,12 +58,38 @@ class MessageBroker[TMessages: IMessage](abc.ABC):
         """
         raise NotImplementedError
 
+    @abc.abstractmethod
+    def register(self, subscriber: Receivable) -> None:
+        raise NotImplementedError
 
-class QueueBroker(MessageBroker[IMessage]):
+    async def start(self) -> None:
+        raise NotImplementedError
+
+    async def stop(self) -> None:
+        raise NotImplementedError
+
+
+class DeliveryQueue[TMessage: IMessage](DeliveryBroker[TMessage]):
     def __init__(self, maxsize: int = 0):
         self._queue: deque[IMessage] = deque(maxlen=maxsize or None)
-        self._maxsize = maxsize
         self._subscribers: set[Receivable] = set()
+
+    @property
+    def subscribes(self) -> set[Receivable]:
+        return self._subscribers
+
+    async def publish(self, message: TMessage) -> None:
+        for subscriber in self._subscribers:
+            await subscriber.receive(message)
+
+    def register(self, subscriber: Receivable) -> None:
+        self._subscribers.add(subscriber)
+
+
+class QueueBroker[TMessage: IMessage](MessageBroker[TMessage]):
+    def __init__(self, maxsize: int = 0):
+        self._queue: deque[TMessage] = deque(maxlen=maxsize or None)
+        self._maxsize = maxsize
 
     def __len__(self) -> int:
         return len(self._queue)
@@ -50,60 +98,108 @@ class QueueBroker(MessageBroker[IMessage]):
     def maxsize(self) -> int:
         return self._maxsize
 
-    @property
-    def subscribes(self) -> set[Receivable]:
-        return self._subscribers
-
-    async def put(self, message: IMessage) -> None:
+    async def put(self, message: TMessage) -> None:
         self._queue.append(message)
 
-    async def get(self) -> IMessage:
-        return self._queue.popleft()
-
-    async def broadcast(self, message: IMessage) -> None:
-        for subscriber in self._subscribers:
-            subscriber.receive(message)
-
-    def register(self, subscriber: Receivable) -> None:
-        self._subscribers.add(subscriber)
+    async def get(self) -> TMessage | None:
+        try:
+            msg = self._queue.popleft()
+        except IndexError:
+            msg = None
+        return msg
 
 
-class MailBox:
-    def __init__(self, broker: MessageBroker[IMessage]):
+class BaseProducer[TMessage: IMessage](MessageProducer[TMessage]):
+    def __init__(self, broker: MessageBroker[TMessage]):
         self._broker = broker
 
-    def __len__(self) -> int:
-        return len(self._broker)
-
-    def __bool__(self) -> bool:
-        return self.__len__() > 0
-
-    async def put(self, message: IMessage) -> None:
+    async def publish(self, message: TMessage) -> None:
         await self._broker.put(message)
 
-    async def get(self) -> IMessage:
+
+class BaseConsumer[TMessage: IMessage](MessageConsumer[TMessage]):
+    def __init__(self, broker: MessageBroker[TMessage]):
+        self._broker = broker
+
+    async def get(self) -> TMessage | None:
         return await self._broker.get()
 
-    async def __aiter__(self) -> ty.AsyncGenerator[IMessage, ty.Any]:
-        yield await self.get()
 
-    def __repr__(self) -> str:
-        return f"{self.__class__.__name__}({self.size()} messages)"
+# class PulsarClient:
+#     def __init__(
+#         self,
+#         url: str,
+#         authentication: pulsar.Authentication | None = None,
+#         operation_timeout_seconds: int = 30,
+#         io_threads: int = 1,
+#         message_listener_threads: int = 1,
+#         concurrent_lookup_requests: int = 50000,
+#         log_conf_file_path: None = None,
+#         use_tls: bool = False,
+#         tls_trust_certs_file_path: None = None,
+#         tls_allow_insecure_connection: bool = False,
+#         tls_validate_hostname: bool = False,
+#         logger: None = None,
+#         connection_timeout_ms: int = 10000,
+#         listener_name: str | None = None,
+#     ):
+#         self._client = pulsar.Client(
+#             url,
+#             authentication=authentication,
+#             operation_timeout_seconds=operation_timeout_seconds,
+#             io_threads=io_threads,
+#             message_listener_threads=message_listener_threads,
+#             concurrent_lookup_requests=concurrent_lookup_requests,
+#             log_conf_file_path=log_conf_file_path,
+#             use_tls=use_tls,
+#             tls_trust_certs_file_path=tls_trust_certs_file_path,
+#             tls_allow_insecure_connection=tls_allow_insecure_connection,
+#             tls_validate_hostname=tls_validate_hostname,
+#             logger=logger,
+#             connection_timeout_ms=connection_timeout_ms,
+#             listener_name=listener_name,
+#         )
 
-    @property
-    def capacity(self) -> int:
-        return self._broker.maxsize
+#     def create_producer(
+#         self,
+#         topic: str,
+#         producer_name: str | None = None,
+#         schema: pulsar.schema.Schema = pulsar.schema.BytesSchema(),
+#         initial_sequence_id: int | None = None,
+#         send_timeout_millis: int = 30000,
+#     ) -> pulsar.Producer:
+#         return self._client.create_producer(  # type: ignore
+#             topic=topic,
+#             producer_name=producer_name,
+#             schema=schema,  # type: ignore
+#             initial_sequence_id=initial_sequence_id,
+#             send_timeout_millis=send_timeout_millis,
+#             # compression_type=compression_type,
+#             # max_pending_messages=max_pending_messages,
+#             # max_pending_messages_across_partitions=max_pending_messages_across_partitions,
+#             # block_if_queue_full=block_if_queue_full,
+#             # batching_enabled=batching_enabled,
+#             # batching_max_messages=batching_max_messages,
+#             # batching_max_allowed_size_in_bytes=batching_max_allowed_size_in_bytes,
+#             # batching_max_publish_delay_ms=batching_max_publish_delay_ms,
+#             # chunking_enabled=chunking_enabled,
+#             # message_routing_mode=message_routing_mode,
+#             # lazy_start_partitioned_producers=lazy_start_partitioned_producers,
+#             # properties=properties,
+#             # batching_type=batching_type,
+#             # encryption_key=encryption_key,
+#             # crypto_key_reader=crypto_key_reader,
+#             # access_mode=access_mode,
+#         )
 
-    def size(self) -> int:
-        return len(self._broker)
 
-    def register(self, subscriber: Receivable) -> None:
-        self._broker.register(subscriber)
+# class PulsarProducer(MessageProducer[IMessage]):
+#     def __init__(self, producer: pulsar.Producer):
+#         self._producer = producer
+#         self._messages: deque[IMessage] = deque()
 
-    @classmethod
-    def build(
-        cls, broker: MessageBroker[IMessage] | None = None, maxsize: int = 0
-    ) -> ty.Self:
-        if broker is None:
-            broker = QueueBroker(maxsize)
-        return cls(broker)
+#     async def _publish_confirmation(self, res, msg_id) -> None:
+#         ...
+
+#     async def publish(self, message: IMessage) -> None:
+#         return self._producer.send_async(message, self_publish_confirmation)

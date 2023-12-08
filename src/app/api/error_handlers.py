@@ -3,17 +3,17 @@ import types
 import typing as ty
 
 from fastapi import Request
+from pydantic import ValidationError
 from starlette.background import BackgroundTask
 from starlette.responses import JSONResponse, Response
 
 from src.app.api.xheaders import XHeaders
-from src.app.auth.service import (
+from src.app.auth.service import (  # InvalidPasswordError,; UserNotFoundError,
     AuthenticationError,
-    InvalidPasswordError,
-    UserNotFoundError,
 )
 from src.app.error import DomainError, ErrorDetail
-from src.domain._log import logger
+
+# from src.domain._log import logger
 
 
 class ServerResponse(Response):
@@ -21,6 +21,21 @@ class ServerResponse(Response):
 
 
 class ErrorResponse(JSONResponse):
+    """
+    Examples
+    --------
+    >>> response:
+    {
+        "type": "https://example.com/probs/out-of-credit",
+        "title": "You do not have enough credit.",
+        "detail": "Your current balance is 30, but that costs 50.",
+        "instance": "/account/12345/msgs/abc",
+        "balance": 30,
+        "accounts": ["/account/12345",
+                      "/account/67890"]
+    }
+    """
+
     def __init__(
         self,
         detail: ErrorDetail,
@@ -30,7 +45,12 @@ class ErrorResponse(JSONResponse):
         background: BackgroundTask | None = None,
     ) -> None:
         content = dict(detail=detail.asdict(), request_id=request_id)
-        headers = headers or {XHeaders.ERROR: detail.error_code}
+        default_headers = {XHeaders.ERROR: detail.error_code}
+        if headers:
+            headers = default_headers | headers
+        else:
+            headers = default_headers
+
         super().__init__(
             content=content,
             status_code=status_code,
@@ -82,6 +102,7 @@ class HandlerRegistry[E: Exception | int]:
 
 @HandlerRegistry.register
 def any_error_handler(request: Request, exc: Exception) -> ErrorResponse:
+    # TODO: log error
     request_id = request.headers[XHeaders.REQUEST_ID]
     detail = ErrorDetail(
         error_code="InternalUnknownError",
@@ -101,6 +122,27 @@ def domain_error_handler(request: Request, exc: DomainError) -> ErrorResponse:
     request_id = request.headers[XHeaders.REQUEST_ID]
     return ErrorResponse(
         detail=exc.detail,
+        status_code=500,
+        request_id=request_id,
+    )
+
+
+@HandlerRegistry.register
+def domain_data_validation_error(
+    request: Request, exc: ValidationError
+) -> ErrorResponse:
+    request_id = request.headers[XHeaders.REQUEST_ID]
+
+    detail = ErrorDetail(
+        error_code="DomainDataValidationError",
+        description="unkown data validation error",
+        source="server",
+        service="domain",
+        message="",
+    )
+
+    return ErrorResponse(
+        detail=detail,
         status_code=500,
         request_id=request_id,
     )

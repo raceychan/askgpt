@@ -7,7 +7,46 @@ from src.domain.config import Settings
 from src.domain.error import SystemNotSetError
 from src.domain.interface import ActorRef, ICommand, IEntity, IEvent, IMessage
 from src.domain.model import Command, Event
-from src.infra.mq import MailBox
+from src.infra.mq import MessageBroker, QueueBroker
+
+
+class MailBox:
+    # Actor specific queue
+    def __init__(self, broker: MessageBroker[IMessage]):
+        self._broker = broker
+
+    def __len__(self) -> int:
+        return len(self._broker)
+
+    def __bool__(self) -> bool:
+        return self.__len__() > 0
+
+    async def put(self, message: IMessage) -> None:
+        await self._broker.put(message)
+
+    async def get(self) -> IMessage:
+        return await self._broker.get()
+
+    async def __aiter__(self) -> ty.AsyncGenerator[IMessage, ty.Any]:
+        yield await self.get()
+
+    def __repr__(self) -> str:
+        return f"{self.__class__.__name__}(capacity={self.capacity})"
+
+    @property
+    def capacity(self) -> int:
+        return self._broker.maxsize
+
+    def size(self) -> int:
+        return len(self._broker)
+
+    @classmethod
+    def build(
+        cls, broker: MessageBroker[IMessage] | None = None, maxsize: int = 0
+    ) -> ty.Self:
+        if broker is None:
+            broker = QueueBroker(maxsize)
+        return cls(broker)
 
 
 class EmptyEvents(Exception):
@@ -15,11 +54,14 @@ class EmptyEvents(Exception):
 
 
 class Actor[TChild: "Actor[ty.Any]"](AbstractActor):
+    # TODO?: we need to seperate Actor.apply from this class
+    # only stateful(CQRS) actor needs to apply events
+
     mailbox: MailBox
     _system: ty.ClassVar["System[ty.Any]"]
     childs: ActorRegistry[ActorRef, TChild]
 
-    def __init__(self, mailbox: MailBox):
+    def __init__(self, mailbox: MailBox) -> None:
         if not isinstance(self, System):
             self._ensure_system()
 
@@ -67,6 +109,7 @@ class Actor[TChild: "Actor[ty.Any]"](AbstractActor):
     def get_child(self, ref: ActorRef) -> TChild | None:
         """
         Search for child actor recursively
+        system.get_child would perform a global search
         """
         if not self.childs:
             return None
@@ -157,27 +200,27 @@ class System[TChild: Actor[ty.Any]](Actor[TChild]):
             cls._system = super().__new__(cls)
         return cls._system
 
-    def __init__(self, mailbox: MailBox, settings: Settings):
+    def __init__(
+        self,
+        mailbox: MailBox,
+        ref: ActorRef,
+        settings: Settings,
+    ):
         super().__init__(mailbox=mailbox)
         self.set_system(self)
         self._eventlog = EventLog(mailbox=MailBox.build())
         self._settings = settings
-        self.__ref = settings.actor_refs.SYSTEM
+        self._ref = ref
 
     def ensure_self(self) -> None:
         """Pre start events"""
         ...
 
-    def setup_eventlog(self, eventlog: ty.Optional["EventLog[ty.Any]"] = None) -> None:
-        if eventlog is None:
-            eventlog = EventLog(mailbox=MailBox.build())
-        self._eventlog = eventlog
-
     @property
-    def eventlog(self) -> "EventLog[TChild]":
+    def eventlog(self) -> "EventLog[ty.Any]":
         return self._eventlog
 
-    def subscribe_events(self, actor: Actor[TChild]):
+    def subscribe_events(self, actor: Actor[ty.Any]):
         self._eventlog.register_listener(actor)
 
     @property
@@ -194,33 +237,51 @@ class System[TChild: Actor[ty.Any]](Actor[TChild]):
 
     @cached_property
     def ref(self) -> ActorRef:
-        return self.__ref
+        return self._ref
+
+    @singledispatchmethod
+    def apply(self, event: Event) -> ty.Self:
+        raise NotImplementedError
+
+    @classmethod
+    def build(cls, settings: Settings) -> "System[TChild]":
+        return cls(
+            mailbox=MailBox.build(),
+            ref=settings.actor_refs.SYSTEM,
+            settings=settings,
+        )
 
 
 class EventLog[TListener: Actor[ty.Any]](Actor[ty.Any]):
     """
     a mediator that used to decouple event source(Actors) and event consumer (Journal)
-
     Actors.publish -> EventLog.receive -> Journal.receive
-
     coudld be refactor to a kafka publisher if needed
     """
 
-    _event_listener: TListener
-
-    def __init__(self, mailbox: MailBox):
+    def __init__(self, mailbox: MailBox, broadcast: bool = False):
         super().__init__(mailbox=mailbox)
+        self._event_listeners: list[TListener] = []
+        self._broadcast = broadcast
 
     def register_listener(self, listener: TListener) -> None:
-        self._event_listener = listener
+        self._event_listeners.append(listener)
 
     async def on_receive(self) -> None:
         msg = await self.mailbox.get()
-        await self._event_listener.receive(msg)
+        if self._broadcast:
+            raise NotImplementedError
+
+        try:
+            listener = self._event_listeners[0]
+        except IndexError:
+            raise Exception("No event listener registered")
+        else:
+            await listener.receive(msg)
 
     @property
-    def event_listener(self) -> TListener:
-        return self._event_listener
+    def event_listeners(self) -> list[TListener]:
+        return self._event_listeners[:]
 
     @singledispatchmethod
     def apply(self, event: Event) -> ty.Self:

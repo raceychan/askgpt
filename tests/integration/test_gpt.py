@@ -16,7 +16,9 @@ class EchoMailbox(MailBox):
 
 @pytest.fixture(scope="module")
 async def gpt_system(settings: config.Settings, eventstore: service.EventStore):
-    system = service.GPTSystem(mailbox=MailBox.build(), settings=settings)
+    system = service.GPTSystem(
+        mailbox=MailBox.build(), ref=settings.actor_refs.SYSTEM, settings=settings
+    )
     await system.start(eventstore=eventstore)
     return system
 
@@ -166,9 +168,6 @@ async def test_event_unduplicate(
     assert len(session_events) == len(session_events_set)
 
     all_events = await eventstore.list_all()
-
-    # assert isinstance(all_events[0], service.SystemStarted)
-    # assert isinstance(all_events[-1], service.SystemStoped)
 
     all_events_set = set(all_events)
     assert (

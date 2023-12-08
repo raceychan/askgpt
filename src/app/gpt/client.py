@@ -6,10 +6,9 @@ from openai.types.beta import Thread
 from openai.types.beta.assistant import Assistant
 from openai.types.chat import ChatCompletionChunk
 
-from src.app.actor import Actor
+from src.app.actor import Actor, MailBox
 from src.app.gpt import model, params
 from src.domain.model import Event
-from src.infra.mq import MailBox
 
 
 class AIClient(ty.Protocol):

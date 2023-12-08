@@ -4,5 +4,5 @@ from src.domain.interface import IMessage
 
 
 class Receivable(ty.Protocol):
-    def receive(self, message: IMessage) -> None:
+    async def receive(self, message: IMessage) -> None:
         ...

@@ -1,11 +1,11 @@
 import pytest
 
-from src.app.model import TestDefaults
+from src.app.actor import MailBox
 from src.app.gpt import model, service
 from src.app.gpt.client import OpenAIClient
 from src.app.gpt.params import ChatResponse
+from src.app.model import TestDefaults
 from src.domain import config
-from src.infra.mq import MailBox
 
 
 @pytest.fixture(scope="module")
@@ -21,7 +21,9 @@ def chat_messages():
 
 @pytest.fixture(scope="module")
 async def gptsystem(settings: config.Settings, eventstore: service.EventStore):
-    system = service.GPTSystem(mailbox=MailBox.build(), settings=settings)
+    system = service.GPTSystem(
+        mailbox=MailBox.build(), ref=settings.actor_refs.SYSTEM, settings=settings
+    )
     await system.start(eventstore=eventstore)
     return system
 

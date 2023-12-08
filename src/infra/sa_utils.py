@@ -81,17 +81,23 @@ def engine_factory(
 
 class SQLDebugger:
     def __init__(self, engine: sa.Engine):
+        from rich.console import Console
+
         self.engine = engine
         self.inspector = sa.inspect(engine)
+        self._console = Console(color_system="truecolor")
+
+    def show_sql(self, sql: str) -> None:
+        from rich.syntax import Syntax
+
+        sql_ = Syntax(sql, "sql", theme="nord-darker", line_numbers=True)
+        self._console.print(sql_)
 
     def execute(self, sql: str) -> list[dict[str, ty.Any]]:
-        import rich
-
         with self.engine.begin() as conn:
-            rich.print(f"{self} is executing sql=:\n {sql}\n")
             res = conn.execute(sa.text(sql))
             rows = res.all()
-        return [dict(row._mapping) for row in rows]
+        return [dict(row._mapping) for row in rows]  # type: ignore
 
     @classmethod
     def build(cls, db_url: str):
@@ -130,4 +136,4 @@ async def test_table_exist(async_engine: sa_aio.AsyncEngine, tablename: str):
         res = await cursor.execute(sa.text(sql))
         row = res.one()
 
-    return dict(row._mapping)
+    return dict(row._mapping)  # type: ignore

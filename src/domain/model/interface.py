@@ -22,8 +22,6 @@ class IEntity(Identifiable, ty.Protocol):
 
 
 class IMessage(Identifiable, ty.Protocol):
-    ...
-
     def asdict(
         self,
         mode: str = "python",

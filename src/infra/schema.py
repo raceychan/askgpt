@@ -19,7 +19,9 @@ class TableBase:
     used for DDL and data migrations only
     """
 
-    gmt_modified = sa.Column("gmt_modified", sa.DateTime, onupdate=func.now())
+    gmt_modified = sa.Column(
+        "gmt_modified", sa.DateTime, server_default=func.now(), onupdate=func.now()
+    )
     gmt_created = sa.Column("gmt_created", sa.DateTime, server_default=func.now())
 
     @sa_orm.declared_attr.directive

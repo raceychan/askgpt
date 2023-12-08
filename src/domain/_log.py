@@ -1,6 +1,7 @@
 from __future__ import annotations  # annotations become strings at runtime
 
 import datetime
+import json
 import traceback
 import typing as ty
 
@@ -8,13 +9,25 @@ import loguru
 from loguru import logger as logger_
 
 from src.domain.config import Settings, get_setting
-from src.domain.fmtutils import fprint
+
+# from src.domain.fmtutils import fprint
 
 __all__ = ["logger"]
 
 from rich.console import Console
 
 console = Console(color_system="truecolor")
+
+COLOR_MAPPER = dict(
+    TRACE="cyan",
+    DEBUG="blue",
+    INFO="white",
+    SUCCESS="green",
+    WARNING="yellow",
+    ERROR="red",
+    CRITICAL="red",
+)
+# loguru_fmt = "<green>{time}</green> | <level>{level: <8}</level> | <cyan>{name}</cyan>:<cyan>{function}</cyan>:<cyan>{line}</cyan> | request_id:{request_id} | <level>{message}</level>"
 
 
 def format_record(record: loguru.Record) -> dict[str, ty.Any]:
@@ -39,7 +52,7 @@ def format_record(record: loguru.Record) -> dict[str, ty.Any]:
 def prod_sink(msg: loguru.Message):
     record = msg.record
     custom_record = format_record(record)
-    fprint(str(custom_record))
+    print(json.dumps(custom_record))
 
 
 def debug_sink(msg: loguru.Message):
@@ -47,7 +60,10 @@ def debug_sink(msg: loguru.Message):
     record_time_utc = (
         record["time"].astimezone(datetime.UTC).strftime("%Y-%m-%d %H:%M:%S")
     )
-    fmt = "[green]{time}[/green] | [level]{level: <8}[/level] | [cyan]{name}[/cyan]:[cyan]{function}[/cyan]:[cyan]{line}[/cyan] - {request_id} - [level]{message}[/level]"
+
+    stdlog = "[green]{time}[/] | [level]{level: <8}[/] | [cyan]{name}[/]:[cyan]{function}[/]:[cyan]{line}[/]"
+    reqlog = "request_id:{request_id} | [level]{message}[/]"
+    fmt = stdlog + " | " + reqlog
 
     log = fmt.format(
         time=record_time_utc,
@@ -58,7 +74,7 @@ def debug_sink(msg: loguru.Message):
         message=record["message"],
         request_id=record["extra"].get("request_id", ""),
     )
-    console.print(log)
+    console.print(log, style=COLOR_MAPPER[record["level"].name])
 
 
 def config_logs(settings: Settings):
@@ -67,15 +83,6 @@ def config_logs(settings: Settings):
         logger_.add(prod_sink, level="INFO")
     else:
         logger_.add(debug_sink, level="INFO")
-        # logger_.configure(
-        #     handlers=[
-        #         dict(
-        #             sink=sys.stdout,
-        #             level="TRACE",
-        #         )
-        #     ],
-        # )
-
     return logger_
 
 

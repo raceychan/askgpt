@@ -14,7 +14,9 @@ addopts = "--strict-markers --maxfail=1 --pdbcls=IPython.terminal.debugger:Pdb"
 markers = [
     "integration_test: marks tests as slow integration tests (deselect with '-m \"not integration_test\"')",
 ]
+
 filterwarnings = ["ignore::DeprecationWarning"]
+
 
 [tool.pyright]
 include = ["src/*.py"]

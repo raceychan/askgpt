@@ -2,13 +2,13 @@ import typing as ty
 from contextlib import asynccontextmanager
 
 from src.app import factory
+from src.app.actor import MailBox
 from src.app.gpt import model, repository
 from src.app.gpt.system import GPTSystem, SessionActor, SystemState, UserActor
 from src.domain import encrypt
 from src.domain._log import logger
 from src.domain.config import Settings
 from src.infra.eventstore import EventStore
-from src.infra.mq import MailBox
 
 
 class GPTService:

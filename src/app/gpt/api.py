@@ -1,13 +1,9 @@
 from fastapi import APIRouter, Depends
 
-from src.app.auth.service import Authenticator
 from src.app.gpt.service import GPTService
 from src.domain.config import get_setting
 
 gpt = APIRouter(prefix="/gpt")
-
-# TODO: 1. instead of using GPTService.build system and then inject it into both
-# GPTService and AuthService ?
 
 
 async def get_service():
@@ -23,6 +19,7 @@ async def ask(
     session_id: str,
     service: GPTService = Depends(get_service),
 ):
+    # TODO: use token to validate
     auth = service.auth(user_id)
     await service.send_question(auth, question, session_id)
 

@@ -3,7 +3,7 @@ import typing as ty
 from functools import lru_cache
 
 
-class Cache[TKey, TValue](abc.ABC):
+class Cache[TKey: ty.Hashable, TValue](abc.ABC):
     @abc.abstractmethod
     async def get(self, key: TKey) -> TValue | None:
         ...

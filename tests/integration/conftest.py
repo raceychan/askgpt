@@ -1,14 +1,24 @@
 import datetime
+import typing as ty
 
 import pytest
 from sqlalchemy.ext import asyncio as sa_aio
 
+from src.app.actor import MailBox
+from src.app.auth.model import UserAuth
 from src.app.auth.repository import UserAuth
 from src.app.bootstrap import bootstrap
+from src.app.eventrecord import EventRecord
 from src.app.model import TestDefaults
 from src.domain.interface import ISettings
 from src.infra.cache import LocalCache
 from src.infra.eventstore import EventStore
+from src.infra.mq import BaseConsumer, BaseProducer, QueueBroker
+
+
+class EchoMailbox(MailBox):
+    async def publish(self, message: str):
+        print(message)
 
 
 @pytest.fixture(scope="module")
@@ -43,3 +53,25 @@ def user_auth(test_defaults: TestDefaults):
     return UserAuth(
         user_info=test_defaults.USER_INFO, last_login=datetime.datetime.utcnow()
     )
+
+
+@pytest.fixture(scope="module")
+def broker():
+    return QueueBroker[ty.Any]()
+
+
+@pytest.fixture(scope="module")
+def producer(broker: QueueBroker[ty.Any]):
+    return BaseProducer(broker)
+
+
+@pytest.fixture(scope="module")
+def consumer(broker: QueueBroker[ty.Any]):
+    return BaseConsumer(broker)
+
+
+@pytest.fixture(scope="module", autouse=True)
+async def eventrecord(consumer: BaseConsumer[ty.Any], eventstore: EventStore):
+    es = EventRecord(consumer, eventstore, wait_gap=0.1)
+    async with es.lifespan():
+        yield es

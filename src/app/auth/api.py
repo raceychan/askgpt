@@ -1,32 +1,54 @@
-from fastapi import APIRouter, Depends
+from typing import TypedDict
 
-from src.app.auth.model import CreateUserRequest
+from fastapi import APIRouter
+from fastapi.responses import RedirectResponse
+from pydantic import EmailStr
+from starlette import status
+
+from src.app.api.model import RequestBody
+from src.app.auth.model import UserAuth
 from src.app.auth.service import AuthService
 from src.domain.config import get_setting
 
 auth = APIRouter(prefix="/auth")
+user = APIRouter(prefix="/users")
 
 
-def get_auth_service():
-    settings = get_setting()
-    return AuthService.build(settings)
+service = AuthService.build(get_setting())
 
 
-@auth.get("/login")
-async def login(
-    email: str, password: str, service: AuthService = Depends(get_auth_service)
-) -> dict[str, str]:
-    token = await service.login(email=email, password=password)
-    res = {
-        "access_token": token,
-        "token_type": "bearer",
-    }
-    return res
+class CreateUserRequest(RequestBody):
+    user_name: str = ""
+    email: EmailStr
+    password: str
+
+
+class UserLoginRequest(RequestBody):
+    email: EmailStr
+    password: str
+
+
+class TokenResponse(TypedDict):
+    access_token: str
+    token_type: str
+
+
+@auth.post("/login")
+async def login(req: UserLoginRequest) -> TokenResponse:
+    token = await service.login(req.email, req.password)
+    return TokenResponse(access_token=token, token_type="bearer")
 
 
 @auth.post("/signup")
-async def create_user(
-    create_req: CreateUserRequest,
-    service: AuthService = Depends(get_auth_service),
-):
-    await service.create_user(create_req)
+async def create_user(req: CreateUserRequest):
+    "PRG pattern"
+    user_id = await service.signup_user(req.user_name, req.email, req.password)
+    return RedirectResponse(
+        f"/v1/users/{user_id}", status_code=status.HTTP_303_SEE_OTHER
+    )
+
+
+@user.get("/{user_id}")
+async def get_user(user_id: str) -> UserAuth | None:
+    user = await service.user_repo.get(user_id)
+    return user

@@ -7,7 +7,6 @@ from src.domain.model.base import (
     Event,
     Field,
     ValueObject,
-    attribute,
     field_serializer,
 )
 
@@ -46,11 +45,8 @@ class TestDefaults:
     SESSION_ID: str = "e0b5ee4a-ef76-4ed9-89fb-5f7a64122dc8"
     SESSION_NAME: str = "default_session"
     MODEL: str = "gpt-3.5-turbo"
-
-    @attribute
-    def USER_INFO(cls) -> "UserInfo":
-        return UserInfo(
-            user_email=cls.USER_EMAIL,
-            user_name=cls.USER_NAME,
-            hash_password=encrypt.hash_password(cls.USER_PASSWORD.encode()),
-        )
+    USER_INFO: UserInfo = UserInfo(
+        user_email=USER_EMAIL,
+        user_name=USER_NAME,
+        hash_password=encrypt.hash_password(USER_PASSWORD.encode()),
+    )

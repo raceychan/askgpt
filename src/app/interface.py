@@ -70,5 +70,5 @@ class IJournal(ty.Protocol):
         ...
 
     async def list_events(self, ref: ActorRef) -> "list[IEvent]":
-        # return await self.eventstore.get(entity_id=ref)
         ...
+        # return await self.eventstore.get(entity_id=ref)

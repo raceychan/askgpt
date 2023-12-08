@@ -1,12 +1,10 @@
-import asyncio
 import typing as ty
 from functools import cached_property, singledispatchmethod
 
-from src.app.actor import Actor, ActorRef
+from src.app.actor import Actor, ActorRef, MailBox
 from src.domain._log import logger
 from src.domain.interface import IEvent, IEventStore, IMessage
 from src.domain.model import Event
-from src.infra.mq import MailBox
 
 
 class Journal(Actor[ty.Any]):
@@ -14,15 +12,13 @@ class Journal(Actor[ty.Any]):
     Consumer that consumes events from event bus and persist them to event store
     """
 
-    _loop: asyncio.AbstractEventLoop
-
     def __init__(
         self, eventstore: IEventStore, mailbox: MailBox, ref: ActorRef
     ) -> None:
         super().__init__(mailbox)
         self.system.subscribe_events(self)
         self.eventstore = eventstore
-        self.__ref = ref
+        self._ref = ref
 
     async def on_receive(self) -> None:
         message = await self.mailbox.get()
@@ -47,11 +43,12 @@ class Journal(Actor[ty.Any]):
         raise NotImplementedError
 
     async def publish(self, event: IEvent) -> None:
-        raise NotImplementedError
+        await self.mailbox.put(event)
+        await self.on_receive()
 
     @cached_property
     def ref(self) -> ActorRef:
-        return self.__ref
+        return self._ref
 
     async def list_events(self, ref: ActorRef) -> "list[IEvent]":
         return await self.eventstore.get(entity_id=ref)

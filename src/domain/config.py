@@ -8,6 +8,11 @@ from pydantic import BaseModel, ConfigDict
 from src.domain.fileutil import FileUtil
 from src.domain.interface import SQL_ISOLATIONLEVEL, EventLogRef, JournalRef, SystemRef
 
+UNIT = MINUTE = 1
+HOUR = 60 * MINUTE
+DAY = 24 * HOUR
+WEEK = 7 * DAY
+
 
 class SettingsBase(BaseModel):
     model_config = ConfigDict(
@@ -24,6 +29,8 @@ class Settings(SettingsBase):
     PROJECT_ROOT: ty.ClassVar[pathlib.Path] = pathlib.Path.cwd()
     OPENAI_API_KEY: str
     RUNTIME_ENV: ty.Literal["dev", "prod", "test"]
+
+    __hash__: ty.Callable[[None], int]  # make pyright happy
 
     class DB(SettingsBase):
         DB_DRIVER: str = "sqlite"
@@ -53,7 +60,7 @@ class Settings(SettingsBase):
         SECRET_KEY: str
         ALGORITHM: str = "HS256"
         # expire in 7 days
-        ACCESS_TOKEN_EXPIRE_MINUTES: int = 60 * 24 * 7
+        ACCESS_TOKEN_EXPIRE_MINUTES: int = WEEK
 
     security: Security
 
@@ -64,7 +71,7 @@ class Settings(SettingsBase):
         DOCS: str = f"{API_VERSION_STR}/docs"
         REDOC: str = f"{API_VERSION_STR}/redoc"
         SECRET_KEY: str = secrets.token_urlsafe(32)
-        ACCESS_TOKEN_EXPIRE_MINUTES: int = 60 * 24 * 8
+        ACCESS_TOKEN_EXPIRE_MINUTES: int = WEEK
 
     api: API
 
@@ -86,8 +93,9 @@ class Settings(SettingsBase):
         return str(file_path).replace("/", ".")[:-3]
 
 
+@functools.lru_cache(maxsize=1)
 def get_setting(filename: str = "settings.toml") -> Settings:
     """
-    offcial factory of settings, same as Settings.from_file()
+    offcial factory of settings with default filename
     """
     return Settings.from_file(filename=filename)

@@ -86,10 +86,10 @@ async def auth_dispatch(auth: AuthService, options: CLIOptions):
     email = options.email
     password = options.password
 
-    user = await auth.find_user(username=username, useremail=email)
+    user = await auth.find_user(useremail=email)
 
     if not user:
-        await auth.create_user(username, email, password)
+        await auth.signup_user(username, email, password)
     else:
         logger.info(
             f"User: {user.user_info.user_email} already exists, user id: {user.entity_id}"

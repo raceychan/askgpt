@@ -1,0 +1,76 @@
+repos:
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v4.0.1
+    hooks:
+      - id: check-added-large-files
+      - id: check-ast
+      - id: check-builtin-literals
+      - id: check-case-conflict
+      - id: check-docstring-first
+      - id: check-executables-have-shebangs
+      - id: check-json
+      - id: check-merge-conflict
+      - id: check-symlinks
+      - id: check-toml
+      - id: check-vcs-permalinks
+      - id: check-xml
+      - id: check-yaml
+        args: [--allow-multiple-documents]
+      - id: debug-statements
+      - id: detect-aws-credentials
+        args: [--allow-missing-credentials]
+      - id: destroyed-symlinks
+      - id: end-of-file-fixer
+      - id: fix-byte-order-marker
+      - id: fix-encoding-pragma
+        args: [--remove]
+      - id: forbid-new-submodules
+      - id: mixed-line-ending
+        args: [--fix=auto]
+      - id: name-tests-test
+        args: [--django]
+      - id: requirements-txt-fixer
+      - id: trailing-whitespace
+  - repo: local
+    hooks:
+      - id: black
+        name: black
+        entry: poetry run black
+        language: system
+        types: [python]
+      - id: flake8
+        name: flake8
+        entry: poetry run flake8
+        language: system
+        types: [python]
+  - repo: https://github.com/pycqa/isort
+    rev: "5.9.1"
+    hooks:
+      - id: isort
+        args:
+          - --profile
+          - black
+          - --filter-files
+  - repo: https://github.com/adrienverge/yamllint.git
+    rev: v1.26.1
+    hooks:
+      - id: yamllint
+        args: [-c=.yamllint.yaml]
+  - repo: https://gitlab.com/devopshq/gitlab-ci-linter
+    rev: v1.0.2
+    hooks:
+      - id: gitlab-ci-linter
+        args:
+          - "--server"
+          - "https://your.gitlab.server" # Need env var GITLAB_PRIVATE_TOKEN with gitlab api read token
+  - repo: https://github.com/commitizen-tools/commitizen
+    rev: v2.17.11
+    hooks:
+      - id: commitizen
+        stages: [commit-msg]
+  - repo: https://github.com/jumanjihouse/pre-commit-hooks
+    rev: 2.1.5 # or specific git tag
+    hooks:
+      - id: forbid-binary
+      - id: shellcheck
+      - id: shfmt

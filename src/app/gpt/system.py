@@ -2,17 +2,16 @@ import enum
 import typing as ty
 from functools import singledispatchmethod
 
-from src.app.actor import EntityActor, System
+from src.app.actor import EntityActor, MailBox, System
 from src.app.gpt import model
 from src.app.gpt.client import OpenAIClient
 from src.app.journal import Journal
 from src.domain._log import logger
 from src.domain.config import Settings
 from src.domain.fmtutils import async_receiver
-from src.domain.interface import ICommand
+from src.domain.interface import ActorRef, ICommand
 from src.domain.model import Command, Event, Message
 from src.infra.eventstore import EventStore
-from src.infra.mq import MailBox
 
 
 class SystemStarted(Event):
@@ -215,8 +214,9 @@ class SessionActor(EntityActor[OpenAIClient, model.ChatSession]):
 
 
 class GPTSystem(System[UserActor]):
-    def __init__(self, mailbox: MailBox, settings: Settings):
-        super().__init__(mailbox=mailbox, settings=settings)
+    # shoud we remove this class and just use System[UserActor]?
+    def __init__(self, mailbox: MailBox, ref: ActorRef, settings: Settings):
+        super().__init__(mailbox=mailbox, ref=ref, settings=settings)
         self._system_state = SystemState.created
 
     @property
@@ -278,7 +278,11 @@ class GPTSystem(System[UserActor]):
     @apply.register
     @classmethod
     def _(cls, event: SystemStarted) -> ty.Self:
-        return cls(mailbox=MailBox.build(), settings=event.settings)
+        return cls(
+            mailbox=MailBox.build(),
+            ref=event.settings.actor_refs.SYSTEM,
+            settings=event.settings,
+        )
 
     @singledispatchmethod
     async def handle(self, command: Command) -> None:
@@ -286,7 +290,7 @@ class GPTSystem(System[UserActor]):
 
     @handle.register
     async def _(self, command: model.SendChatMessage) -> None:
-        user: "UserActor" | None = self.get_child(command.user_id)
+        user = self.get_child(command.user_id)
         if not user:
             user = await self.rebuild_user(command.user_id)
 
