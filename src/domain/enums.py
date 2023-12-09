@@ -1,5 +1,5 @@
 import typing as ty
-from enum import Enum, auto
+from enum import Enum
 
 from src.domain.model.name_tools import str_to_snake
 
@@ -8,6 +8,11 @@ def enum_generator(
     **kwargs: dict[str, ty.Iterable[str]]
 ) -> ty.Generator[Enum, None, None]:
     """
+    Generate a new Enum class for each keyword argument
+    keys would be converted to snake-case
+
+
+
     Example:
     -----
     >>> enum_gen = enum_generator(Color=["red", "green", "blue"])

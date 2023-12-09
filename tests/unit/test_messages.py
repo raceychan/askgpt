@@ -1,12 +1,12 @@
 import pytest
 
 from src.app.gpt import model
-from src.app.model import TestDefaults
+from src.domain.model.test_default import TestDefaults
 
 
 @pytest.fixture(scope="module")
-def create_user(user_info: model.UserInfo):
-    return model.CreateUser(user_id=TestDefaults.USER_ID, user_info=user_info)
+def create_user():  # user_info: model.UserInfo):
+    return model.CreateUser(user_id=TestDefaults.USER_ID)
 
 
 @pytest.fixture(scope="module")
@@ -17,7 +17,7 @@ def create_session():
 
 
 @pytest.fixture(scope="module")
-def send_chat_message(user_info: model.UserInfo):
+def send_chat_message():  # user_info: model.UserInfo):
     # This should raise Exception
     return model.SendChatMessage(
         user_id=TestDefaults.USER_ID,
@@ -28,8 +28,8 @@ def send_chat_message(user_info: model.UserInfo):
 
 
 @pytest.fixture(scope="module")
-def user_created(user_info: model.UserInfo):
-    return model.UserCreated(user_id=TestDefaults.USER_ID, user_info=user_info)
+def user_created():  # user_info: model.UserInfo):
+    return model.UserCreated(user_id=TestDefaults.USER_ID)
 
 
 @pytest.fixture(scope="module")

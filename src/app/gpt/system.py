@@ -10,7 +10,7 @@ from src.domain._log import logger
 from src.domain.config import Settings
 from src.domain.fmtutils import async_receiver
 from src.domain.interface import ActorRef, ICommand
-from src.domain.model import Command, Event, Message
+from src.domain.model.base import Command, Event, Message
 from src.infra.eventstore import EventStore
 
 
@@ -231,8 +231,8 @@ class GPTSystem(System[UserActor]):
 
     async def create_user(self, command: model.CreateUser) -> "UserActor":
         event = model.UserCreated(
-            user_id=command.entity_id, user_info=command.user_info
-        )
+            user_id=command.entity_id
+        )  # , user_info=command.user_info)
         user_actor = UserActor.apply(event)
         self.childs[user_actor.entity_id] = user_actor
         await self.publish(event)

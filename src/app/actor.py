@@ -6,7 +6,7 @@ from src.app.interface import AbstractActor, ActorRegistry, IJournal
 from src.domain.config import Settings
 from src.domain.error import SystemNotSetError
 from src.domain.interface import ActorRef, ICommand, IEntity, IEvent, IMessage
-from src.domain.model import Command, Event
+from src.domain.model.base import Command, Event
 from src.infra.mq import MessageBroker, QueueBroker
 
 
@@ -24,11 +24,12 @@ class MailBox:
     async def put(self, message: IMessage) -> None:
         await self._broker.put(message)
 
-    async def get(self) -> IMessage:
+    async def get(self) -> IMessage | None:
         return await self._broker.get()
 
     async def __aiter__(self) -> ty.AsyncGenerator[IMessage, ty.Any]:
-        yield await self.get()
+        while msg := await self.get():
+            yield msg
 
     def __repr__(self) -> str:
         return f"{self.__class__.__name__}(capacity={self.capacity})"
@@ -91,10 +92,9 @@ class Actor[TChild: "Actor[ty.Any]"](AbstractActor):
             await self.on_receive()
 
     async def on_receive(self) -> None:
-        if self.mailbox.size() == 0:
-            return
-
         message = await self.mailbox.get()
+        if message is None:
+            raise Exception("Mailbox is empty")
 
         if isinstance(message, Command):
             await self.handle(message)
@@ -269,6 +269,9 @@ class EventLog[TListener: Actor[ty.Any]](Actor[ty.Any]):
 
     async def on_receive(self) -> None:
         msg = await self.mailbox.get()
+        if not msg:
+            raise Exception("Mailbox is empty")
+
         if self._broadcast:
             raise NotImplementedError
 

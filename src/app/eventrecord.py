@@ -8,29 +8,39 @@ from src.infra.eventstore import EventStore
 from src.infra.mq import BaseConsumer
 
 
+async def grease(gap: float = 0.1):
+    """
+    Pause for one event loop cycle.
+    """
+    await asyncio.sleep(gap)
+
+
 class EventRecord:
     # TODO: this should replcae Actor.EventLog and Actor.Journal at somepoint in the future
     def __init__(
-        self, consumer: BaseConsumer[IEvent], es: EventStore, wait_gap: float = 0.1
+        self,
+        consumer: BaseConsumer[IEvent],
+        eventstore: EventStore,
+        wait_gap: float = 0.1,  # in production this should be close to 0
     ):
         self._consumer = consumer
-        self._es = es
+        self._eventstore = eventstore
         self._wait_gap = wait_gap
         self.__main_task: asyncio.Task[ty.Any] | None = None
 
     async def _poll_forever(self):
-        wait_gap = self._wait_gap
         while True:
             try:
                 message = await self._consumer.get()
                 if message is None:
-                    await asyncio.sleep(wait_gap)
+                    await grease(self._wait_gap)
                     continue
-                await self._es.add(message)
+                await self._eventstore.add(message)
             except asyncio.CancelledError:
                 break
 
     async def start(self):
+        logger.info("starting event record")
         if self.__main_task is None or self.__main_task.done():
             self.__main_task = asyncio.create_task(self._poll_forever())
 
@@ -42,6 +52,7 @@ class EventRecord:
             except asyncio.CancelledError:
                 pass  # Task cancellation is expected
             finally:
+                logger.info("stopping event record")
                 self.__main_task = None
 
     @asynccontextmanager

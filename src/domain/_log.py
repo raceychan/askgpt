@@ -10,8 +10,6 @@ from loguru import logger as logger_
 
 from src.domain.config import Settings, get_setting
 
-# from src.domain.fmtutils import fprint
-
 __all__ = ["logger"]
 
 from rich.console import Console
@@ -61,20 +59,29 @@ def debug_sink(msg: loguru.Message):
         record["time"].astimezone(datetime.UTC).strftime("%Y-%m-%d %H:%M:%S")
     )
 
-    stdlog = "[green]{time}[/] | [level]{level: <8}[/] | [cyan]{name}[/]:[cyan]{function}[/]:[cyan]{line}[/]"
-    reqlog = "request_id:{request_id} | [level]{message}[/]"
-    fmt = stdlog + " | " + reqlog
+    tmplt = "[green]{time}[/] | [level]{level: <8}[/] | [cyan]{name}[/]:[cyan]{function}[/]:[cyan]{line}[/] | [level]{message}[/]"
 
-    log = fmt.format(
-        time=record_time_utc,
-        level=record["level"],
-        name=record["name"],
-        function=record["function"],
-        line=record["line"],
-        message=record["message"],
-        request_id=record["extra"].get("request_id", ""),
+    if extra := record["extra"]:
+        extra_log = " | " + " | ".join(f"{k}={v}" for k, v in extra.items())
+    else:
+        extra_log = ""
+
+    log = (
+        tmplt.format(
+            time=record_time_utc,
+            level=record["level"],
+            name=record["name"],
+            function=record["function"],
+            line=record["line"],
+            message=record["message"],
+        )
+        + extra_log
     )
+
     console.print(log, style=COLOR_MAPPER[record["level"].name])
+    if record["exception"]:
+        # console.print(traceback.format_exc())
+        console.print_exception(show_locals=True)
 
 
 def config_logs(settings: Settings):

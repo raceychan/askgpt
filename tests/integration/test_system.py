@@ -5,8 +5,8 @@ import pytest
 from src.app.actor import MailBox, System
 from src.app.auth.model import UserAuth
 from src.app.journal import Journal
-from src.app.model import UserCreated
 from src.domain.config import Settings
+from src.domain.model.user import UserCreated
 from src.infra.eventstore import EventStore
 
 

@@ -1,3 +1,5 @@
+from enum import auto
+
 from src.domain import enums
 
 
@@ -9,3 +11,9 @@ def test_enum_generator():
     assert Color.red.value == "red"
 
 
+class Snake(enums.SnakeCaseEnum):
+    PythonSnake = auto()
+
+
+def test_snake_enums():
+    assert Snake.PythonSnake.value == "python_snake"

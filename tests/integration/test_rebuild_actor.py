@@ -4,8 +4,8 @@ from src.app.actor import MailBox
 from src.app.gpt import model, service
 from src.app.gpt.client import OpenAIClient
 from src.app.gpt.params import ChatResponse
-from src.app.model import TestDefaults
 from src.domain import config
+from src.domain.model.test_default import TestDefaults
 
 
 @pytest.fixture(scope="module")

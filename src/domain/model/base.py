@@ -6,16 +6,14 @@ from dataclasses import dataclass
 from functools import singledispatchmethod
 
 import sqlalchemy as sa
-from pydantic import (
-    BaseModel,
-    ConfigDict,
-    EmailStr,
-    Field,
-    SerializeAsAny,
-    computed_field,
-    field_serializer,
-    validator,
-)
+from pydantic import BaseModel as BaseModel
+from pydantic import ConfigDict as ConfigDict
+from pydantic import EmailStr as EmailStr
+from pydantic import Field as Field
+from pydantic import SerializeAsAny as SerializeAsAny
+from pydantic import computed_field as computed_field
+from pydantic import field_serializer as field_serializer
+from pydantic import validator as validator
 
 from src.domain.model.interface import ICommand, IEvent, utc_datetime
 from src.domain.model.name_tools import str_to_snake
@@ -165,7 +163,7 @@ class DomainModel(BaseModel):
 
 
 class ValueObject(DomainModel):
-    model_config = ConfigDict(frozen=True)
+    model_config = ConfigDict(frozen=True, use_enum_values=True)
 
 
 class Message(DomainModel):

@@ -8,7 +8,7 @@ from openai.types.chat import ChatCompletionChunk
 
 from src.app.actor import Actor, MailBox
 from src.app.gpt import model, params
-from src.domain.model import Event
+from src.domain.model.base import Event
 
 
 class AIClient(ty.Protocol):

@@ -9,9 +9,9 @@ from src.app.auth.model import UserAuth
 from src.app.auth.repository import UserAuth
 from src.app.bootstrap import bootstrap
 from src.app.eventrecord import EventRecord
-from src.app.model import TestDefaults
 from src.domain.interface import ISettings
-from src.infra.cache import LocalCache
+from src.domain.model.test_default import TestDefaults
+from src.infra.cache import MemoryCache
 from src.infra.eventstore import EventStore
 from src.infra.mq import BaseConsumer, BaseProducer, QueueBroker
 
@@ -34,7 +34,7 @@ def async_engine(settings: ISettings):
 
 @pytest.fixture(scope="module")
 def local_cache():
-    return LocalCache.from_singleton()
+    return MemoryCache.from_singleton()
 
 
 @pytest.fixture(scope="module", autouse=True)

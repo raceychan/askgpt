@@ -6,7 +6,7 @@ from starlette.types import ASGIApp, Receive, Scope, Send
 
 from src.app.api.xheaders import XHeaders
 from src.domain._log import logger
-from src.domain.model import uuid_factory
+from src.domain.model.base import uuid_factory
 
 MIN_PROCESS_TIME = 0.001  # 1ms
 
@@ -20,21 +20,27 @@ class TraceMiddleware:
         self.app = app
 
     async def __call__(self, scope: Scope, receive: Receive, send: Send):
+        # remove follow three lines would break lifespan
         if scope["type"] != "http":
             await self.app(scope, receive, send)
             return
-
-        request_id = request_id_factory()
-        scope["headers"].append((XHeaders.REQUEST_ID.lower().encode(), request_id))
+        x_request_id = XHeaders.REQUEST_ID.encoded
+        headers = dict(scope["headers"])
+        request_id = headers.get(x_request_id, request_id_factory())
+        scope["headers"].append((x_request_id, request_id))
         await self.app(scope, receive, send)
 
 
 class LoggingMiddleware(BaseHTTPMiddleware):
-    async def dispatch(self, request: Request, call_next: RequestResponseEndpoint):
-        request_id = request.headers[XHeaders.REQUEST_ID]
+    """
+    NOTE: we might want to implement our own ExceptionMiddleware here
+    so that a consisten response with domain-defined x-headers always be returned
+    whether the exception is raise or not
+    """
 
+    async def dispatch(self, request: Request, call_next: RequestResponseEndpoint):
+        request_id = request.headers[XHeaders.REQUEST_ID.value]
         client_host, client_port = request.client or ("unknown_ip", "unknown_port")
-        http_method = request.method
         http_version = request.scope["http_version"]
         url_parts = request.url.components
         if url_parts.query == "":
@@ -47,19 +53,18 @@ class LoggingMiddleware(BaseHTTPMiddleware):
             pre_process = perf_counter()
             try:
                 response = await call_next(request)
-            except Exception as e:
-                raise e
-            else:
                 status_code = response.status_code
+            except Exception as e:
+                # should we log error here?
+                logger.exception("exception occurred")
+                raise e
             finally:
                 post_process = perf_counter()
                 duration = max(round(post_process - pre_process, 3), MIN_PROCESS_TIME)
                 logger.info(
-                    f"""{client_host}:{client_port} - "{http_method} {path_query} HTTP/{http_version}" {status_code}""",
-                    request_id=request_id,
-                    method=request.method,
-                    path=request.url.path,
+                    f"""{client_host}:{client_port} - "{request.method} {path_query} HTTP/{http_version}" {status_code}""",
                     duration=duration,
                 )
-        response.headers[XHeaders.PROCESS_TIME] = str(duration)
-        return response
+            response.headers[XHeaders.REQUEST_ID.value] = request_id
+            response.headers[XHeaders.PROCESS_TIME.value] = str(duration)
+            return response

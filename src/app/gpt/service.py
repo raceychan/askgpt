@@ -1,13 +1,12 @@
 import typing as ty
 from contextlib import asynccontextmanager
 
-from src.app import factory
 from src.app.actor import MailBox
 from src.app.gpt import model, repository
 from src.app.gpt.system import GPTSystem, SessionActor, SystemState, UserActor
-from src.domain import encrypt
 from src.domain._log import logger
 from src.domain.config import Settings
+from src.infra import encrypt, factory
 from src.infra.eventstore import EventStore
 
 
@@ -36,14 +35,9 @@ class GPTService:
         self._service_state = state
 
     async def send_question(self, user_id: str, session_id: str, question: str) -> None:
+        # TODO: get before rebuild
         user_actor = await self.system.rebuild_user(user_id)
-
-        if session_id not in user_actor.entity.session_ids:
-            session_actor = await self.user_create_session(
-                user_actor.entity_id, session_id
-            )
-        else:
-            session_actor = await user_actor.rebuild_session(session_id)
+        session_actor = await user_actor.rebuild_session(session_id)
 
         command = model.SendChatMessage(
             user_id=user_id,
@@ -72,8 +66,10 @@ class GPTService:
         await self.system.receive(create_user)
         return self.system.select_child(user_id)
 
-    async def user_create_session(self, user_id: str, session_id: str) -> SessionActor:
-        user_actor = self.system.select_child(user_id)
+    async def create_session(self, user_id: str, session_id: str) -> SessionActor:
+        user_actor = self.system.get_child(user_id)
+        if not user_actor:
+            user_actor = await self.system.rebuild_user(user_id)
 
         await user_actor.handle(
             model.CreateSession(user_id=user_id, session_id=session_id)
@@ -95,7 +91,7 @@ class GPTService:
         self.state = self.state.stop()
 
     @asynccontextmanager
-    async def setup_system(self):
+    async def lifespan(self):
         try:
             await self.start()
             yield self
@@ -107,7 +103,9 @@ class GPTService:
     @classmethod
     def build(cls, settings: Settings) -> ty.Self:
         aioengine = factory.get_async_engine(settings)
-        system = GPTSystem(settings=settings, mailbox=MailBox.build())
+        system = GPTSystem(
+            settings=settings, ref=settings.actor_refs.SYSTEM, mailbox=MailBox.build()
+        )
         session_repo = repository.SessionRepository(aioengine)
         service = cls(system=system, session_repo=session_repo)
         return service

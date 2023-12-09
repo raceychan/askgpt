@@ -8,6 +8,15 @@ from pydantic import BaseModel, ConfigDict
 from src.domain.fileutil import FileUtil
 from src.domain.interface import SQL_ISOLATIONLEVEL, EventLogRef, JournalRef, SystemRef
 
+
+class TimeScale:
+    "A more type-aware approach to time scale"
+    Minute = ty.NewType("Minute", int)
+    Hour = ty.NewType("Hour", int)
+    Day = ty.NewType("Day", int)
+    Week = ty.NewType("Week", int)
+
+
 UNIT = MINUTE = 1
 HOUR = 60 * MINUTE
 DAY = 24 * HOUR
@@ -25,12 +34,14 @@ class SettingsBase(BaseModel):
 
 
 class Settings(SettingsBase):
+    # default values are for testing
     PROJECT_NAME: ty.ClassVar[str] = "askgpt"
     PROJECT_ROOT: ty.ClassVar[pathlib.Path] = pathlib.Path.cwd()
     OPENAI_API_KEY: str
     RUNTIME_ENV: ty.Literal["dev", "prod", "test"]
 
-    __hash__: ty.Callable[[None], int]  # make pyright happy
+    # make pyright happy, Settings is hashable by setting frozen=True
+    __hash__: ty.Callable[[None], int]
 
     class DB(SettingsBase):
         DB_DRIVER: str = "sqlite"
@@ -57,23 +68,41 @@ class Settings(SettingsBase):
     actor_refs: ActorRefs
 
     class Security(SettingsBase):
-        SECRET_KEY: str
+        SECRET_KEY: str = secrets.token_urlsafe(32)
         ALGORITHM: str = "HS256"
-        # expire in 7 days
-        ACCESS_TOKEN_EXPIRE_MINUTES: int = WEEK
+        ACCESS_TOKEN_EXPIRE_MINUTES: TimeScale.Minute = TimeScale.Minute(WEEK)
 
     security: Security
 
     class API(SettingsBase):
+        HOST: str = "127.0.0.1"
+        PORT: int = 5000
         API_VERSION: str = "1"
-        API_VERSION_STR: str = f"/v{API_VERSION}"
-        OPEN_API: str = f"{API_VERSION_STR}/openapi.json"
-        DOCS: str = f"{API_VERSION_STR}/docs"
-        REDOC: str = f"{API_VERSION_STR}/redoc"
-        SECRET_KEY: str = secrets.token_urlsafe(32)
-        ACCESS_TOKEN_EXPIRE_MINUTES: int = WEEK
+
+        @property
+        def API_VERSION_STR(self) -> str:
+            return f"/v{self.API_VERSION}"
+
+        @property
+        def OPEN_API(self) -> str:
+            return f"{self.API_VERSION_STR}/openapi.json"
+
+        @property
+        def DOCS(self) -> str:
+            return f"{self.API_VERSION_STR}/docs"
+
+        @property
+        def REDOC(self) -> str:
+            return f"{self.API_VERSION_STR}/redoc"
 
     api: API
+
+    class Cache(SettingsBase):
+        HOST: str = "localhost"
+        PORT: int = 6379
+        DB: int = 0
+
+    cache: Cache
 
     @property
     def is_prod_env(self):

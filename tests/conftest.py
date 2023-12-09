@@ -3,9 +3,10 @@ import pathlib
 
 import pytest
 
-from src.app.model import TestDefaults
 from src.domain.config import Settings
 from src.domain.fileutil import FileLoader, FileUtil
+from src.domain.model.test_default import TestDefaults
+from src.infra import encrypt
 
 
 @pytest.fixture(scope="session")
@@ -37,6 +38,7 @@ def settings() -> TestSettings:
         RUNTIME_ENV="test",
         api=TestSettings.API(),
         security=TestSettings.Security(SECRET_KEY="test"),
+        cache=TestSettings.Cache(),
     )
     return ss
 
@@ -56,3 +58,10 @@ def fileutil(fileloader: FileLoader):
 @pytest.fixture(scope="session")
 def test_defaults():
     return TestDefaults
+
+
+@pytest.fixture(scope="module")
+def token_encrypt(settings: Settings) -> encrypt.TokenEncrypt:
+    return encrypt.TokenEncrypt(
+        secret_key=settings.security.SECRET_KEY, algorithm=settings.security.ALGORITHM
+    )

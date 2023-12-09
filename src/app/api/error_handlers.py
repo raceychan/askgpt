@@ -44,12 +44,11 @@ class ErrorResponse(JSONResponse):
         status_code: int = 500,
         background: BackgroundTask | None = None,
     ) -> None:
-        content = dict(detail=detail.asdict(), request_id=request_id)
-        default_headers = {XHeaders.ERROR: detail.error_code}
-        if headers:
-            headers = default_headers | headers
-        else:
-            headers = default_headers
+        content = dict(detail=detail.asdict())
+        headers = {
+            XHeaders.ERROR.value: detail.error_code,
+            XHeaders.REQUEST_ID.value: request_id,
+        } | (headers or {})
 
         super().__init__(
             content=content,
@@ -103,7 +102,7 @@ class HandlerRegistry[E: Exception | int]:
 @HandlerRegistry.register
 def any_error_handler(request: Request, exc: Exception) -> ErrorResponse:
     # TODO: log error
-    request_id = request.headers[XHeaders.REQUEST_ID]
+    request_id = request.headers[XHeaders.REQUEST_ID.value]
     detail = ErrorDetail(
         error_code="InternalUnknownError",
         description="unknow error occured, please report",
@@ -119,7 +118,7 @@ def any_error_handler(request: Request, exc: Exception) -> ErrorResponse:
 
 @HandlerRegistry.register
 def domain_error_handler(request: Request, exc: DomainError) -> ErrorResponse:
-    request_id = request.headers[XHeaders.REQUEST_ID]
+    request_id = request.headers[XHeaders.REQUEST_ID.value]
     return ErrorResponse(
         detail=exc.detail,
         status_code=500,
@@ -131,7 +130,7 @@ def domain_error_handler(request: Request, exc: DomainError) -> ErrorResponse:
 def domain_data_validation_error(
     request: Request, exc: ValidationError
 ) -> ErrorResponse:
-    request_id = request.headers[XHeaders.REQUEST_ID]
+    request_id = request.headers[XHeaders.REQUEST_ID.value]
 
     detail = ErrorDetail(
         error_code="DomainDataValidationError",
@@ -152,8 +151,7 @@ def domain_data_validation_error(
 def authentication_error_handler(
     request: Request, exc: AuthenticationError
 ) -> ErrorResponse:
-    request_id = request.headers[XHeaders.REQUEST_ID]
-    # logger.exception("something went wrong")
+    request_id = request.headers[XHeaders.REQUEST_ID.value]
     return ErrorResponse(
         detail=exc.detail,
         status_code=401,

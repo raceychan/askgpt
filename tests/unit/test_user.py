@@ -1,13 +1,14 @@
 import pytest
 
 from src.app.gpt import model
-from src.app.model import TestDefaults
-from src.domain import encrypt
+from src.domain.model.test_default import TestDefaults
+
+# from src.infra import encrypt
 
 
 @pytest.fixture(scope="module")
-def create_user(user_info: model.UserInfo):
-    return model.CreateUser(user_id=TestDefaults.USER_ID, user_info=user_info)
+def create_user():  # user_info: model.UserInfo):
+    return model.CreateUser(user_id=TestDefaults.USER_ID)  # , user_info=user_info)
 
 
 @pytest.fixture(scope="module")
@@ -42,7 +43,7 @@ def test_rebuild_user_by_events(
     assert session_created.session_id in user.session_ids
 
 
-def test_user_password(user_info: model.UserInfo):
-    assert encrypt.verify_password(
-        TestDefaults.USER_PASSWORD.encode(), user_info.hash_password
-    )
+# def test_user_password(user_info: model.UserInfo):
+#     assert encrypt.verify_password(
+#         TestDefaults.USER_PASSWORD.encode(), user_info.hash_password
+#     )

@@ -5,9 +5,18 @@ from functools import singledispatchmethod
 
 from pydantic import field_serializer
 
-from src.app.model import UserInfo
 from src.domain.interface import IRepository
-from src.domain.model import Command, Entity, Event, Field, ValueObject, uuid_factory
+from src.domain.model.base import (
+    Command,
+    Entity,
+    Event,
+    Field,
+    ValueObject,
+    utcts_factory,
+    uuid_factory,
+)
+from src.domain.model.token import JWTBase
+from src.domain.model.user import UserInfo
 
 
 class UserLoggedIn(Event):
@@ -29,12 +38,6 @@ class UserRoles(enum.StrEnum):
     # TODO: create corresponding privilages
     admin = enum.auto()
     user = enum.auto()
-
-
-class AccessToken(ValueObject):
-    ttl_m: int
-    user_id: str
-    role: str
 
 
 class UserSignedUp(Event):
@@ -65,7 +68,7 @@ class UserAuth(Entity):
         self.is_active = False
 
     def login(self) -> None:
-        self.last_login = datetime.utcnow()
+        self.last_login = utcts_factory()
 
     @singledispatchmethod
     def apply(cls, event: Event) -> ty.Self:
@@ -103,3 +106,11 @@ class IUserRepository(IRepository[UserAuth]):
 
     async def search_user_by_email(self, useremail: str) -> UserAuth | None:
         ...
+
+
+class AccessPayload(ValueObject):
+    role: UserRoles
+
+
+class AccessToken(JWTBase, AccessPayload):
+    ...

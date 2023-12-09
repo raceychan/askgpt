@@ -2,8 +2,8 @@ import abc
 import typing as ty
 from types import TracebackType
 
-from src.domain.interface import IEntity, IEvent
 from src.domain.model.base import Event
+from src.domain.interface import IEntity, IEvent
 
 """
 Remember:

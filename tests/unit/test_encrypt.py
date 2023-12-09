@@ -1,14 +1,15 @@
 import pytest
 
-from src.app import model
-from src.domain import encrypt
+from src.domain.model.test_default import TestDefaults
+from src.domain.model.user import UserInfo
+from src.infra import encrypt
 
-password = model.TestDefaults.USER_PASSWORD
+password = TestDefaults.USER_PASSWORD
 
 
 @pytest.fixture(scope="module")
-def hashed(user_info: model.UserInfo) -> bytes:
-    return encrypt.hash_password(model.TestDefaults.USER_PASSWORD.encode())
+def hashed(user_info: UserInfo) -> bytes:
+    return encrypt.hash_password(TestDefaults.USER_PASSWORD.encode())
 
 
 def test_verify_password(hashed: bytes):

@@ -142,6 +142,27 @@ package:
   size: 28922
   timestamp: 1698341257884
 - platform: linux-64
+  name: async-timeout
+  version: 4.0.3
+  category: main
+  manager: conda
+  dependencies:
+  - python >=3.7
+  - typing-extensions >=3.6.5
+  url: https://conda.anaconda.org/conda-forge/noarch/async-timeout-4.0.3-pyhd8ed1ab_0.conda
+  hash:
+    md5: 3ce482ec3066e6d809dbbb1d1679f215
+    sha256: bd8b698e7f037a9c6107216646f1191f4f7a7fc6da6c34d1a6d4c211bcca8979
+  build: pyhd8ed1ab_0
+  arch: x86_64
+  subdir: linux-64
+  build_number: 0
+  license: Apache-2.0
+  license_family: Apache
+  noarch: python
+  size: 11352
+  timestamp: 1691763717537
+- platform: linux-64
   name: bcrypt
   version: 4.0.1
   category: main
@@ -760,6 +781,27 @@ package:
   noarch: python
   size: 50124
   timestamp: 1701027126206
+- platform: linux-64
+  name: importlib-metadata
+  version: 7.0.0
+  category: main
+  manager: conda
+  dependencies:
+  - python >=3.8
+  - zipp >=0.5
+  url: https://conda.anaconda.org/conda-forge/noarch/importlib-metadata-7.0.0-pyha770c72_0.conda
+  hash:
+    md5: a941237cd06538837b25cd245fcd25d8
+    sha256: 9731e82a00d36b182dc515e31723e711ac82890bb1ca86c6a17a4b471135564f
+  build: pyha770c72_0
+  arch: x86_64
+  subdir: linux-64
+  build_number: 0
+  license: Apache-2.0
+  license_family: APACHE
+  noarch: python
+  size: 26076
+  timestamp: 1701632335069
 - platform: linux-64
   name: iniconfig
   version: 2.0.0
@@ -1994,6 +2036,29 @@ package:
   size: 281456
   timestamp: 1679532220005
 - platform: linux-64
+  name: redis-py
+  version: 5.0.1
+  category: main
+  manager: conda
+  dependencies:
+  - async-timeout >=4.0.2
+  - importlib-metadata >=1.0
+  - python >=3.7
+  - typing-extensions
+  url: https://conda.anaconda.org/conda-forge/noarch/redis-py-5.0.1-pyhd8ed1ab_0.conda
+  hash:
+    md5: 7d6dc4cc2415d0df21f6a4a369db4932
+    sha256: 0e23aa4864d4e34029a72fe8aa81c901122b12e81d910d9e22763915ecc37328
+  build: pyhd8ed1ab_0
+  arch: x86_64
+  subdir: linux-64
+  build_number: 0
+  license: MIT
+  license_family: MIT
+  noarch: python
+  size: 171400
+  timestamp: 1695717126835
+- platform: linux-64
   name: rich
   version: 13.7.0
   category: main
@@ -2512,6 +2577,26 @@ package:
   license_family: MIT
   size: 89141
   timestamp: 1641346969816
+- platform: linux-64
+  name: zipp
+  version: 3.17.0
+  category: main
+  manager: conda
+  dependencies:
+  - python >=3.8
+  url: https://conda.anaconda.org/conda-forge/noarch/zipp-3.17.0-pyhd8ed1ab_0.conda
+  hash:
+    md5: 2e4d6bc0b14e10f895fc6791a7d9b26a
+    sha256: bced1423fdbf77bca0a735187d05d9b9812d2163f60ab426fc10f11f92ecbe26
+  build: pyhd8ed1ab_0
+  arch: x86_64
+  subdir: linux-64
+  build_number: 0
+  license: MIT
+  license_family: MIT
+  noarch: python
+  size: 18954
+  timestamp: 1695255262261
 - platform: linux-64
   name: zlib
   version: 1.2.13

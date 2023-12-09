@@ -2,7 +2,6 @@ import typing as ty
 from functools import singledispatchmethod
 
 from src.app.gpt.params import ChatGPTRoles, CompletionModels
-from src.app.model import CreateUser, UserCreated, UserInfo
 from src.domain.interface import ICommand, IRepository
 from src.domain.model.base import (
     Command,
@@ -13,10 +12,11 @@ from src.domain.model.base import (
     computed_field,
     uuid_factory,
 )
+from src.domain.model.user import CreateUser, UserCreated  # , UserInfo
 
 
 class ChatMessage(ValueObject):
-    role: ty.Literal["system", "user", "assistant", "functio"]
+    role: ChatGPTRoles
     content: str
     # user_id: str
 
@@ -129,8 +129,10 @@ class ChatSession(Entity):
 
 
 class User(Entity):
+    # NOTE: we probably don't need user_info for User entity
+    # since we have UserAuth entity
     entity_id: str = Field(alias="user_id")
-    user_info: UserInfo
+    # user_info: UserInfo
     session_ids: list[str] = Field(default_factory=list)
 
     def predict_command(self, command: ICommand) -> list[SessionCreated]:
@@ -155,7 +157,7 @@ class User(Entity):
     @apply.register
     @classmethod
     def _(cls, event: UserCreated) -> ty.Self:
-        return cls(user_id=event.entity_id, user_info=event.user_info)
+        return cls(user_id=event.entity_id)  # , user_info=event.user_info)
 
     @apply.register
     def _(self, event: SessionCreated) -> ty.Self:
@@ -164,9 +166,7 @@ class User(Entity):
 
     @classmethod
     def create(cls, command: CreateUser) -> ty.Self:
-        # TODO: This should not use create_user command
-        # or event just remove this method
-        evt = UserCreated(user_id=command.entity_id, user_info=command.user_info)
+        evt = UserCreated(user_id=command.entity_id)
         return cls.apply(evt)
 
 

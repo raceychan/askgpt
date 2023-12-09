@@ -4,7 +4,7 @@ from functools import cached_property, singledispatchmethod
 from src.app.actor import Actor, ActorRef, MailBox
 from src.domain._log import logger
 from src.domain.interface import IEvent, IEventStore, IMessage
-from src.domain.model import Event
+from src.domain.model.base import Event
 
 
 class Journal(Actor[ty.Any]):
@@ -22,6 +22,9 @@ class Journal(Actor[ty.Any]):
 
     async def on_receive(self) -> None:
         message = await self.mailbox.get()
+        if message is None:
+            raise Exception("Mailbox is empty")
+
         if isinstance(message, Event):
             logger.debug(f"Journal received event: {message}")
             await self.eventstore.add(message)

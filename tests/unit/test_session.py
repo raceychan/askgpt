@@ -1,7 +1,7 @@
 import pytest
 
 from src.app.gpt import model
-from src.app.model import TestDefaults
+from src.domain.model.test_default import TestDefaults
 
 
 @pytest.fixture(scope="module")
