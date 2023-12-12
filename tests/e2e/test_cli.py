@@ -1,8 +1,9 @@
 import pytest
 
 from src import cli
-from src.app.gpt import model, service
+from src.app.gpt import service
 from src.domain.config import Settings
+from src.domain.model.test_default import TestDefaults
 
 
 @pytest.fixture(scope="module")
@@ -10,10 +11,10 @@ def gpt_options():
     return cli.CLIOptions(
         command="gpt",
         question="ping",
-        username=model.TestDefaults.USER_NAME,
-        email=model.TestDefaults.USER_EMAIL,
-        password=model.TestDefaults.USER_PASSWORD,
-        session_id=model.TestDefaults.SESSION_ID,
+        username=TestDefaults.USER_NAME,
+        email=TestDefaults.USER_EMAIL,
+        password=TestDefaults.USER_PASSWORD,
+        session_id=TestDefaults.SESSION_ID,
     )
 
 
@@ -21,16 +22,16 @@ def gpt_options():
 def auth_options():
     return cli.CLIOptions(
         command="auth",
-        username=model.TestDefaults.USER_NAME,
-        email=model.TestDefaults.USER_EMAIL,
-        password=model.TestDefaults.USER_PASSWORD,
+        username=TestDefaults.USER_NAME,
+        email=TestDefaults.USER_EMAIL,
+        password=TestDefaults.USER_PASSWORD,
     )
 
 
 @pytest.fixture(scope="module")
 async def gpt(settings: Settings):
     gpt_service = service.GPTService.build(settings)
-    async with gpt_service.setup_system() as gpt:
+    async with gpt_service.lifespan() as gpt:
         yield gpt
 
 

@@ -1,28 +1,30 @@
 import typing as ty
+from contextlib import contextmanager
 from functools import lru_cache
 
 import sqlalchemy as sa
 from sqlalchemy.ext import asyncio as sa_aio
 
-# def as_sa_types(py_type: type) -> type:
-#     import datetime
-#     import decimal
-#     import uuid
 
-#     TYPES_MAPPING = {
-#         str: sa.String,
-#         int: sa.Integer,
-#         datetime.datetime: sa.DateTime,
-#         bool: sa.Boolean,
-#         float: sa.Float,
-#         list: sa.JSON,
-#         dict: sa.JSON,
-#         uuid.UUID: sa.UUID,
-#         None: sa.Null,
-#         decimal.Decimal: sa.Numeric,
-#     }
+async def test_table_exist(
+    async_engine: sa_aio.AsyncEngine, tablename: str
+) -> dict[str, ty.Any]:
+    sql = f"""
+    SELECT 
+        name 
+    FROM 
+        sqlite_schema 
+    WHERE
+        type='table' AND name='{tablename}' 
+    ORDER BY 
+        name
+    """.strip()
 
-#     return TYPES_MAPPING[py_type]
+    async with async_engine.begin() as cursor:
+        res = await cursor.execute(sa.text(sql))
+        row = res.one()
+
+    return dict(row._mapping)  # type: ignore
 
 
 @lru_cache(maxsize=1)
@@ -33,7 +35,6 @@ def async_engine_factory(
     hide_parameters: bool = False,
     pool_pre_ping: bool = True,
     pool_recycle: int = 3600,
-    # NOTE: NullPool is incompatible with sqlite(:memory:), wiht it every connection creates a new db
     poolclass: type[sa.Pool] | None = None,
     execution_options: dict[str, ty.Any] | None = None,
     isolation_level: sa.engine.interfaces.IsolationLevel = "READ COMMITTED",
@@ -80,29 +81,13 @@ def engine_factory(
 
 
 class SQLDebugger:
-    def __init__(self, engine: sa.Engine):
+    def __init__(self, engine: sa.Engine, echo: bool = True):
         from rich.console import Console
 
         self.engine = engine
         self.inspector = sa.inspect(engine)
         self._console = Console(color_system="truecolor")
-
-    def show_sql(self, sql: str) -> None:
-        from rich.syntax import Syntax
-
-        sql_ = Syntax(sql, "sql", theme="nord-darker", line_numbers=True)
-        self._console.print(sql_)
-
-    def execute(self, sql: str) -> list[dict[str, ty.Any]]:
-        with self.engine.begin() as conn:
-            res = conn.execute(sa.text(sql))
-            rows = res.all()
-        return [dict(row._mapping) for row in rows]  # type: ignore
-
-    @classmethod
-    def build(cls, db_url: str):
-        engine = engine_factory(db_url, isolation_level="SERIALIZABLE", echo=True)
-        return cls(engine)
+        self._echo = echo
 
     def __str__(self):
         return f"{self.__class__.__name__}({self.engine.url})"
@@ -114,26 +99,102 @@ class SQLDebugger:
     def tables(self):
         return self.inspector.get_table_names()
 
+    @property
+    def console(self):
+        return self._console
+
+    def show_sql(self, sql: str) -> None:
+        from rich.syntax import Syntax
+
+        sql_ = Syntax(sql, "sql", theme="nord-darker", line_numbers=True)
+        self._console.print(sql_)
+
+    def show_result(
+        self, cols: sa.engine.result.RMKeyView, result: list[dict[str, ty.Any]]
+    ) -> None:
+        from rich.style import Style
+        from rich.table import Table
+
+        table = Table(expand=True, show_lines=True)
+        column_style = Style(color="green")
+
+        for col in cols:
+            table.add_column(col, style=column_style)
+
+        for row in result:
+            table.add_row(*[str(row[col]) for col in cols])
+
+        self._console.print(table)
+
+    def execute(self, sql: str) -> list[dict[str, ty.Any]]:
+        with self.engine.begin() as conn:
+            res = conn.execute(sa.text(sql))
+            cols = res.keys()
+            rows = res.all()
+
+        results = [dict(row._mapping) for row in rows]  # type: ignore
+
+        if self._echo:
+            self.console.print(f"\n[bold green]success[/bold green]")
+            self.show_result(cols, results)
+        return results
+
+    def interactive(self) -> None:
+        while True:
+            sql_caluse = input("sql> ")
+            self.show_sql(sql_caluse)
+            if sql_caluse == "exit":
+                break
+            self.execute(sql_caluse)
+
+    def close(self) -> None:
+        self.engine.dispose()
+        self.console.print(f"\n[bold green]connection released[/]")
+
+    @contextmanager
+    def lifespan(self):
+        try:
+            yield self
+        except KeyboardInterrupt:
+            self.console.print(f"\n[bold red]canceled[/bold red]")
+        finally:
+            self.close()
+
+    @classmethod
+    def from_url(cls, db_url: str):
+        engine = engine_factory(db_url, isolation_level="SERIALIZABLE", echo=True)
+        return cls(engine)
+
     @classmethod
     def from_async_engine(cls, async_engine: sa_aio.AsyncEngine):
         url = str(async_engine.url).replace("+aiosqlite", "")
-        return cls.build(url)
+        return cls.from_url(url)
 
 
-async def test_table_exist(async_engine: sa_aio.AsyncEngine, tablename: str):
-    sql = f"""
-    SELECT 
-        name 
-    FROM 
-        sqlite_schema 
-    WHERE
-        type='table' AND name='{tablename}' 
-    ORDER BY 
-        name
-    """.strip()
+if __name__ == "__main__":
+    import sys
+    from argparse import ArgumentParser
 
-    async with async_engine.begin() as cursor:
-        res = await cursor.execute(sa.text(sql))
-        row = res.one()
+    from src.domain.config import get_setting
+    from src.infra.factory import get_sqldebugger
 
-    return dict(row._mapping)  # type: ignore
+    parser = ArgumentParser()
+    parser.add_argument("sql", nargs="?")
+    parser.add_argument("-i", "--interactive", action="store_true")
+    ns = parser.parse_args()
+    if not ns.sql and not ns.interactive:
+        print(f"sql or interactive mode required")
+        sys.exit(0)
+
+    sql = get_sqldebugger(get_setting())
+    with sql.lifespan() as sql:
+        if ns.interactive:
+            sql.interactive()
+            sys.exit(0)
+        sql_caluse = ns.sql
+        sql.console.print(f"[bold green]Received SQL:[/bold green]")
+        sql.show_sql(sql_caluse)
+        sql.console.print("\n[bold red]Are you sure to execute? \\[yes/N][/]")
+        if input() != "yes":
+            sys.exit(0)
+        result = sql.execute(sql_caluse)

@@ -2,20 +2,21 @@ import pytest
 
 from src.app.actor import MailBox
 from src.app.gpt import model, service
-from src.app.gpt.client import OpenAIClient
 from src.app.gpt.params import ChatResponse
 from src.domain import config
 from src.domain.model.test_default import TestDefaults
+from src.infra.gptclient import OpenAIClient
 
 
 @pytest.fixture(scope="module")
-def chat_messages():
+def chat_messages(test_defaults: TestDefaults):
+    # user_id = test_defaults.USER_ID
     return [
-        model.ChatMessage.as_prompt("answer me seriously!"),
-        model.ChatMessage.as_user("ping"),
-        model.ChatMessage.as_assistant("pong"),
-        model.ChatMessage.as_user("ask"),
-        model.ChatMessage.as_assistant("answer"),
+        model.ChatMessage.as_prompt(content="answer me seriously!"),
+        model.ChatMessage.as_user(content="ping"),
+        model.ChatMessage.as_assistant(content="pong"),
+        model.ChatMessage.as_user(content="ask"),
+        model.ChatMessage.as_assistant(content="answer"),
     ]
 
 
@@ -30,9 +31,7 @@ async def gptsystem(settings: config.Settings, eventstore: service.EventStore):
 
 @pytest.fixture(scope="module")
 async def user_actor(gptsystem: service.GPTSystem):
-    cmd = model.CreateUser(
-        user_id=TestDefaults.USER_ID, user_info=TestDefaults.USER_INFO
-    )
+    cmd = model.CreateUser(user_id=TestDefaults.USER_ID)
     user = await gptsystem.create_user(cmd)
     return user
 
@@ -78,7 +77,7 @@ async def session_actor(user_actor: service.UserActor, openai_client: OpenAIClie
     await user_actor.handle(cmd)
     assert user_actor.entity.session_ids
     session = user_actor.select_child(TestDefaults.SESSION_ID)
-    session.set_model_client(openai_client)
+    session.gpt_client = openai_client
     return session
 
 
@@ -171,3 +170,13 @@ async def test_system_rebuild_user(
     assert built_user is not user_actor
     assert built_user.entity_id == user_actor.entity_id == TestDefaults.USER_ID
     assert built_user.session_count == user_actor.session_count == 1
+
+
+async def test_user_rebuild_fail():
+    e = model.Event(entity_id="random")
+
+    with pytest.raises(NotImplementedError):
+        service.UserActor.apply(None)
+
+    with pytest.raises(NotImplementedError):
+        service.UserActor.apply(e)

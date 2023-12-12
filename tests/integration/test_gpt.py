@@ -3,7 +3,7 @@ import asyncio
 import pytest
 
 from src.app.actor import MailBox
-from src.app.gpt import model, service, system
+from src.app.gpt import errors, model, service, system
 from src.domain import config
 from src.domain.model.test_default import TestDefaults
 from src.infra.eventstore import EventStore
@@ -183,7 +183,7 @@ def test_service_state_start():
     new_state = state.start()
     assert new_state == service.SystemState.running
 
-    with pytest.raises(system.InvalidStateError):
+    with pytest.raises(errors.InvalidStateError):
         service.SystemState.running.start()
 
 
@@ -192,7 +192,7 @@ def test_service_state_stop():
     new_state = state.stop()
     assert new_state == service.SystemState.stopped
 
-    with pytest.raises(system.InvalidStateError):
+    with pytest.raises(errors.InvalidStateError):
         service.SystemState.stopped.stop()
 
 

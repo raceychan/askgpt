@@ -3,8 +3,9 @@ import typing as ty
 import pytest
 from sqlalchemy.ext.asyncio import AsyncEngine
 
+from src.app.auth.errors import UserAlreadyExistError
 from src.app.auth.repository import UserRepository
-from src.app.auth.service import Authenticator, AuthService, UserAlreadyExistError
+from src.app.auth.service import Authenticator, AuthService
 from src.domain.config import Settings
 from src.domain.model.test_default import TestDefaults
 from src.infra.cache import MemoryCache

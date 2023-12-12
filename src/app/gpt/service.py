@@ -6,7 +6,7 @@ from src.app.gpt import model, repository
 from src.app.gpt.system import GPTSystem, SessionActor, SystemState, UserActor
 from src.domain._log import logger
 from src.domain.config import Settings
-from src.infra import encrypt, factory
+from src.infra import factory
 from src.infra.eventstore import EventStore
 
 
@@ -34,47 +34,84 @@ class GPTService:
             raise Exception("system already stopped")
         self._service_state = state
 
-    async def send_question(self, user_id: str, session_id: str, question: str) -> None:
-        # TODO: get before rebuild
-        user_actor = await self.system.rebuild_user(user_id)
-        session_actor = await user_actor.rebuild_session(session_id)
+    async def send_question(
+        self,
+        user_id: str,
+        session_id: str,
+        question: str,
+        role: model.ChatGPTRoles,
+        completion_model: model.CompletionModels,
+    ) -> None:
+        session_actor = await self.get_session(user_id=user_id, session_id=session_id)
 
         command = model.SendChatMessage(
             user_id=user_id,
             session_id=session_id,
             message_body=question,
-            role="user",
+            role=role,
+            model=completion_model,
         )
 
         await session_actor.receive(command)
 
-    async def interactive(self, user_id: str, session_id: str) -> None:
+    async def stream_chat(
+        self,
+        user_id: str,
+        session_id: str,
+        question: str,
+        role: model.ChatGPTRoles,
+        completion_model: model.CompletionModels,
+    ) -> ty.AsyncGenerator[str | None, None]:
+        session_actor = await self.get_session(user_id=user_id, session_id=session_id)
+        return session_actor.send_chatmessage(
+            message=model.ChatMessage(role=role, content=question),
+            completion_model=completion_model,
+        )
+
+    async def interactive(
+        self, user_id: str, session_id: str, completion_model: model.CompletionModels
+    ) -> None:
         while True:
             question = input("\nwhat woud you like to ask?\n\n")
-            await self.send_question(user_id, session_id, question)
+            await self.send_question(
+                user_id,
+                session_id,
+                question,
+                role="user",
+                completion_model=completion_model,
+            )
 
     async def create_user(
         self, username: str, useremail: str, password: str
     ) -> UserActor:
-        user_info: model.UserInfo = model.UserInfo(
-            user_name=username,
-            user_email=useremail,
-            hash_password=encrypt.hash_password(password.encode()),
-        )
         user_id = model.uuid_factory()
-        create_user = model.CreateUser(user_id=user_id, user_info=user_info)
+        create_user = model.CreateUser(user_id=user_id)
         await self.system.receive(create_user)
         return self.system.select_child(user_id)
 
-    async def create_session(self, user_id: str, session_id: str) -> SessionActor:
+    async def create_session(self, user_id: str) -> str:
         user_actor = self.system.get_child(user_id)
         if not user_actor:
             user_actor = await self.system.rebuild_user(user_id)
 
+        session_id = model.uuid_factory()
         await user_actor.handle(
             model.CreateSession(user_id=user_id, session_id=session_id)
         )
-        return user_actor.select_child(session_id)
+        return session_id
+
+    async def get_user(self, user_id: str) -> UserActor:
+        user_actor = self.system.get_child(user_id)
+        if user_actor is None:
+            user_actor = await self.system.rebuild_user(user_id)
+        return user_actor
+
+    async def get_session(self, user_id: str, session_id: str) -> SessionActor:
+        user_actor = await self.get_user(user_id)
+        session_actor = user_actor.get_child(session_id)
+        if session_actor is None:
+            session_actor = await user_actor.rebuild_session(session_id)
+        return session_actor
 
     async def start(self) -> None:
         if self.state.is_running:

@@ -14,7 +14,7 @@ from src.infra import encrypt
 class UserInfo(ValueObject):
     version: ty.ClassVar[str] = "1.0.0"
 
-    user_name: str | None = None
+    user_name: str = ""
     user_email: EmailStr
     hash_password: bytes
 

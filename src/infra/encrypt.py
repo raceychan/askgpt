@@ -8,6 +8,7 @@ from src.domain.model.token import JWTBase
 SALT = bcrypt.gensalt()
 
 
+
 def hash_password(password: bytes) -> bytes:
     return bcrypt.hashpw(password, SALT)
 

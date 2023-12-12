@@ -5,7 +5,7 @@ from src.domain.model.test_default import TestDefaults
 
 
 @pytest.fixture(scope="module")
-def chat_message():
+def chat_message(test_defaults: TestDefaults):
     return model.ChatMessage(role="user", content="ping")
 
 
@@ -25,9 +25,9 @@ def chat_message_sent(chat_message: model.ChatMessage):
 
 
 @pytest.fixture(scope="module")
-def chat_response_received():
+def chat_response_received(test_defaults: TestDefaults):
     return model.ChatResponseReceived(
-        session_id=TestDefaults.SESSION_ID,
+        session_id=test_defaults.SESSION_ID,
         chat_message=model.ChatMessage(role="system", content="pong"),
     )
 
@@ -38,13 +38,13 @@ def chatsession(session_created: model.SessionCreated):
 
 
 @pytest.fixture(scope="module")
-def chat_messages():
+def chat_messages(test_defaults: TestDefaults):
     return [
-        model.ChatMessage.as_prompt("answer me seriously!"),
-        model.ChatMessage.as_user("ping"),
-        model.ChatMessage.as_assistant("pong"),
-        model.ChatMessage.as_user("ask"),
-        model.ChatMessage.as_assistant("answer"),
+        model.ChatMessage.as_prompt(content="answer me seriously!"),
+        model.ChatMessage.as_user(content="ping"),
+        model.ChatMessage.as_assistant(content="pong"),
+        model.ChatMessage.as_user(content="ask"),
+        model.ChatMessage.as_assistant(content="answer"),
     ]
 
 

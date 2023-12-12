@@ -1,6 +1,7 @@
 import typing as ty
 from functools import singledispatchmethod
 
+from src.app.auth.model import UserSignedUp
 from src.app.gpt.params import ChatGPTRoles, CompletionModels
 from src.domain.interface import ICommand, IRepository
 from src.domain.model.base import (
@@ -18,7 +19,6 @@ from src.domain.model.user import CreateUser, UserCreated  # , UserInfo
 class ChatMessage(ValueObject):
     role: ChatGPTRoles
     content: str
-    # user_id: str
 
     @property
     def is_prompt(self) -> bool:
@@ -129,10 +129,7 @@ class ChatSession(Entity):
 
 
 class User(Entity):
-    # NOTE: we probably don't need user_info for User entity
-    # since we have UserAuth entity
     entity_id: str = Field(alias="user_id")
-    # user_info: UserInfo
     session_ids: list[str] = Field(default_factory=list)
 
     def predict_command(self, command: ICommand) -> list[SessionCreated]:
@@ -154,10 +151,11 @@ class User(Entity):
     def apply(self, event: Event) -> ty.Self:
         raise NotImplementedError
 
-    @apply.register
+    @apply.register(UserCreated)
+    @apply.register(UserSignedUp)
     @classmethod
-    def _(cls, event: UserCreated) -> ty.Self:
-        return cls(user_id=event.entity_id)  # , user_info=event.user_info)
+    def _(cls, event: UserCreated | UserSignedUp) -> ty.Self:
+        return cls(user_id=event.entity_id)
 
     @apply.register
     def _(self, event: SessionCreated) -> ty.Self:

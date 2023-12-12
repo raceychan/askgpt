@@ -4,24 +4,13 @@ import pytest
 
 from src.domain.fileutil import FileLoader  # , value_parser
 
-# def test_value_parser():
-#     assert value_parser("3.5") == 3.5
-#     assert value_parser("3") == 3
-#     assert value_parser("0.0.1") == "0.0.1"
-#     assert value_parser("'name'") == "name"
-#     inproperly_quoted_str = """
-#             'a"
-#     """.strip()
-#     with pytest.raises(ValueError):
-#         value_parser(inproperly_quoted_str)
 
-
-# def test_load_env(fileloader: FileLoader, tmp_path: pathlib.Path):
-#     env_file = tmp_path / ".env"
-#     env_file.write_text("TEST=true")
-#     values = fileloader.handle(env_file)
-#     assert values["TEST"] is True
-#     assert isinstance(values, dict)
+def test_load_env(fileloader: FileLoader, tmp_path: pathlib.Path):
+    env_file = tmp_path / ".env"
+    env_file.write_text("TEST=true")
+    values = fileloader.handle(env_file)
+    assert values["TEST"] == "true"
+    assert isinstance(values, dict)
 
 
 def test_not_file_not_found_err(fileloader: FileLoader):

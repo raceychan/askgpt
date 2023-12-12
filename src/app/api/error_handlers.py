@@ -3,17 +3,14 @@ import types
 import typing as ty
 
 from fastapi import Request
-from pydantic import ValidationError
+from starlette import status
 from starlette.background import BackgroundTask
 from starlette.responses import JSONResponse, Response
 
 from src.app.api.xheaders import XHeaders
-from src.app.auth.service import (  # InvalidPasswordError,; UserNotFoundError,
-    AuthenticationError,
-)
+from src.app.auth.errors import AuthenticationError
 from src.app.error import DomainError, ErrorDetail
-
-# from src.domain._log import logger
+from src.app.gpt.errors import OrphanSessionError
 
 
 class ServerResponse(Response):
@@ -49,6 +46,8 @@ class ErrorResponse(JSONResponse):
             XHeaders.ERROR.value: detail.error_code,
             XHeaders.REQUEST_ID.value: request_id,
         } | (headers or {})
+
+        content["detail"]["request_id"] = request_id
 
         super().__init__(
             content=content,
@@ -105,13 +104,13 @@ def any_error_handler(request: Request, exc: Exception) -> ErrorResponse:
     request_id = request.headers[XHeaders.REQUEST_ID.value]
     detail = ErrorDetail(
         error_code="InternalUnknownError",
-        description="unknow error occured, please report",
+        description="unknow error occured, please report with request id",
         source="server",
         service="unkown",
     )
     return ErrorResponse(
         detail=detail,
-        status_code=500,
+        status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
         request_id=request_id,
     )
 
@@ -121,28 +120,7 @@ def domain_error_handler(request: Request, exc: DomainError) -> ErrorResponse:
     request_id = request.headers[XHeaders.REQUEST_ID.value]
     return ErrorResponse(
         detail=exc.detail,
-        status_code=500,
-        request_id=request_id,
-    )
-
-
-@HandlerRegistry.register
-def domain_data_validation_error(
-    request: Request, exc: ValidationError
-) -> ErrorResponse:
-    request_id = request.headers[XHeaders.REQUEST_ID.value]
-
-    detail = ErrorDetail(
-        error_code="DomainDataValidationError",
-        description="unkown data validation error",
-        source="server",
-        service="domain",
-        message="",
-    )
-
-    return ErrorResponse(
-        detail=detail,
-        status_code=500,
+        status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
         request_id=request_id,
     )
 
@@ -154,6 +132,17 @@ def authentication_error_handler(
     request_id = request.headers[XHeaders.REQUEST_ID.value]
     return ErrorResponse(
         detail=exc.detail,
-        status_code=401,
+        status_code=status.HTTP_401_UNAUTHORIZED,
+        request_id=request_id,
+        headers={"WWW-Authenticate": "Bearer"},
+    )
+
+
+@HandlerRegistry.register
+def orphan_session_error_handler(request: Request, exc: OrphanSessionError):
+    request_id = request.headers[XHeaders.REQUEST_ID.value]
+    return ErrorResponse(
+        detail=exc.detail,
+        status_code=status.HTTP_403_FORBIDDEN,
         request_id=request_id,
     )

@@ -36,7 +36,7 @@ def settings() -> TestSettings:
         db=db,
         actor_refs=TestSettings.ActorRefs(),
         RUNTIME_ENV="test",
-        api=TestSettings.API(),
+        api=TestSettings.API(HOST="localhost", PORT=8000, API_VERSION="0.1.0"),
         security=TestSettings.Security(SECRET_KEY="test"),
         cache=TestSettings.Cache(),
     )

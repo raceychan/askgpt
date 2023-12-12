@@ -7,8 +7,12 @@ from src.domain.model.name_tools import str_to_snake
 from src.infra.sa_utils import test_table_exist
 
 
+# Reference: https://docs.sqlalchemy.org/en/14/orm/declarative_mixins.html
 def declarative[T](cls: type[T]) -> type[T]:
-    # Reference: https://docs.sqlalchemy.org/en/14/orm/declarative_mixins.html
+    """
+    A more pythonic way to declare a sqlalchemy table
+    """
+
     return sa_orm.declarative_base(cls=cls)  # type: ignore
 
 
@@ -56,10 +60,6 @@ class TableBase:
 
 
 class EventSchema(TableBase):
-    """
-    This should be our single source of truth for table
-    """
-
     __tablename__: str = "domain_events"  # type: ignore
 
     id = sa.Column("id", sa.String, primary_key=True)

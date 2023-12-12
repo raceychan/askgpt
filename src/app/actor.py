@@ -2,12 +2,41 @@ import asyncio
 import typing as ty
 from functools import cached_property, singledispatchmethod
 
-from src.app.interface import AbstractActor, ActorRegistry, IJournal
+from src.app.interface import AbstractActor, IJournal
 from src.domain.config import Settings
 from src.domain.error import SystemNotSetError
 from src.domain.interface import ActorRef, ICommand, IEntity, IEvent, IMessage
 from src.domain.model.base import Command, Event
 from src.infra.mq import MessageBroker, QueueBroker
+
+
+class ActorRegistry[TRef: ActorRef, TActor: "AbstractActor"]:
+    def __init__(self) -> None:
+        self._dict: dict[TRef, TActor] = dict()
+
+    def __getitem__(self, key: TRef) -> TActor:
+        return self._dict[key]
+
+    def __contains__(self, key: TRef) -> bool:
+        return key in self._dict
+
+    def __setitem__(self, key: TRef, value: TActor) -> None:
+        self._dict[key] = value
+
+    def __bool__(self) -> bool:
+        return bool(self._dict)
+
+    def __repr__(self) -> str:
+        return f"{type(self).__name__}({self._dict})"
+
+    def keys(self):
+        return self._dict.keys()
+
+    def values(self) -> list[TActor]:
+        return list(self._dict.values())
+
+    def get[T](self, key: TRef, default: T | None = None) -> TActor | T | None:
+        return self._dict.get(key, default)
 
 
 class MailBox:
@@ -55,18 +84,15 @@ class EmptyEvents(Exception):
 
 
 class Actor[TChild: "Actor[ty.Any]"](AbstractActor):
-    # TODO?: we need to seperate Actor.apply from this class
-    # only stateful(CQRS) actor needs to apply events
-
     mailbox: MailBox
     _system: ty.ClassVar["System[ty.Any]"]
-    childs: ActorRegistry[ActorRef, TChild]
+    # childs being instances
 
     def __init__(self, mailbox: MailBox) -> None:
         if not isinstance(self, System):
             self._ensure_system()
 
-        self.childs = ActorRegistry()
+        self.childs: ActorRegistry[ActorRef, TChild] = ActorRegistry()
         self.mailbox = mailbox
         self._handle_sem = asyncio.Semaphore(1)
 
@@ -127,7 +153,7 @@ class Actor[TChild: "Actor[ty.Any]"](AbstractActor):
 
     def select_child(self, ref: ActorRef) -> TChild:
         """
-        A non-recursive, non-none version of get_child
+        A non-recursive, affirmative version of get_child
         """
         return self.childs[ref]
 
@@ -158,7 +184,7 @@ class Actor[TChild: "Actor[ty.Any]"](AbstractActor):
         return self.__class__.__name__.lower()
 
 
-class StatefulActor[TChild: Actor[ty.Any], TState](Actor[TChild]):
+class StatefulActor[TChild: Actor[ty.Any], TState: ty.Any](Actor[TChild]):
     state: TState
 
 
@@ -167,7 +193,7 @@ class EntityActor[TChild: Actor[ty.Any], TEntity: IEntity](
 ):
     def __init__(self, mailbox: MailBox, entity: TEntity):
         super().__init__(mailbox=mailbox)
-        self.entity = entity
+        self.state = self.entity = entity
 
     @singledispatchmethod
     def apply(self, event: Event) -> ty.Self:

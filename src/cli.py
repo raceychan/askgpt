@@ -5,7 +5,6 @@ from dataclasses import dataclass
 
 from src.app.auth.service import AuthService
 from src.app.gpt import model, service
-
 from src.domain._log import logger
 from src.domain.config import get_setting
 
@@ -73,9 +72,9 @@ async def gpt_dispatch(gpt: service.GPTService, options: CLIOptions) -> None:
     session_id = options.session_id
 
     if options.question:
-        await gpt.send_question(auth, session_id, options.question)
+        await gpt.send_question(user_id, session_id, options.question, role="user")
     elif options.interactive:
-        await gpt.interactive(auth, session_id)
+        await gpt.interactive(user_id, session_id)
 
 
 async def auth_dispatch(auth: AuthService, options: CLIOptions):

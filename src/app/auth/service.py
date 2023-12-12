@@ -1,7 +1,6 @@
 from datetime import datetime, timedelta
 
-from src.app.auth import model, repository
-from src.app.error import ClientSideError
+from src.app.auth import errors, model, repository
 from src.domain._log import logger
 from src.domain.config import Settings, TimeScale
 from src.domain.interface import IEvent
@@ -85,28 +84,6 @@ class Authenticator:
         )
 
 
-class AuthenticationError(ClientSideError):
-    service: str = "auth"
-
-
-class UserNotFoundError(AuthenticationError):
-    """
-    Unable to find user with the same email
-    """
-
-
-class InvalidPasswordError(AuthenticationError):
-    """
-    User email and password does not match
-    """
-
-
-class UserAlreadyExistError(AuthenticationError):
-    """
-    User with the same email already exist
-    """
-
-
 class AuthService:
     def __init__(
         self,
@@ -126,13 +103,13 @@ class AuthService:
         user = await self._user_repo.search_user_by_email(email)
 
         if user is None:
-            raise UserNotFoundError("user not found")
+            raise errors.UserNotFoundError("user not found")
 
         if not user.user_info.verify_password(password):
-            raise InvalidPasswordError("Invalid password")
+            raise errors.InvalidPasswordError("Invalid password")
 
         if not user.is_active:
-            ...
+            raise errors.UserNotFoundError("user not found")
 
         user.login()
 
@@ -153,7 +130,7 @@ class AuthService:
     async def signup_user(self, user_name: str, email: str, password: str) -> str:
         user = await self.find_user(email)
         if user is not None:
-            raise UserAlreadyExistError(f"user {email} already exist")
+            raise errors.UserAlreadyExistError(f"user {email} already exist")
 
         hash_password = encrypt.hash_password(password.encode())
         user_info = model.UserInfo(

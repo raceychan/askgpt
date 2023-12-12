@@ -80,7 +80,8 @@ def debug_sink(msg: loguru.Message):
 
     console.print(log, style=COLOR_MAPPER[record["level"].name])
     if record["exception"]:
-        # console.print(traceback.format_exc())
+        # trace_text = traceback.format_exc()
+        # console.print(trace_text, style="red")
         console.print_exception(show_locals=True)
 
 

@@ -1,4 +1,5 @@
 from time import perf_counter
+from urllib.parse import quote
 
 from fastapi import Request
 from starlette.middleware.base import BaseHTTPMiddleware, RequestResponseEndpoint
@@ -20,13 +21,12 @@ class TraceMiddleware:
         self.app = app
 
     async def __call__(self, scope: Scope, receive: Receive, send: Send):
-        # remove follow three lines would break lifespan
+        # NOTE: remove follow three lines would break lifespan
         if scope["type"] != "http":
             await self.app(scope, receive, send)
             return
         x_request_id = XHeaders.REQUEST_ID.encoded
-        headers = dict(scope["headers"])
-        request_id = headers.get(x_request_id, request_id_factory())
+        request_id = dict(scope["headers"]).get(x_request_id, request_id_factory())
         scope["headers"].append((x_request_id, request_id))
         await self.app(scope, receive, send)
 
@@ -39,15 +39,15 @@ class LoggingMiddleware(BaseHTTPMiddleware):
     """
 
     async def dispatch(self, request: Request, call_next: RequestResponseEndpoint):
-        request_id = request.headers[XHeaders.REQUEST_ID.value]
         client_host, client_port = request.client or ("unknown_ip", "unknown_port")
-        http_version = request.scope["http_version"]
         url_parts = request.url.components
-        if url_parts.query == "":
-            path_query = url_parts.path
-        else:
-            path_query = "{}?{}".format(url_parts.path, url_parts.query)
+        path_query = quote(
+            "{}?{}".format(url_parts.path, url_parts.query)
+            if url_parts.query
+            else url_parts.path
+        )
 
+        request_id = request.headers[XHeaders.REQUEST_ID.value]
         with logger.contextualize(request_id=request_id):
             status_code = 500
             pre_process = perf_counter()
@@ -55,16 +55,16 @@ class LoggingMiddleware(BaseHTTPMiddleware):
                 response = await call_next(request)
                 status_code = response.status_code
             except Exception as e:
-                # should we log error here?
-                logger.exception("exception occurred")
+                logger.exception("internal exception occurred")
                 raise e
             finally:
                 post_process = perf_counter()
                 duration = max(round(post_process - pre_process, 3), MIN_PROCESS_TIME)
                 logger.info(
-                    f"""{client_host}:{client_port} - "{request.method} {path_query} HTTP/{http_version}" {status_code}""",
+                    f"""{client_host}:{client_port} - "{request.method} {path_query} HTTP/{request.scope["http_version"]}" {status_code}""",
                     duration=duration,
                 )
+
             response.headers[XHeaders.REQUEST_ID.value] = request_id
             response.headers[XHeaders.PROCESS_TIME.value] = str(duration)
             return response

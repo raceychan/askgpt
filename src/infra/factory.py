@@ -2,7 +2,7 @@ from functools import lru_cache
 
 from src.domain.config import Settings
 from src.domain.interface import IEvent
-from src.infra import cache, encrypt, eventstore, mq, sa_utils
+from src.infra import cache, encrypt, eventstore, gptclient, mq, sa_utils
 
 
 def get_async_engine(settings: Settings):
@@ -57,3 +57,13 @@ def get_token_encrypt(settings: Settings):
         secret_key=settings.security.SECRET_KEY,
         algorithm=settings.security.ALGORITHM,
     )
+
+
+@lru_cache(maxsize=1)
+def get_sqldebugger(settings: Settings):
+    return sa_utils.SQLDebugger(get_engine(settings))
+
+
+@lru_cache(maxsize=1)
+def get_gptclient(settings: Settings):
+    return gptclient.OpenAIClient.from_apikey(settings.OPENAI_API_KEY)

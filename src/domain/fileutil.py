@@ -1,4 +1,5 @@
 import abc
+import functools
 import pathlib
 import typing as ty
 
@@ -11,140 +12,172 @@ class NotDutyError(Exception):
     ...
 
 
+class UnsupportedFileFormatError(Exception):
+    def __init__(self, file: pathlib.Path):
+        super().__init__(
+            f"File of format {file.suffix} is not supported, as dependency is not installed"
+        )
+
+
 class LoaderNode(abc.ABC):
+    @abc.abstractmethod
+    def _validate(self, file: pathlib.Path) -> bool:
+        raise NotImplementedError
+
+    @abc.abstractmethod
+    def loads(self, file: pathlib.Path) -> dict[str, ty.Any]:
+        raise NotImplementedError
+
+
+class FileLoader(LoaderNode):
     _handle_chain: ty.ClassVar[list[type["FileLoader"]]] = list()
+    supported_formats: ty.ClassVar[set[str] | str]
 
     def __init__(self) -> None:
-        self._next_handler: ty.Optional["LoaderNode"] = None
+        self._next: ty.Optional["ty.Self"] = None
 
-    def set_next(self, handler: "FileLoader") -> None:
-        self._next_handler = handler
+    def __init_subclass__(cls: type["FileLoader"]) -> None:
+        cls._handle_chain.append(cls)
 
-    def append_node(self, handler: "FileLoader") -> None:
-        if self._next_handler is None:
-            self.set_next(handler)
-            return
+    def __str__(self):
+        return f"{self.__class__.__name__}({self.supported_formats})"
 
-        node = self._next_handler
-        while node._next_handler is not None:
-            node = node._next_handler
-        node.set_next(handler)
+    def __repr__(self):
+        return self.__str__()
+
+    @property
+    def next(self) -> ty.Optional[ty.Self]:
+        return self._next
+
+    @next.setter
+    def next(self, handler: ty.Self | None) -> None:
+        self._next = handler
+
+    def validate(self, file: pathlib.Path) -> bool:
+        if not file.is_file() or not file.exists():
+            raise FileNotFoundError(f"File {file} not found")
+        return self._validate(file)
+
+    def _validate(self, file: pathlib.Path) -> bool:
+        supported = self.supported_formats
+        if isinstance(supported, str):
+            supported = {supported}
+        return file.suffix in supported or file.name in supported
+
+    def handle(self, file: pathlib.Path) -> dict[str, ty.Any]:
+        if self.validate(file):
+            return self.loads(file)
+
+        if self._next is None:
+            raise EndOfChainError
+
+        return self._next.handle(file)
+
+    def chain(self, handler: "FileLoader") -> ty.Self | None:
+        if self._next is None:
+            self._next = handler
+            return self._next
+
+        return self._next.chain(handler)
 
     def reverse(self) -> None:
         """
         Reverse the whole chain so that the last node becomes the first node
         Do this when you want your newly added subclass take over the chain
         """
-        raise NotImplementedError  # TODO: implement this
-        # reff: https://www.prepbytes.com/blog/python/python-program-to-reverse-a-linked-list/
+        prev = None
+        node = self
 
-    @property
-    def next_handler(self) -> ty.Optional["LoaderNode"]:
-        return self._next_handler
+        while node.next:
+            next = node.next
+            node.next = prev
+            prev = node
+            node = next
 
-    @abc.abstractmethod
-    def _validate(self, file: pathlib.Path) -> None:
-        raise NotImplementedError
-
-    @abc.abstractmethod
-    def loads(self, file: pathlib.Path) -> dict[str, ty.Any]:
-        raise NotImplementedError
-
-    def validate(self, file: pathlib.Path) -> None:
-        if not file.is_file() or not file.exists():
-            raise FileNotFoundError(f"File {file} not found")
-        self._validate(file)
-
-    def handle(self, file: pathlib.Path) -> dict[str, ty.Any]:
-        try:
-            self.validate(file)
-        except NotDutyError as ne:
-            if self._next_handler is None:
-                raise EndOfChainError from ne
-            result = self._next_handler.handle(file)
-        else:
-            result = self.loads(file)
-        return result
-
-
-class FileLoader(LoaderNode):
-    def _validate(self, file: pathlib.Path) -> None:
-        raise NotDutyError
-
-    def loads(self, file: pathlib.Path) -> dict[str, ty.Any]:
-        raise NotImplementedError
-
-    def __init_subclass__(cls: type["FileLoader"]) -> None:
-        cls._handle_chain.append(cls)
+        node.next = prev
 
     @classmethod
-    def from_chain(cls) -> ty.Self:
-        head = cls()
+    def register(cls, loader: type["FileLoader"]) -> None:
+        cls._handle_chain.append(loader)
 
-        for loader in cls._handle_chain:
-            node = loader()
-            head.append_node(node)
+    @classmethod
+    def from_chain(cls, reverse: bool = True) -> ty.Self:
+        loaders = [loader_cls() for loader_cls in cls._handle_chain]
+
+        if reverse:
+            loaders = list(reversed(loaders))
+
+        head = node = loaders[0]
+
+        for loader in loaders[1:]:
+            node.next = loader
+            node = loader
         return head
 
 
-# class ENVFileLoader(FileLoader):
-#     def _validate(self, file: pathlib.Path) -> None:
-#         if not file.name.endswith(".env"):
-#             raise NotDutyError
+class ENVFileLoader(FileLoader):
+    supported_formats = ".env"
 
-#     def loads(self, file: pathlib.Path) -> dict[str, ty.Any]:
-#         config: dict[str, ty.Any] = {}
-#         ln = 1
+    def loads(self, file: pathlib.Path) -> dict[str, ty.Any]:
+        try:
+            import dotenv
+        except ImportError as ie:
+            raise UnsupportedFileFormatError(file) from ie
 
-#         with file.open() as f:
-#             for line in f:
-#                 line = line.strip()
-#                 if line and not line.startswith("#"):
-#                     try:
-#                         key, value = line.split("=", 1)
-#                         config[key.strip()] = value_parser(value.strip())
-#                     except ValueError as ve:
-#                         raise Exception(f"Invalid env line number {ln}: {line}") from ve
-#                 ln += 1
-#         return config
+        return dotenv.dotenv_values(file)
 
 
 class TOMLFileLoader(FileLoader):
-    def _validate(self, file: pathlib.Path) -> None:
-        if not file.name.endswith(".toml"):
-            raise NotDutyError
+    supported_formats = ".toml"
 
     def loads(self, file: pathlib.Path) -> dict[str, ty.Any]:
-        import sys
-
-        if sys.version_info.minor < 11:
-            raise NotImplementedError
-
-        import tomllib as tomli
+        try:
+            import tomllib as tomli
+        except ImportError as ie:
+            raise UnsupportedFileFormatError(file) from ie
 
         config = tomli.loads(file.read_text())
         return config
 
 
-# class YAMLFileLoader(FileLoader):
-#     def _validate(self, file: pathlib.Path) -> None:
-#         if not file.name.endswith(".yml") or not file.name.endswith(".yaml"):
-#             raise NotDutyError
+class YAMLFileLoader(FileLoader):
+    supported_formats = {".yml", ".yaml"}
 
-#     def loads(self, file: pathlib.Path) -> dict[str, ty.Any]:
-#         import yaml
+    def loads(self, file: pathlib.Path) -> dict[str, ty.Any]:
+        try:
+            import yaml
+        except ImportError as ie:
+            raise UnsupportedFileFormatError(file) from ie
 
-#         config: dict[str, ty.Any] = yaml.safe_load(file.read_bytes())
-#         return config
+        config: dict[str, ty.Any] = yaml.safe_load(file.read_bytes())
+        return config
+
+
+class JsonFileLoader(FileLoader):
+    supported_formats = ".json"
+
+    def loads(self, file: pathlib.Path) -> dict[str, ty.Any]:
+        try:
+            import json
+        except ImportError as ie:
+            raise UnsupportedFileFormatError(file) from ie
+
+        config: dict[str, ty.Any] = json.loads(file.read_bytes())
+        return config
 
 
 class FileUtil:
-    def __init__(self, work_dir: pathlib.Path, file_loader: FileLoader):
+    def __init__(
+        self,
+        work_dir: pathlib.Path = pathlib.Path.cwd(),
+        file_loader: FileLoader = FileLoader.from_chain(),
+    ):
         self.work_dir = work_dir
         self.file_loader = file_loader
 
     def find(self, filename: str, dir: str | None = None) -> pathlib.Path:
         work_dir = pathlib.Path(dir) if dir is not None else self.work_dir
+
         rg = work_dir.rglob(filename)
         try:
             file = next(rg)
@@ -157,9 +190,14 @@ class FileUtil:
     def read_file(self, file: str | pathlib.Path) -> dict[str, ty.Any]:
         if isinstance(file, str):
             file = self.find(file)
-        return self.file_loader.handle(file)
+        try:
+            data = self.file_loader.handle(file)
+        except EndOfChainError as ee:
+            raise UnsupportedFileFormatError(file) from ee
+        return data
 
     @classmethod
+    @functools.lru_cache(maxsize=1)
     def from_cwd(cls) -> ty.Self:
         return cls(work_dir=pathlib.Path.cwd(), file_loader=FileLoader.from_chain())
 

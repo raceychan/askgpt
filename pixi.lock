@@ -1974,6 +1974,26 @@ package:
   size: 115786
   timestamp: 1624701909146
 - platform: linux-64
+  name: python-multipart
+  version: 0.0.6
+  category: main
+  manager: conda
+  dependencies:
+  - python >=3.7
+  url: https://conda.anaconda.org/conda-forge/noarch/python-multipart-0.0.6-pyhd8ed1ab_0.conda
+  hash:
+    md5: f4f642eeda814c1b65f46fbdf7e89096
+    sha256: 2a9b8d02a6ec9862433cfc2741c4cbfe321e4ae3bab066f7ed84bc00effb73d7
+  build: pyhd8ed1ab_0
+  arch: x86_64
+  subdir: linux-64
+  build_number: 0
+  license: Apache-2.0
+  license_family: Apache
+  noarch: python
+  size: 39796
+  timestamp: 1679167567194
+- platform: linux-64
   name: python_abi
   version: '3.12'
   category: main

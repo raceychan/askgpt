@@ -75,8 +75,8 @@ class Settings(SettingsBase):
     security: Security
 
     class API(SettingsBase):
-        HOST: str = "127.0.0.1"
-        PORT: int = 5000
+        HOST: str
+        PORT: int
         API_VERSION: str = "1"
 
         @property

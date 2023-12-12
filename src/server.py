@@ -72,5 +72,6 @@ if __name__ == "__main__":
         port=settings.api.PORT,
         factory=True,
         reload=True,
+        reload_excludes=["test_*.py", "conftest.py"],
         log_config=None,
     )

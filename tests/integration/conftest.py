@@ -9,7 +9,7 @@ from src.app.auth.model import UserAuth
 from src.app.auth.repository import UserAuth
 from src.app.bootstrap import bootstrap
 from src.app.eventrecord import EventRecord
-from src.domain.interface import ISettings
+from src.domain.config import Settings
 from src.domain.model.test_default import TestDefaults
 from src.infra.cache import MemoryCache
 from src.infra.eventstore import EventStore
@@ -22,7 +22,7 @@ class EchoMailbox(MailBox):
 
 
 @pytest.fixture(scope="module")
-def async_engine(settings: ISettings):
+def async_engine(settings: Settings):
     engine = sa_aio.create_async_engine(
         settings.db.ASYNC_DB_URL,
         echo=settings.db.ENGINE_ECHO,

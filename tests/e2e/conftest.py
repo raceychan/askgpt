@@ -4,7 +4,6 @@ import pathlib
 import pytest
 
 from src.domain.config import Settings
-from src.domain.fileutil import fileutil
 
 
 @pytest.fixture(scope="session")
@@ -28,8 +27,6 @@ class TestSettings(Settings):
 @pytest.fixture(scope="session")
 def settings() -> TestSettings:
     db_path = pathlib.Path("./database/test.db")
-    # db_path = pathlib.Path(":memory:")
-    # api_key = fileutil.read_file("settings.toml")["OPENAI_API_KEY"]
     api_key = "fake_api_key"
 
     db = TestSettings.DB(DATABASE=db_path)
@@ -38,7 +35,8 @@ def settings() -> TestSettings:
         db=db,
         actor_refs=TestSettings.ActorRefs(),
         RUNTIME_ENV="test",
-        api=TestSettings.API(),
+        api=TestSettings.API(HOST="localhost", PORT=8000, API_VERSION="0.1.0"),
         security=TestSettings.Security(SECRET_KEY="test"),
+        cache=TestSettings.Cache(),
     )
     return ss

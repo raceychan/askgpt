@@ -4,15 +4,8 @@
 
 ### P1
 
-- [x] build user system, user identity
+- [ ] Required OPENAI_API_KEY for user to use this system
 
-- [x] restore system state from events
-
-- [ ] Deduplicate events
-
-- [x] enforce correct entity_id for events, currently there is a bug
-
-- [x] refactor code with generic
 
 ### P2
 
@@ -21,6 +14,16 @@
 - [-] ?we might seperate actor events like system_started and system_stoped, and domain events like SessionCreated, ChatMessageSent;
 
 ## Done
+
+- [x] build user system, user identity
+
+- [x] restore system state from events
+
+- [x] Deduplicate events
+
+- [x] enforce correct entity_id for events, currently there is a bug
+
+- [x] refactor code with generic
 
 - [x] Journal and system should not be bounded to each other
 Journal Actor should be created independently(done 10/28)
