@@ -11,7 +11,7 @@ class ErrorDetail:
     https://datatracker.ietf.org/doc/html/rfc7807
 
     type: string
-        A URI reference that identifies the problem type. Ideally, the URI should resolve to human-readable information describing the type, but that’s not necessary. The problem type provides information that’s more specific than the HTTP status code itself.
+        A URI reference that identifies the problem type. Ideally, the URI should resolve to human-readable information describing the type, but that’s not necessary. The problem  type provides information that’s more specific than the HTTP status code itself.
     title: string
         A human-readable description of the problem type, meaning that it should always be the same for the same type.
     status: number
@@ -81,8 +81,8 @@ class DomainError(Exception):
         )
 
 
-# class ServerSideError(DomainError):
-#     source = "server"  # status > 500
+class ServerSideError(DomainError):
+    source = "server"  # status > 500
 
 
 class ClientSideError(DomainError):

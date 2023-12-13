@@ -13,7 +13,7 @@ from src.domain.model.base import (
     computed_field,
     uuid_factory,
 )
-from src.domain.model.user import CreateUser, UserCreated  # , UserInfo
+from src.domain.model.user import CreateUser, UserCreated
 
 
 class ChatMessage(ValueObject):

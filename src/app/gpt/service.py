@@ -1,9 +1,9 @@
 import typing as ty
 from contextlib import asynccontextmanager
 
-from src.app.actor import MailBox
+from src.app.actor import QueueBox
 from src.app.gpt import model, repository
-from src.app.gpt.system import GPTSystem, SessionActor, SystemState, UserActor
+from src.app.gpt.gptsystem import GPTSystem, SessionActor, SystemState, UserActor
 from src.domain._log import logger
 from src.domain.config import Settings
 from src.infra import factory
@@ -138,10 +138,10 @@ class GPTService:
             await self.stop()
 
     @classmethod
-    def build(cls, settings: Settings) -> ty.Self:
+    def from_settings(cls, settings: Settings) -> ty.Self:
         aioengine = factory.get_async_engine(settings)
         system = GPTSystem(
-            settings=settings, ref=settings.actor_refs.SYSTEM, mailbox=MailBox.build()
+            settings=settings, ref=settings.actor_refs.SYSTEM, boxfactory=QueueBox
         )
         session_repo = repository.SessionRepository(aioengine)
         service = cls(system=system, session_repo=session_repo)

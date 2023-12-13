@@ -6,7 +6,6 @@
 
 - [ ] Required OPENAI_API_KEY for user to use this system
 
-
 ### P2
 
 - [ ] finish reading [YouTube: Vaughn Vernon: Reactive Domain-Driven Design Made Explicit

@@ -75,7 +75,7 @@ class Authenticator:
         await self._token_cache.remove(user_id)
 
     @classmethod
-    def build(cls, settings: Settings) -> "Authenticator":
+    def from_settings(cls, settings: Settings) -> "Authenticator":
         cache = factory.get_localcache()
         return cls(
             token_cache=cache,
@@ -147,11 +147,11 @@ class AuthService:
         return user_auth.entity_id
 
     @classmethod
-    def build(cls, settings: Settings) -> "AuthService":
+    def from_settings(cls, settings: Settings) -> "AuthService":
         aioengine = factory.get_async_engine(settings)
         user_repo = repository.UserRepository(aioengine)
         return cls(
             user_repo=user_repo,
-            authenticator=Authenticator.build(settings=settings),
+            authenticator=Authenticator.from_settings(settings=settings),
             producer=factory.get_producer(settings=settings),
         )

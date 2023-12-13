@@ -2,8 +2,8 @@ import asyncio
 
 import pytest
 
-from src.app.actor import MailBox
-from src.app.gpt import errors, model, service, system
+from src.app.actor import MailBox, QueueBox
+from src.app.gpt import errors, gptsystem, model, service
 from src.domain import config
 from src.domain.model.test_default import TestDefaults
 from src.infra.eventstore import EventStore
@@ -17,7 +17,7 @@ class EchoMailbox(MailBox):
 @pytest.fixture(scope="module")
 async def gpt_system(settings: config.Settings, eventstore: service.EventStore):
     system = service.GPTSystem(
-        mailbox=MailBox.build(), ref=settings.actor_refs.SYSTEM, settings=settings
+        boxfactory=QueueBox, ref=settings.actor_refs.SYSTEM, settings=settings
     )
     await system.start(eventstore=eventstore)
     return system
@@ -25,9 +25,7 @@ async def gpt_system(settings: config.Settings, eventstore: service.EventStore):
 
 @pytest.fixture(scope="module")
 def create_user():
-    return model.CreateUser(
-        user_id=TestDefaults.USER_ID
-    )  # , user_info=TestDefaults.USER_INFO)
+    return model.CreateUser(user_id=TestDefaults.USER_ID)
 
 
 @pytest.fixture(scope="module")
@@ -49,7 +47,7 @@ def send_chat_message():
 
 @pytest.fixture(scope="module")
 def system_started(settings: config.Settings):
-    return system.SystemStarted(entity_id=TestDefaults.SYSTEM_ID, settings=settings)
+    return gptsystem.SystemStarted(entity_id=TestDefaults.SYSTEM_ID, settings=settings)
 
 
 @pytest.fixture(scope="module")
@@ -93,7 +91,7 @@ async def test_system_get_user_actor(gpt_system: service.GPTSystem):
 
 async def test_system_get_journal(gpt_system: service.GPTSystem):
     journal = gpt_system.journal
-    assert isinstance(journal, system.Journal)
+    assert isinstance(journal, gptsystem.Journal)
 
 
 async def test_user_get_journal(gpt_system: service.GPTSystem):
@@ -101,7 +99,7 @@ async def test_user_get_journal(gpt_system: service.GPTSystem):
     assert isinstance(user, service.UserActor)
 
     journal = user.system.journal
-    assert isinstance(journal, system.Journal)
+    assert isinstance(journal, gptsystem.Journal)
 
 
 async def test_create_user_by_command(
@@ -153,7 +151,7 @@ async def test_send_message_receive_response(
 
 async def test_event_unduplicate(
     eventstore: service.EventStore,
-    system_started: system.SystemStarted,
+    system_started: gptsystem.SystemStarted,
     user_created: model.UserCreated,
     session_created: model.SessionCreated,
 ):

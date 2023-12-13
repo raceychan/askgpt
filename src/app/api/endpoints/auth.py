@@ -17,7 +17,7 @@ auth_router = APIRouter(prefix="/auth")
 user_router = APIRouter(prefix="/users")
 
 
-service = AuthService.build(get_setting())
+service = AuthService.from_settings(get_setting())
 
 
 class CreateUserRequest(RequestBody):

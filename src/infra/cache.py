@@ -36,9 +36,16 @@ class RedisCache[TKey: str, TVal: ty.Any](Cache[TKey, TVal]):
         async with self._redis.pipeline() as pipe:
             yield pipe
 
+    async def lifespan(self):
+        yield self._redis
+        await self._redis.aclose()
+
     @classmethod
-    def from_url(cls, url: str, decode_responses: bool = True):
-        client = aioredis.Redis.from_url(url, decode_responses=decode_responses)  # type: ignore
+    def build(cls, url: str, decode_responses: bool = True, max_connections: int = 10):
+        pool = aioredis.ConnectionPool.from_url(  # type: ignore
+            url, decode_responses=decode_responses, max_connections=max_connections
+        )
+        client = aioredis.Redis.from_pool(pool)
         return cls(redis=client)
 
 

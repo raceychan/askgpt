@@ -176,7 +176,7 @@ if __name__ == "__main__":
     from argparse import ArgumentParser
 
     from src.domain.config import get_setting
-    from src.infra.factory import get_sqldebugger
+    from src.infra.factory import get_sqldbg
 
     parser = ArgumentParser()
     parser.add_argument("sql", nargs="?")
@@ -186,7 +186,7 @@ if __name__ == "__main__":
         print(f"sql or interactive mode required")
         sys.exit(0)
 
-    sql = get_sqldebugger(get_setting())
+    sql = get_sqldbg(get_setting())
     with sql.lifespan() as sql:
         if ns.interactive:
             sql.interactive()

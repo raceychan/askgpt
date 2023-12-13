@@ -2,15 +2,14 @@ import typing as ty
 
 import pytest
 
-from src.app.actor import MailBox, System
+from src.app.actor import Journal, QueueBox, System
 from src.app.auth.model import UserAuth
-from src.app.journal import Journal
 from src.domain.config import Settings
 from src.domain.model.user import UserCreated
 from src.infra.eventstore import EventStore
 
 
-class EchoMailbox(MailBox):
+class EchoMailbox(QueueBox):
     async def publish(self, message: str):
         print(message)
 
@@ -18,7 +17,7 @@ class EchoMailbox(MailBox):
 @pytest.fixture(scope="module", autouse=True)
 async def base_system(settings: Settings):
     base_systm = System[ty.Any](
-        mailbox=MailBox.build(),
+        boxfactory=QueueBox,
         ref=settings.actor_refs.SYSTEM,
         settings=settings,
     )
@@ -30,7 +29,7 @@ async def base_system(settings: Settings):
 def journal(eventstore: EventStore, settings: Settings):
     return Journal(
         eventstore=eventstore,
-        mailbox=EchoMailbox.build(),
+        boxfactory=EchoMailbox,
         ref=settings.actor_refs.JOURNAL,
     )
 
@@ -41,7 +40,7 @@ async def test_system_publishes_event_to_journal(
     journal: Journal,  # journal is needed to test publish method
     eventstore: EventStore,
 ):
-    event = UserCreated(user_id=user_auth.entity_id, user_info=user_auth.user_info)
+    event = UserCreated(user_id=user_auth.entity_id)
     await base_system.publish(event)
     user_events = await eventstore.get(entity_id=user_auth.entity_id)
     assert user_events[0] == event

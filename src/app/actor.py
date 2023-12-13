@@ -1,13 +1,25 @@
+import abc
 import asyncio
 import typing as ty
+from collections import deque
 from functools import cached_property, singledispatchmethod
 
 from src.app.interface import AbstractActor, IJournal
 from src.domain.config import Settings
 from src.domain.error import SystemNotSetError
-from src.domain.interface import ActorRef, ICommand, IEntity, IEvent, IMessage
+from src.domain.interface import (
+    ActorRef,
+    ICommand,
+    IEntity,
+    IEvent,
+    IEventStore,
+    IMessage,
+)
 from src.domain.model.base import Command, Event
-from src.infra.mq import MessageBroker, QueueBroker
+
+
+class EmptyEvents(Exception):
+    ...
 
 
 class ActorRegistry[TRef: ActorRef, TActor: "AbstractActor"]:
@@ -39,61 +51,64 @@ class ActorRegistry[TRef: ActorRef, TActor: "AbstractActor"]:
         return self._dict.get(key, default)
 
 
-class MailBox:
-    # Actor specific queue
-    def __init__(self, broker: MessageBroker[IMessage]):
-        self._broker = broker
-
+class MailBox(abc.ABC):
+    @abc.abstractmethod
     def __len__(self) -> int:
-        return len(self._broker)
+        ...
 
-    def __bool__(self) -> bool:
-        return self.__len__() > 0
-
+    @abc.abstractmethod
     async def put(self, message: IMessage) -> None:
-        await self._broker.put(message)
+        ...
 
+    @abc.abstractmethod
     async def get(self) -> IMessage | None:
-        return await self._broker.get()
+        ...
 
     async def __aiter__(self) -> ty.AsyncGenerator[IMessage, ty.Any]:
         while msg := await self.get():
             yield msg
+
+    def __bool__(self) -> bool:
+        return self.__len__() > 0
 
     def __repr__(self) -> str:
         return f"{self.__class__.__name__}(capacity={self.capacity})"
 
     @property
     def capacity(self) -> int:
-        return self._broker.maxsize
+        ...
 
     def size(self) -> int:
-        return len(self._broker)
-
-    @classmethod
-    def build(
-        cls, broker: MessageBroker[IMessage] | None = None, maxsize: int = 0
-    ) -> ty.Self:
-        if broker is None:
-            broker = QueueBroker(maxsize)
-        return cls(broker)
+        ...
 
 
-class EmptyEvents(Exception):
-    ...
+class QueueBox(MailBox):
+    def __init__(self, maxsize: int = 0):
+        self._queue: deque[IMessage] = deque(maxlen=maxsize or None)
+
+    def __len__(self) -> int:
+        return len(self._queue)
+
+    async def put(self, message: IMessage) -> None:
+        self._queue.append(message)
+
+    async def get(self) -> IMessage | None:
+        return self._queue.popleft()
+
+
+type BoxFactory = ty.Callable[..., MailBox]
 
 
 class Actor[TChild: "Actor[ty.Any]"](AbstractActor):
-    mailbox: MailBox
     _system: ty.ClassVar["System[ty.Any]"]
-    # childs being instances
 
-    def __init__(self, mailbox: MailBox) -> None:
+    def __init__(self, boxfactory: BoxFactory) -> None:
         if not isinstance(self, System):
             self._ensure_system()
 
+        self.boxfactory = boxfactory
+        self.mailbox = self.boxfactory()
         self.childs: ActorRegistry[ActorRef, TChild] = ActorRegistry()
-        self.mailbox = mailbox
         self._handle_sem = asyncio.Semaphore(1)
 
     def _ensure_system(self) -> None:
@@ -191,8 +206,12 @@ class StatefulActor[TChild: Actor[ty.Any], TState: ty.Any](Actor[TChild]):
 class EntityActor[TChild: Actor[ty.Any], TEntity: IEntity](
     StatefulActor[TChild, TEntity]
 ):
-    def __init__(self, mailbox: MailBox, entity: TEntity):
-        super().__init__(mailbox=mailbox)
+    def __init__(
+        self,
+        entity: TEntity,
+        boxfactory: BoxFactory,
+    ):
+        super().__init__(boxfactory=boxfactory)
         self.state = self.entity = entity
 
     @singledispatchmethod
@@ -228,13 +247,13 @@ class System[TChild: Actor[ty.Any]](Actor[TChild]):
 
     def __init__(
         self,
-        mailbox: MailBox,
         ref: ActorRef,
         settings: Settings,
+        boxfactory: BoxFactory,
     ):
-        super().__init__(mailbox=mailbox)
+        super().__init__(boxfactory=boxfactory)
         self.set_system(self)
-        self._eventlog = EventLog(mailbox=MailBox.build())
+        self._eventlog = EventLog(boxfactory=boxfactory)
         self._settings = settings
         self._ref = ref
 
@@ -270,11 +289,9 @@ class System[TChild: Actor[ty.Any]](Actor[TChild]):
         raise NotImplementedError
 
     @classmethod
-    def build(cls, settings: Settings) -> "System[TChild]":
+    def from_settings(cls, settings: Settings) -> "System[TChild]":
         return cls(
-            mailbox=MailBox.build(),
-            ref=settings.actor_refs.SYSTEM,
-            settings=settings,
+            boxfactory=QueueBox, ref=settings.actor_refs.SYSTEM, settings=settings
         )
 
 
@@ -285,8 +302,12 @@ class EventLog[TListener: Actor[ty.Any]](Actor[ty.Any]):
     coudld be refactor to a kafka publisher if needed
     """
 
-    def __init__(self, mailbox: MailBox, broadcast: bool = False):
-        super().__init__(mailbox=mailbox)
+    def __init__(
+        self,
+        boxfactory: BoxFactory,
+        broadcast: bool = False,
+    ):
+        super().__init__(boxfactory=boxfactory)
         self._event_listeners: list[TListener] = []
         self._broadcast = broadcast
 
@@ -316,6 +337,51 @@ class EventLog[TListener: Actor[ty.Any]](Actor[ty.Any]):
     def apply(self, event: Event) -> ty.Self:
         raise NotImplementedError
 
-    @classmethod
-    def build(cls) -> ty.Self:
-        return cls(mailbox=MailBox.build())
+
+class Journal(Actor[ty.Any]):
+    """
+    Consumer that consumes events from event bus and persist them to event store
+    """
+
+    def __init__(
+        self, eventstore: IEventStore, boxfactory: BoxFactory, ref: ActorRef
+    ) -> None:
+        super().__init__(boxfactory=boxfactory)
+        self.system.subscribe_events(self)
+        self.eventstore = eventstore
+        self._ref = ref
+
+    async def on_receive(self) -> None:
+        message = await self.mailbox.get()
+        if message is None:
+            raise Exception("Mailbox is empty")
+
+        if isinstance(message, Event):
+            await self.eventstore.add(message)
+        else:
+            raise NotImplementedError("Currently journal only accepts events")
+
+    @singledispatchmethod
+    async def handle(self, message: IMessage) -> None:
+        raise NotImplementedError
+
+    async def persist_event(self) -> None:
+        raise NotImplementedError
+
+    async def start(self) -> None:
+        await self.persist_event()
+
+    @singledispatchmethod
+    def apply(self, event: IEvent) -> ty.Self:
+        raise NotImplementedError
+
+    async def publish(self, event: IEvent) -> None:
+        await self.mailbox.put(event)
+        await self.on_receive()
+
+    @cached_property
+    def ref(self) -> ActorRef:
+        return self._ref
+
+    async def list_events(self, ref: ActorRef) -> "list[IEvent]":
+        return await self.eventstore.get(entity_id=ref)

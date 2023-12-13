@@ -1,6 +1,6 @@
 import pytest
 
-from src.app.actor import MailBox
+from src.app.actor import QueueBox
 from src.app.gpt import model, service
 from src.app.gpt.params import ChatResponse
 from src.domain import config
@@ -10,7 +10,6 @@ from src.infra.gptclient import OpenAIClient
 
 @pytest.fixture(scope="module")
 def chat_messages(test_defaults: TestDefaults):
-    # user_id = test_defaults.USER_ID
     return [
         model.ChatMessage.as_prompt(content="answer me seriously!"),
         model.ChatMessage.as_user(content="ping"),
@@ -23,7 +22,7 @@ def chat_messages(test_defaults: TestDefaults):
 @pytest.fixture(scope="module")
 async def gptsystem(settings: config.Settings, eventstore: service.EventStore):
     system = service.GPTSystem(
-        mailbox=MailBox.build(), ref=settings.actor_refs.SYSTEM, settings=settings
+        boxfactory=QueueBox, ref=settings.actor_refs.SYSTEM, settings=settings
     )
     await system.start(eventstore=eventstore)
     return system

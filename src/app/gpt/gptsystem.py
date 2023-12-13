@@ -2,10 +2,9 @@ import enum
 import typing as ty
 from functools import singledispatchmethod
 
-from src.app.actor import EntityActor, MailBox, System
+from src.app.actor import BoxFactory, EntityActor, Journal, QueueBox, System
 from src.app.auth.model import UserSignedUp
 from src.app.gpt import errors, model
-from src.app.journal import Journal
 from src.domain._log import logger
 from src.domain.config import Settings
 from src.domain.fmtutils import async_receiver
@@ -60,7 +59,7 @@ class SystemState(enum.Enum):
 
 class UserActor(EntityActor["SessionActor", model.User]):
     def __init__(self, user: model.User):
-        super().__init__(mailbox=MailBox.build(), entity=user)
+        super().__init__(boxfactory=QueueBox, entity=user)
 
     def create_session(self, event: model.SessionCreated) -> "SessionActor":
         session_actor = SessionActor.apply(event)
@@ -124,7 +123,7 @@ class UserActor(EntityActor["SessionActor", model.User]):
 
 class SessionActor(EntityActor["SessionActor", model.ChatSession]):
     def __init__(self, chat_session: model.ChatSession, gptclient: OpenAIClient):
-        super().__init__(mailbox=MailBox.build(), entity=chat_session)
+        super().__init__(boxfactory=QueueBox, entity=chat_session)
         self._gptclient: OpenAIClient = gptclient
 
     @property
@@ -246,8 +245,13 @@ class SessionActor(EntityActor["SessionActor", model.ChatSession]):
 
 
 class GPTSystem(System[UserActor]):
-    def __init__(self, mailbox: MailBox, ref: ActorRef, settings: Settings):
-        super().__init__(mailbox=mailbox, ref=ref, settings=settings)
+    def __init__(
+        self,
+        ref: ActorRef,
+        settings: Settings,
+        boxfactory: BoxFactory,
+    ):
+        super().__init__(boxfactory=boxfactory, ref=ref, settings=settings)
         self._system_state = SystemState.created
 
     @property
@@ -267,14 +271,14 @@ class GPTSystem(System[UserActor]):
         await self.publish(event)
         return user_actor
 
-    def setup_journal(self, eventstore: EventStore, mailbox: MailBox) -> None:
+    def setup_journal(self, eventstore: EventStore, boxfactory: BoxFactory) -> None:
         """
         journal is part of the application layer,
         so it should be created here by gptsystem, not by system actor
         """
 
         journal_ref = self.settings.actor_refs.JOURNAL
-        journal = Journal(eventstore, mailbox, ref=journal_ref)
+        journal = Journal(eventstore=eventstore, boxfactory=boxfactory, ref=journal_ref)
         self._journal = journal
 
     async def rebuild_user(self, user_id: str) -> "UserActor":
@@ -297,7 +301,7 @@ class GPTSystem(System[UserActor]):
             entity_id=self.settings.actor_refs.SYSTEM, settings=self.settings
         )
         self.apply(event)
-        self.setup_journal(eventstore=eventstore, mailbox=MailBox.build())
+        self.setup_journal(eventstore=eventstore, boxfactory=QueueBox)
         self.state = self.state.start()
         return self
 
@@ -309,7 +313,7 @@ class GPTSystem(System[UserActor]):
     @classmethod
     def _(cls, event: SystemStarted) -> ty.Self:
         return cls(
-            mailbox=MailBox.build(),
+            boxfactory=QueueBox,
             ref=event.settings.actor_refs.SYSTEM,
             settings=event.settings,
         )

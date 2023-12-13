@@ -27,12 +27,3 @@ async def get_authenticator(settings: Settings):
         token_encrypt=get_token_encrypt(settings=settings),
         token_ttl=settings.security.ACCESS_TOKEN_EXPIRE_MINUTES,
     )
-
-
-# def get_auth_service(settings: Settings):
-#     return Authenticator(
-#         token_cache=LocalCache(),
-#         secrete_key=settings.auth.SECRET_KEY,
-#         encode_algo=settings.auth.ENCODE_ALGO,
-#         ttl_m=settings.auth.TTL_M,
-#     )

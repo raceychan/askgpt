@@ -82,7 +82,3 @@ class EventStore(IEventStore):
 
     async def remove(self, entity_id: str) -> None:
         raise NotImplementedError
-
-    # @classmethod
-    # def build(cls, *, db_url: str) -> ty.Self:
-    #     return cls(engine=engine_factory(db_url))

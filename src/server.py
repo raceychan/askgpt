@@ -12,6 +12,8 @@ from src.domain._log import logger
 from src.domain.config import get_setting
 from src.infra.factory import get_async_engine
 
+stack = AsyncExitStack()
+
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -19,10 +21,12 @@ async def lifespan(app: FastAPI):
     engine = get_async_engine(settings)
     await bootstrap(engine)
     record = get_eventrecord(settings)
-    async with AsyncExitStack() as stack:
-        # TODO: add more async context managers here
+
+    async with stack:
         await stack.enter_async_context(record.lifespan())
         yield
+
+    # await engine.dispose()
 
 
 def add_exception_handlers(app: FastAPI):

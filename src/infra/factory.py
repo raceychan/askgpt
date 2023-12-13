@@ -12,6 +12,7 @@ def get_async_engine(settings: Settings):
         isolation_level=settings.db.ISOLATION_LEVEL,
         pool_pre_ping=True,
     )
+
     return engine
 
 
@@ -60,7 +61,7 @@ def get_token_encrypt(settings: Settings):
 
 
 @lru_cache(maxsize=1)
-def get_sqldebugger(settings: Settings):
+def get_sqldbg(settings: Settings):
     return sa_utils.SQLDebugger(get_engine(settings))
 
 

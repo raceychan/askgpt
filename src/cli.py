@@ -4,7 +4,7 @@ from argparse import ArgumentParser, Namespace
 from dataclasses import dataclass
 
 from src.app.auth.service import AuthService
-from src.app.gpt import model, service
+from src.app.gpt import model, params, service
 from src.domain._log import logger
 from src.domain.config import get_setting
 
@@ -21,7 +21,7 @@ class CLIOptions(Namespace):
     question: str = ""
     user_id: str = ""
     session_id: str = ""
-    model: str = ""
+    model: params.CompletionModels = "gpt-3.5-turbo"
     interactive: bool = False
     command: ty.Literal["gpt", "auth"] = "gpt"
 
@@ -69,12 +69,20 @@ class CLIOptions(Namespace):
 
 
 async def gpt_dispatch(gpt: service.GPTService, options: CLIOptions) -> None:
-    session_id = options.session_id
-
     if options.question:
-        await gpt.send_question(user_id, session_id, options.question, role="user")
+        await gpt.send_question(
+            user_id=options.user_id,
+            session_id=options.session_id,
+            question=options.question,
+            role="user",
+            completion_model=options.model,
+        )
     elif options.interactive:
-        await gpt.interactive(user_id, session_id)
+        await gpt.interactive(
+            user_id=options.user_id,
+            session_id=options.session_id,
+            completion_model=options.model,
+        )
 
 
 async def auth_dispatch(auth: AuthService, options: CLIOptions):
@@ -101,8 +109,8 @@ async def app(gpt: service.GPTService, options: CLIOptions) -> None:
 def main():
     options = CLIOptions.parse()
     settings = get_setting()
-    gpt = service.GPTService.build(settings)
-    auth = AuthService.build(settings)
+    gpt = service.GPTService.from_settings(settings)
+    auth = AuthService.from_settings(settings)
 
     if options.command == "auth":
         asyncio.run(auth_dispatch(auth, options))
