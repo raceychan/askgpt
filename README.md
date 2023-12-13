@@ -14,42 +14,9 @@ Support for Multiple Language Models: We embrace the diversity of AI language mo
 
 Reactive and Responsive System: Designed to be highly responsive, it ensures a seamless and interactive user experience. The reactive architecture efficiently handles user requests and system events, ensuring quick and accurate responses.
 
-## Architecture design
-
-+----------------------------------------------------------------------------+
-|                         Application Layer                              |   |
-| +----------------------------------------------------------------------+   |
-| | API Layer (app/api)                                                  |   |
-| | +------------------------------------------------------------------+ |   |
-| | | Endpoints (app/api/endpoints)                                    | |   |
-| | |  - Auth (auth.py)                                                | |   |
-| | |  - GPT (gpt.py)                                                  | |   |
-| | +------------------------------------------------------------------+ |   |
-| |                                                                      |   |
-| | Application Services                                                 |   |
-| |  - Auth Service (app/auth/*.py)                                      |   |
-| |  - GPT Service (app/gpt/*.py)                                        |   |
-| |     +-------------------------------------------------------------+  |   |
-| |     | Actors (app/actor.py)                                       |  |   |
-| |     +-------------------------------------------------------------+  |   |
-| +----------------------------------------------------------------------+   |
-|                                                                            |
-| Infrastructure Layer (infra/*)                                             |
-|  - Cache (Redis) (infra/cache.py)                                          |
-|  - Data Storage (PostgreSQL) (infra/schema.py, infra/sa_utils.py)          |
-|  - Message Queue (Pulsar) (infra/mq.py)                                    |
-|  - GPT Client (infra/gptclient.py)                                         |
-|                                                                            |
-| Domain Layer (domain/*)                                                    |
-|  - Models (domain/model/*.py)                                              |
-|  - Services (domain/service/*.py)                                          |
-|  - Utilities (domain/utils/*.py)                                           |
-|                                                                            |
-+----------------------------------------------------------------------------+
-
 ## Usage
 
-1. create your own `settings.toml` in the project root under `askgpt/src` 
+1. create your own `settings.toml` in the project root under `askgpt/src`
 
 2. In your terminal:
 
