@@ -2,7 +2,7 @@ import pathlib
 
 import pytest
 
-from src.domain.fileutil import FileLoader  # , value_parser
+from src.infra.fileutil import FileLoader  # , value_parser
 
 
 def test_load_env(fileloader: FileLoader, tmp_path: pathlib.Path):

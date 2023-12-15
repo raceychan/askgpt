@@ -2,102 +2,70 @@ from datetime import datetime, timedelta
 
 from src.app.auth import errors, model, repository
 from src.domain._log import logger
-from src.domain.config import Settings, TimeScale
+from src.domain.config import Settings
 from src.domain.interface import IEvent
-from src.domain.model.base import utcts_factory, uuid_factory
+from src.domain.model.base import str_to_snake, utcts_factory, uuid_factory
 from src.infra import cache, encrypt, factory, mq
 
 
 class TokenRegistry:
-    # infra layer abstraction of cache
-    def __init__(self, cache: cache.Cache[str, str]):
+    def __init__(self, cache: cache.RedisCache[str, str]):
         self._cache = cache
+
+    def keybuilder(self, user_id: str) -> str:
+        return (
+            f"{Settings.PROJECT_NAME}:{str_to_snake(self.__class__.__name__)}:{user_id}"
+        )
+
+    async def is_token_valid(self, user_id: str, token: str) -> bool:
+        return await self._cache.sismember(self.keybuilder(user_id), token)
 
     async def register_token(self, user_id: str, token: str) -> None:
         """
         Register token to user
         """
+        await self._cache.sadd(self.keybuilder(user_id), token)
 
-    async def revoke_token(self, user_id: str, token: str) -> None:
+    async def revoke_tokens(self, user_id: str, token: str) -> None:
         """
-        Revoke token from user
+        Revoke tokens from user
         """
-
-
-class Authenticator:
-    # TODO: this should be rewritten as a TokenRegistry
-    # which is an infra layer abstraction of cache
-    """
-    On every user request for content that might need authentication,
-    ensure that token is in the user's Redis store i.e ${userId}-tokens.
-    If the token is not in the Redis store, then it is not a valid token anymore.
-    """
-
-    def __init__(
-        self,
-        token_cache: cache.Cache[str, str],
-        token_encrypt: encrypt.TokenEncrypt,
-        token_ttl: TimeScale.Minute,
-    ):
-        self._token_cache = token_cache
-        self._token_encrypt = token_encrypt
-        self._ttl_m = token_ttl
-
-    async def is_access_token_valid(self, access_token: str) -> bool:
-        """
-        A user is authenticated if token is in the cache
-        """
-        token = self._token_encrypt.decrypt(access_token)
-        cached_token = await self._token_cache.get(token["sub"])
-        return cached_token is not None
-
-    async def authenticate(self, user_auth: model.UserAuth) -> str:
-        token = self.create_access_token(user_auth.entity_id, user_auth.role)
-        await self._token_cache.set(user_auth.entity_id, token)
-        return token
-
-    def create_access_token(self, user_id: str, user_role: model.UserRoles) -> str:
-        now_ = utcts_factory()
-        token = model.AccessToken(
-            sub=user_id,
-            exp=now_ + timedelta(minutes=self._ttl_m),
-            nbf=now_,
-            iat=now_,
-            role=user_role,
-        )
-
-        return self._token_encrypt.encrypt(token)
-
-    async def revoke_token(self, user_id: str, token: str) -> None:
-        """
-        Revoke token from user
-        """
-        await self._token_cache.remove(user_id)
-
-    @classmethod
-    def from_settings(cls, settings: Settings) -> "Authenticator":
-        cache = factory.get_localcache()
-        return cls(
-            token_cache=cache,
-            token_encrypt=factory.get_token_encrypt(settings=settings),
-            token_ttl=settings.security.ACCESS_TOKEN_EXPIRE_MINUTES,
-        )
+        await self._cache.remove(user_id)
 
 
 class AuthService:
     def __init__(
         self,
         user_repo: repository.UserRepository,
-        authenticator: Authenticator,
+        token_registry: TokenRegistry,
+        token_encrypt: encrypt.Encrypt,
         producer: mq.MessageProducer[IEvent],
+        security_settings: Settings.Security,
     ):
         self._user_repo = user_repo
-        self._auth = authenticator
+        self._token_registry = token_registry
+        self._token_encrypt = token_encrypt
         self._producer = producer
+        self._security_settings = security_settings
 
     @property
     def user_repo(self):
         return self._user_repo
+
+    def _create_access_token(self, user_id: str, user_role: model.UserRoles) -> str:
+        now_ = utcts_factory()
+        exp = now_ + timedelta(
+            minutes=self._security_settings.ACCESS_TOKEN_EXPIRE_MINUTES
+        )
+        token = model.AccessToken(
+            sub=user_id,
+            exp=exp,
+            nbf=now_,
+            iat=now_,
+            role=user_role,
+        )
+
+        return self._token_encrypt.encrypt_jwt(token)
 
     async def login(self, email: str, password: str) -> str:
         user = await self._user_repo.search_user_by_email(email)
@@ -114,11 +82,7 @@ class AuthService:
         user.login()
 
         logger.success(f"User {user.entity_id} logged in")
-        return await self._auth.authenticate(user)
-
-    async def is_user_authenticated(self, access_token: str) -> bool:
-        # TODO: check if user is active
-        return await self._auth.is_access_token_valid(access_token=access_token)
+        return self._create_access_token(user.entity_id, user.role)
 
     async def find_user(self, useremail: str) -> model.UserAuth | None:
         """
@@ -146,12 +110,22 @@ class AuthService:
         await self._producer.publish(user_signed_up)
         return user_auth.entity_id
 
+    async def add_api_key(self, user_id: str, api_key: str) -> None:
+        user = await self._user_repo.get(user_id)
+        if user is None:
+            raise errors.UserNotFoundError("user not found")
+
+        encrypted = self._token_encrypt.encrypt_string(api_key)
+        await self._user_repo.add_api_key_for_user(user_id, encrypted)
+
     @classmethod
     def from_settings(cls, settings: Settings) -> "AuthService":
         aioengine = factory.get_async_engine(settings)
         user_repo = repository.UserRepository(aioengine)
         return cls(
             user_repo=user_repo,
-            authenticator=Authenticator.from_settings(settings=settings),
+            token_registry=TokenRegistry(cache=factory.get_cache(settings)),
+            token_encrypt=factory.get_encrypt(settings=settings),
             producer=factory.get_producer(settings=settings),
+            security_settings=settings.security,
         )

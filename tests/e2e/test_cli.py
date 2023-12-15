@@ -30,7 +30,7 @@ def auth_options():
 
 @pytest.fixture(scope="module")
 async def gpt(settings: Settings):
-    gpt_service = service.GPTService.build(settings)
+    gpt_service = service.GPTService.from_settings(settings)
     async with gpt_service.lifespan() as gpt:
         yield gpt
 

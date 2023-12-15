@@ -12,9 +12,7 @@ def test_settins(settings: Settings):
 
 @pytest.fixture(scope="module")
 def user_created():
-    event = model.UserCreated(
-        user_id=TestDefaults.USER_ID, user_info=TestDefaults.USER_INFO
-    )
+    event = model.UserCreated(user_id=TestDefaults.USER_ID)
     return event
 
 
@@ -30,8 +28,6 @@ async def test_insert_event(eventstore: EventStore, user_created: model.UserCrea
     e = events[0]
 
     assert e.event_id == user_created.event_id
-    # BUG: e.password.verify_password return True
-
     assert hash(e) == hash(user_created)
 
 

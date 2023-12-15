@@ -4,9 +4,9 @@ import pathlib
 import pytest
 
 from src.domain.config import Settings
-from src.domain.fileutil import FileLoader, FileUtil
 from src.domain.model.test_default import TestDefaults
 from src.infra import encrypt
+from src.infra.fileutil import FileLoader, FileUtil
 
 
 @pytest.fixture(scope="session")
@@ -18,6 +18,7 @@ def event_loop():
 
 class TestSettings(Settings):
     __test__ = False
+    # OPENAI_API_KEY: str = "fake_api_key"
 
     class DB(Settings.DB):
         DATABASE: pathlib.Path
@@ -32,13 +33,12 @@ def settings() -> TestSettings:
     db_path = pathlib.Path(":memory:")
     db = TestSettings.DB(DATABASE=db_path)
     ss = TestSettings(
-        OPENAI_API_KEY="fake_api_key",
         db=db,
-        actor_refs=TestSettings.ActorRefs(),
         RUNTIME_ENV="test",
+        actor_refs=TestSettings.ActorRefs(),
         api=TestSettings.API(HOST="localhost", PORT=8000, API_VERSION="0.1.0"),
-        security=TestSettings.Security(SECRET_KEY="test"),
-        cache=TestSettings.Cache(),
+        security=TestSettings.Security(SECRET_KEY="test", ALGORITHM="HS256"),
+        redis=TestSettings.Redis(HOST="localhost", PORT=6379, DB=0),
     )
     return ss
 
@@ -61,7 +61,8 @@ def test_defaults():
 
 
 @pytest.fixture(scope="module")
-def token_encrypt(settings: Settings) -> encrypt.TokenEncrypt:
-    return encrypt.TokenEncrypt(
-        secret_key=settings.security.SECRET_KEY, algorithm=settings.security.ALGORITHM
+def token_encrypt(settings: Settings) -> encrypt.Encrypt:
+    return encrypt.Encrypt(
+        secret_key=settings.security.SECRET_KEY,
+        algorithm=settings.security.ALGORITHM,
     )

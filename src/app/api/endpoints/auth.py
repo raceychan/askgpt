@@ -7,7 +7,7 @@ from pydantic import EmailStr
 from starlette import status
 
 from src.app.api.model import RequestBody
-from src.app.api.validation import oauth2_scheme
+from src.app.api.validation import AccessToken, parse_access_token
 from src.app.auth.errors import UserNotFoundError
 from src.app.auth.model import UserAuth
 from src.app.auth.service import AuthService
@@ -52,7 +52,6 @@ async def login(login_form: OAuth2PasswordRequestForm = Depends()) -> TokenRespo
 @auth_router.post("/signup")
 async def create_user(req: CreateUserRequest):
     "Request will be redirected to user route for user info"
-    # TODO: user should be logged in after signup, return access_token
     user_id = await service.signup_user(req.user_name, req.email, req.password)
     return RedirectResponse(
         f"/v1/users/{user_id}", status_code=status.HTTP_303_SEE_OTHER
@@ -65,10 +64,13 @@ async def get_user(user_id: str) -> UserAuth | None:
     return user
 
 
+@user_router.post("/apikeys")
+async def add_api_key(api_key: str, token: AccessToken = Depends(parse_access_token)):
+    await service.add_api_key(token.sub, api_key)
+
+
 @user_router.get("/")
-async def find_user_by_email(
-    email: str, token: str = Depends(oauth2_scheme)
-) -> PublicUserInfo | None:
+async def find_user_by_email(email: str) -> PublicUserInfo | None:
     user = await service.user_repo.search_user_by_email(email)
     if not user:
         raise UserNotFoundError("user not found")

@@ -10,14 +10,14 @@ from src.infra import encrypt
 
 
 @pytest.fixture(scope="module")
-def token_encrypt(settings: Settings) -> encrypt.TokenEncrypt:
-    return encrypt.TokenEncrypt(
+def token_encrypt(settings: Settings) -> encrypt.Encrypt:
+    return encrypt.Encrypt(
         secret_key=settings.security.SECRET_KEY, algorithm=settings.security.ALGORITHM
     )
 
 
 def test_encryp_access_token(
-    test_defaults: TestDefaults, token_encrypt: encrypt.TokenEncrypt, settings: Settings
+    test_defaults: TestDefaults, token_encrypt: encrypt.Encrypt, settings: Settings
 ):
     now_ = utcts_factory()
     token = AccessToken(
@@ -28,9 +28,9 @@ def test_encryp_access_token(
         nbf=now_,
         iat=now_,
     )
-    encoded = token_encrypt.encrypt(token)
+    encoded = token_encrypt.encrypt_jwt(token)
 
-    data = token_encrypt.decrypt(encoded)
+    data = token_encrypt.decrypt_jwt(encoded)
     decoded = AccessToken.model_validate(data)
     assert decoded.sub == test_defaults.USER_ID
     assert decoded.role == test_defaults.USER_ROLE

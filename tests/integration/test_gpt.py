@@ -1,5 +1,3 @@
-import asyncio
-
 import pytest
 
 from src.app.actor import MailBox, QueueBox
@@ -124,10 +122,6 @@ async def test_create_session_by_command(
     assert isinstance(session, service.SessionActor)
 
     user_events = await eventstore.get(user.entity_id)
-
-    # assert len(user_events) == 2
-    # BUG? here, duplicated event for user created
-
     assert isinstance(user_events[-1], model.SessionCreated)
 
 
@@ -196,9 +190,9 @@ def test_service_state_stop():
 
 @pytest.fixture(scope="module")
 async def gpt_service(settings: config.Settings):
-    gpt = service.GPTService.build(settings)
-    yield gpt
-    await asyncio.sleep(0)  # Ensure async cleanup
+    gpt = service.GPTService.from_settings(settings)
+    async with gpt.lifespan():
+        yield gpt
 
 
 @pytest.mark.skip(reason="TODO: fix this test")

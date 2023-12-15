@@ -28,32 +28,38 @@ def uuid_factory() -> str:
 def utcts_factory(ts: float | None = None) -> utc_datetime:
     # NOTE: utcnow will be deprecated in future, but rightnow we still need it
     # pydantic has poor support to timezone
-
-    # NOTE: datetime.datetime.utcnow() is not tz aware
+    # from pydantic import AwareDatetime
+    # datetime.datetime.utcnow() is not tz aware
     # and datetime.datetime.now(datetime.timezone.utc) is tz aware
 
     if ts is not None:
-        return datetime.datetime.fromtimestamp(ts)  # , tz=datetime.UTC)
+        return datetime.datetime.fromtimestamp(ts)
 
-    return datetime.datetime.utcnow()  # (tz=datetime.UTC)
+    return datetime.datetime.utcnow()
 
 
-class attribute[TOwner, TField]:
-    # same thing as types.DynamicClassAttribute
+class attribute[TOwner: ty.Any, TField: ty.Any]:
+    """
+    A dynamic property descriptor, servers similar purpose as property
+    but works for both class and instance.
+    """
+
     def __init__(
         self,
-        fget: ty.Callable[[TOwner], TField] | None = None,
-        fset: ty.Callable[[TOwner, TField], None] | None = None,
+        fget: ty.Callable[[TOwner | type[TOwner]], TField] | None = None,
+        fset: ty.Callable[[TOwner | type[TOwner], TField], None] | None = None,
     ):
         self.fget = fget
         self.fset = fset
 
-    def __get__(self, instance: ty.Any | None, owner: ty.Any) -> ty.Any:
+    def __get__(self, instance: TOwner | None, owner: type[TOwner]) -> ty.Any:
         if self.fget:
             return self.fget(instance) if instance else self.fget(owner)
         raise AttributeError("unreadable attribute")
 
-    def setter(self, fset: ty.Callable[[TOwner, TField], None]) -> ty.Self:
+    def setter(
+        self, fset: ty.Callable[[TOwner | type[TOwner], TField], None]
+    ) -> ty.Self:
         return type(self)(self.fget, fset)
 
 
@@ -178,9 +184,6 @@ class Command(Message):
 
 class Query(Message):
     ...
-
-
-# from pydantic import AwareDatetime
 
 
 class Event(Message):

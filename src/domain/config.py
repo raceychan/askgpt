@@ -1,12 +1,11 @@
 import functools
 import pathlib
-import secrets
 import typing as ty
 
 from pydantic import BaseModel, ConfigDict
 
-from src.domain.fileutil import FileUtil
 from src.domain.interface import SQL_ISOLATIONLEVEL, EventLogRef, JournalRef, SystemRef
+from src.infra.fileutil import FileUtil
 
 
 class TimeScale:
@@ -34,10 +33,11 @@ class SettingsBase(BaseModel):
 
 
 class Settings(SettingsBase):
-    # default values are for testing
+    # TODO: get rid of default values, define them in TestSettings
     PROJECT_NAME: ty.ClassVar[str] = "askgpt"
     PROJECT_ROOT: ty.ClassVar[pathlib.Path] = pathlib.Path.cwd()
-    OPENAI_API_KEY: str
+
+    # OPENAI_API_KEY: str
     RUNTIME_ENV: ty.Literal["dev", "prod", "test"]
 
     # make pyright happy, Settings is hashable by setting frozen=True
@@ -50,13 +50,34 @@ class Settings(SettingsBase):
         ISOLATION_LEVEL: SQL_ISOLATIONLEVEL = "SERIALIZABLE"
         ENGINE_ECHO: bool = False
 
+        USER: str = ""
+        PASSWORD: str = ""
+        HOST: str = ""
+        PORT: str = ""
+
         @property
         def DB_URL(self) -> str:
-            return f"{self.DB_DRIVER}:///{self.DATABASE}"
+            base = f"{self.DB_DRIVER}://"
+            if self.USER and self.PASSWORD:
+                base += f"{self.USER}:{self.PASSWORD}"
+            elif self.USER:
+                base += self.USER
+            elif self.PASSWORD:
+                raise ValueError("Password without user is not allowed")
+
+            if self.HOST:
+                base += f"@{self.HOST}"
+            if self.PORT:
+                base += f":{self.PORT}"
+            if self.DATABASE:
+                base += f"/{self.DATABASE}"
+            return base
 
         @property
         def ASYNC_DB_URL(self) -> str:
-            return f"{self.DB_DRIVER}+{self.ASYNC_DB_DRIVER}:///{self.DATABASE}"
+            return self.DB_URL.replace(
+                self.DB_DRIVER, f"{self.DB_DRIVER}+{self.ASYNC_DB_DRIVER}", 1
+            )
 
     db: DB
 
@@ -68,8 +89,8 @@ class Settings(SettingsBase):
     actor_refs: ActorRefs
 
     class Security(SettingsBase):
-        SECRET_KEY: str = secrets.token_urlsafe(32)
-        ALGORITHM: str = "HS256"
+        SECRET_KEY: str  # secrets.token_urlsafe(32)
+        ALGORITHM: str  # jose.constants.ALGORITHMS
         ACCESS_TOKEN_EXPIRE_MINUTES: TimeScale.Minute = TimeScale.Minute(WEEK)
 
     security: Security
@@ -97,12 +118,18 @@ class Settings(SettingsBase):
 
     api: API
 
-    class Cache(SettingsBase):
-        HOST: str = "localhost"
-        PORT: int = 6379
-        DB: int = 0
+    class Redis(SettingsBase):
+        HOST: str
+        PORT: int
+        DB: int
+        MAX_CONNECTIONS: int = 10
+        DECODE_RESPONSES: bool = True
 
-    cache: Cache
+        @property
+        def URL(self) -> str:
+            return f"redis://{self.HOST}:{self.PORT}/{self.DB}"
+
+    redis: Redis
 
     @property
     def is_prod_env(self):

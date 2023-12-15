@@ -9,6 +9,7 @@ from openai.types.chat import (
     completion_create_params,
 )
 
+
 from src.domain.model.base import ValueObject
 
 # TODO: read

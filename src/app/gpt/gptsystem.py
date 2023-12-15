@@ -4,15 +4,13 @@ from functools import singledispatchmethod
 
 from src.app.actor import BoxFactory, EntityActor, Journal, QueueBox, System
 from src.app.auth.model import UserSignedUp
-from src.app.gpt import errors, model
+from src.app.gpt import errors, gptclient, model
 from src.domain._log import logger
 from src.domain.config import Settings
 from src.domain.fmtutils import async_receiver
 from src.domain.interface import ActorRef, ICommand
 from src.domain.model.base import Command, Event, Message
 from src.infra.eventstore import EventStore
-from src.infra.factory import get_gptclient
-from src.infra.gptclient import OpenAIClient
 
 
 class SystemStarted(Event):
@@ -44,12 +42,12 @@ class SystemState(enum.Enum):
     def is_stopped(self) -> bool:
         return self == type(self).stopped
 
-    def start(self) -> ty.Self:
+    def start(self) -> "SystemState":
         if not self.is_created:
             raise errors.InvalidStateError("system already started")
         return type(self).running
 
-    def stop(self) -> ty.Self:
+    def stop(self) -> "SystemState":
         if self.is_created:
             raise errors.InvalidStateError("system not started yet")
         if not self.is_running:
@@ -122,20 +120,22 @@ class UserActor(EntityActor["SessionActor", model.User]):
 
 
 class SessionActor(EntityActor["SessionActor", model.ChatSession]):
-    def __init__(self, chat_session: model.ChatSession, gptclient: OpenAIClient):
+    def __init__(
+        self, chat_session: model.ChatSession, gptclient: gptclient.OpenAIClient
+    ):
         super().__init__(boxfactory=QueueBox, entity=chat_session)
-        self._gptclient: OpenAIClient = gptclient
+        self._gptclient = gptclient
 
     @property
     def chat_context(self) -> list[model.ChatMessage]:
         return self.entity.messages
 
     @property
-    def gpt_client(self) -> OpenAIClient:
+    def gpt_client(self) -> gptclient.OpenAIClient:
         return self._gptclient
 
     @gpt_client.setter
-    def gpt_client(self, client: OpenAIClient) -> None:
+    def gpt_client(self, client: gptclient.OpenAIClient) -> None:
         self._gptclient = client
 
     async def _send_chatmessage(
@@ -238,9 +238,10 @@ class SessionActor(EntityActor["SessionActor", model.ChatSession]):
     @apply.register
     @classmethod
     def _(cls, event: model.SessionCreated) -> ty.Self:
+        # TODO: implement user API pooling
         return cls(
             chat_session=model.ChatSession.apply(event),
-            gptclient=get_gptclient(settings=cls._system.settings),
+            gptclient=gptclient.OpenAIClient.from_apikey("random"),
         )
 
 

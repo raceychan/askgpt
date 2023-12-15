@@ -27,16 +27,16 @@ class TestSettings(Settings):
 @pytest.fixture(scope="session")
 def settings() -> TestSettings:
     db_path = pathlib.Path("./database/test.db")
-    api_key = "fake_api_key"
+    # api_key = "fake_api_key"
 
     db = TestSettings.DB(DATABASE=db_path)
     ss = TestSettings(
-        OPENAI_API_KEY=api_key,
+        # OPENAI_API_KEY=api_key,
         db=db,
         actor_refs=TestSettings.ActorRefs(),
         RUNTIME_ENV="test",
         api=TestSettings.API(HOST="localhost", PORT=8000, API_VERSION="0.1.0"),
         security=TestSettings.Security(SECRET_KEY="test"),
-        cache=TestSettings.Cache(),
+        redis=TestSettings.Redis(HOST="localhost", PORT=6379, DB=1),
     )
     return ss

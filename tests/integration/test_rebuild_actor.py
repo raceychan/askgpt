@@ -1,11 +1,10 @@
 import pytest
 
 from src.app.actor import QueueBox
-from src.app.gpt import model, service
+from src.app.gpt import gptclient, model, service
 from src.app.gpt.params import ChatResponse
 from src.domain import config
 from src.domain.model.test_default import TestDefaults
-from src.infra.gptclient import OpenAIClient
 
 
 @pytest.fixture(scope="module")
@@ -59,7 +58,7 @@ def openai_client(chat_response: ChatResponse):
     async def wrapper():
         yield chat_response
 
-    class FakeClient(OpenAIClient):
+    class FakeClient(gptclient.OpenAIClient):
         async def send_chat(  # type: ignore
             self, **kwargs  # type: ignore
         ):
@@ -69,7 +68,9 @@ def openai_client(chat_response: ChatResponse):
 
 
 @pytest.fixture(scope="module")
-async def session_actor(user_actor: service.UserActor, openai_client: OpenAIClient):
+async def session_actor(
+    user_actor: service.UserActor, openai_client: gptclient.OpenAIClient
+):
     cmd = model.CreateSession(
         session_id=TestDefaults.SESSION_ID, user_id=TestDefaults.USER_ID
     )

@@ -1,3 +1,4 @@
+from src.app.auth.model import UserRoles
 from src.domain.model.user import UserInfo
 from src.infra import encrypt
 
@@ -11,7 +12,7 @@ class TestDefaults:
     SESSION_ID: str = "e0b5ee4a-ef76-4ed9-89fb-5f7a64122dc8"
     SESSION_NAME: str = "default_session"
     MODEL: str = "gpt-3.5-turbo"
-    USER_ROLE: str = "user"
+    USER_ROLE: UserRoles = UserRoles.user
     USER_INFO: UserInfo = UserInfo(
         user_email=USER_EMAIL,
         user_name=USER_NAME,

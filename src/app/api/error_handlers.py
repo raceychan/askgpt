@@ -7,9 +7,9 @@ from starlette import status
 from starlette.background import BackgroundTask
 from starlette.responses import JSONResponse, Response
 
+from src.app.api.errors import DomainError, ErrorDetail
 from src.app.api.xheaders import XHeaders
 from src.app.auth.errors import AuthenticationError
-from src.app.error import DomainError, ErrorDetail
 from src.app.gpt.errors import OrphanSessionError
 
 

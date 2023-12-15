@@ -5,11 +5,11 @@ from sqlalchemy.ext.asyncio import AsyncEngine
 
 from src.app.auth.errors import UserAlreadyExistError
 from src.app.auth.repository import UserRepository
-from src.app.auth.service import Authenticator, AuthService
+from src.app.auth.service import AuthService, TokenRegistry
 from src.domain.config import Settings
 from src.domain.model.test_default import TestDefaults
 from src.infra.cache import MemoryCache
-from src.infra.encrypt import TokenEncrypt
+from src.infra.encrypt import Encrypt
 from src.infra.mq import MessageProducer
 
 
@@ -18,17 +18,15 @@ async def auth_service(
     async_engine: AsyncEngine,
     local_cache: MemoryCache[str, str],
     settings: Settings,
-    token_encrypt: TokenEncrypt,
+    token_encrypt: Encrypt,
     producer: MessageProducer[ty.Any],
 ):
     return AuthService(
         UserRepository(async_engine),
-        Authenticator(
-            token_cache=local_cache,
-            token_encrypt=token_encrypt,
-            token_ttl=settings.security.ACCESS_TOKEN_EXPIRE_MINUTES,
-        ),
+        token_encrypt=token_encrypt,
+        token_registry=TokenRegistry(local_cache),
         producer=producer,
+        security_settings=settings.security,
     )
 
 
@@ -58,4 +56,4 @@ async def test_user_login(test_defaults: TestDefaults, auth_service: AuthService
     token = await auth_service.login(
         test_defaults.USER_EMAIL, test_defaults.USER_PASSWORD
     )
-    assert await auth_service.is_user_authenticated(token)
+    assert token

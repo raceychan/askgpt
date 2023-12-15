@@ -17,7 +17,7 @@ class SendMessageRequest(RequestBody):
 
 
 async def get_service():
-    service = GPTService.build(get_setting())
+    service = GPTService.from_settings(get_setting())
     async with service.lifespan():
         yield service
 

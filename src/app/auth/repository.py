@@ -18,6 +18,17 @@ USER_TABLE: ty.Final[sa.TableClause] = sa.table(
     sa.column("gmt_created", sa.DateTime),
 )
 
+USER_OPENAI_KEYS_TABLE: ty.Final[sa.TableClause] = sa.table(
+    "user_api_keys",
+    sa.column("id", sa.String),
+    sa.column("user_id", sa.String),
+    sa.column("api_key", sa.BINARY),
+    sa.column("api_type", sa.String),
+    sa.column("is_active", sa.Boolean),
+    sa.column("gmt_modified", sa.DateTime),
+    sa.column("gmt_created", sa.DateTime),
+)
+
 
 def dump_userauth(user: UserAuth) -> dict[str, ty.Any]:
     data = user.asdict(by_alias=False)
@@ -78,3 +89,24 @@ class UserRepository(IUserRepository):
 
         user_data = dict(res._mapping)  # type: ignore
         return load_userauth(user_data)
+
+    async def add_api_key_for_user(
+        self, user_id: str, encrypted_api_key: bytes
+    ) -> None:
+        stmt = sa.insert(USER_OPENAI_KEYS_TABLE).values(
+            user_id=user_id, api_key=encrypted_api_key
+        )
+
+        async with self._aioengine.begin() as conn:
+            await conn.execute(stmt)
+
+    async def get_api_keys_for_user(self, user_id: str) -> list[bytes]:
+        stmt = sa.select(USER_OPENAI_KEYS_TABLE).where(
+            USER_OPENAI_KEYS_TABLE.c.user_id == user_id
+        )
+
+        async with self._aioengine.begin() as conn:
+            cursor = await conn.execute(stmt)
+            res = cursor.fetchall()
+
+        return [row.api_key for row in res]

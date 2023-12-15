@@ -2,7 +2,7 @@ from functools import lru_cache
 
 from src.domain.config import Settings
 from src.domain.interface import IEvent
-from src.infra import cache, encrypt, eventstore, gptclient, mq, sa_utils
+from src.infra import cache, encrypt, eventstore, mq, sa_utils
 
 
 def get_async_engine(settings: Settings):
@@ -48,13 +48,19 @@ def get_producer(settings: Settings):
 
 
 @lru_cache(maxsize=1)
-def get_localcache():
+def get_cache(settings: Settings):
+    cache_url = settings.redis.URL
+    return cache.RedisCache[str, str].build(cache_url)
+
+
+@lru_cache(maxsize=1)
+def get_local_cache(settings: Settings | None = None):
     return cache.MemoryCache[str, str]()
 
 
 @lru_cache(maxsize=1)
-def get_token_encrypt(settings: Settings):
-    return encrypt.TokenEncrypt(
+def get_encrypt(settings: Settings):
+    return encrypt.Encrypt(
         secret_key=settings.security.SECRET_KEY,
         algorithm=settings.security.ALGORITHM,
     )
@@ -63,8 +69,3 @@ def get_token_encrypt(settings: Settings):
 @lru_cache(maxsize=1)
 def get_sqldbg(settings: Settings):
     return sa_utils.SQLDebugger(get_engine(settings))
-
-
-@lru_cache(maxsize=1)
-def get_gptclient(settings: Settings):
-    return gptclient.OpenAIClient.from_apikey(settings.OPENAI_API_KEY)

@@ -50,6 +50,13 @@ class UserSignedUp(Event):
         return last_login.isoformat()
 
 
+class UserAPIKeyAdded(Event):
+    entity_id: str = Field(alias="user_id")
+    api_key: bytes  # encrypted api key
+    api_type: str
+
+
+# TODO: add api_keys to userauth
 class UserAuth(Entity):
     entity_id: str = Field(default_factory=uuid_factory, alias="user_id")
     role: UserRoles = UserRoles.user

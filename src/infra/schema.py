@@ -88,3 +88,13 @@ class SessionSchema(TableBase):
     user_id = sa.Column("user_id", sa.Integer, sa.ForeignKey("users.id"))
     session_id = sa.Column("session_id", sa.String, unique=True, index=True)
     is_active = sa.Column("is_active", sa.Boolean, default=True)
+
+
+class UserAPIKeySchema(TableBase):
+    __tablename__: str = "user_api_keys"  # type: ignore
+
+    id = sa.Column("id", sa.Integer, autoincrement=True, primary_key=True)
+    user_id = sa.Column("user_id", sa.Integer, sa.ForeignKey("users.id"))
+    api_type = sa.Column("api_type", sa.String, index=True)
+    api_key = sa.Column("api_key", sa.BINARY, unique=True, index=True)
+    is_active = sa.Column("is_active", sa.Boolean, default=True)
