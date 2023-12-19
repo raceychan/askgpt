@@ -1,4 +1,4 @@
-import datetime
+import json
 import typing as ty
 
 import sqlalchemy as sa
@@ -18,31 +18,33 @@ EVENT_TABLE: ty.Final[sa.TableClause] = sa.table(
     sa.column("gmt_created", sa.DateTime),
 )
 
+table_event_mapping = {
+    "id": "event_id",
+    "entity_id": "entity_id",
+    "event_type": "event_type",
+    "gmt_created": "timestamp",
+}
+
 
 def dump_event(event: IEvent) -> dict[str, ty.Any]:
     data = event.asdict(by_alias=False)
-    return dict(
-        id=data.pop("event_id"),
-        entity_id=data.pop("entity_id"),
-        gmt_created=data.pop("timestamp"),
-        event_type=data.pop("event_type"),
-        event_body=data,
-        version=event.__class__.version,
-    )
+
+    row = {colname: data.pop(field) for colname, field in table_event_mapping.items()}
+    row["event_body"] = json.dumps(data)
+    row["version"] = event.__class__.version
+    return row
 
 
 def load_event(row_mapping: sa.RowMapping | dict[str, ty.Any]) -> IEvent:
-    data = dict(row_mapping)
-    matched_type = Event.match_event_type(data["event_type"])
-    event_id = data.pop("id")
-    entity_id = data.pop("entity_id")
-    gmt_created: datetime.datetime = data.pop("gmt_created")
-    body = data.pop("event_body")
+    row = dict(row_mapping)
 
-    event = matched_type(
-        id=event_id, entity_id=entity_id, timestamp=gmt_created, **body
+    data = {field: row.pop(colname) for colname, field in table_event_mapping.items()}
+    version, extra = row.pop("version"), row.pop("event_body")
+    matched_type = Event.match_event_type(
+        event_type=data["event_type"], version=version
     )
-
+    data = data | (extra if isinstance(extra, dict) else json.loads(extra))
+    event = matched_type.model_validate(data)
     return event
 
 

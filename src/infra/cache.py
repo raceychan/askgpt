@@ -70,7 +70,7 @@ class MemoryCache[TKey: str, TVal: ty.Any](Cache[TKey, TVal]):
         return cls()
 
 
-class RedisCache[TKey: str, TVal: ty.Any](Cache[TKey, TVal]):
+class RedisCache(Cache[ty.Hashable, ty.Any]):
     def __init__(self, redis: aioredis.Redis):
         self._redis = redis
 
@@ -78,25 +78,25 @@ class RedisCache[TKey: str, TVal: ty.Any](Cache[TKey, TVal]):
     def client(self):
         return self._redis
 
-    async def get(self, key: TKey) -> TVal | None:
+    async def get(self, key: ty.Hashable) -> ty.Any | None:
         return await self._redis.get(key)  # type: ignore
 
     async def set(
         self,
-        key: TKey,
-        value: TVal,
+        key: ty.Hashable,
+        value: ty.Any,
         ex: int | datetime.timedelta | None = None,
         px: int | datetime.timedelta | None = None,
         nx: bool = False,
         xx: bool = False,
         keepttl: bool = False,
         get: bool = False,
-    ) -> TVal | None:
+    ) -> ty.Any | None:
         return await self._redis.set(  # type: ignore
             key, value, ex=ex, px=px, nx=nx, xx=xx, keepttl=keepttl, get=get
         )
 
-    async def remove(self, key: TKey) -> None:
+    async def remove(self, key: ty.Hashable) -> None:
         await self._redis.delete(key)  # type: ignore
 
     def load_script(
@@ -106,37 +106,22 @@ class RedisCache[TKey: str, TVal: ty.Any](Cache[TKey, TVal]):
             script = script.read_text()
         return self._redis.register_script(script)
 
-    async def sadd(self, key: TKey, *values: TVal) -> bool:
+    async def sadd(self, key: ty.Hashable, *values: ty.Any) -> bool:
         res: RedisBool = await self._redis.sadd(key, *values)  # type: ignore
         return res == 1  # type: ignore
 
-    async def sismember(self, key: TKey, member: TVal) -> bool:
+    async def sismember(self, key: ty.Hashable, member: ty.Any) -> bool:
         res: RedisBool = await self._redis.sismember(key, member)  # type: ignore
         return res == 1  # type: ignore
 
-    async def lpop(self, key: TKey) -> list[TVal] | None:
+    async def lpop(self, key: ty.Hashable) -> ty.Any | None:
         return await self._redis.lpop(key)  # type: ignore
 
-    async def rpush(self, key: TKey, *values: TVal) -> bool:
+    async def rpush(self, key: ty.Hashable, *values: ty.Sequence[ty.Any]) -> bool:
+        if not values:
+            raise ValueError("values must not be empty")
         res = await self._redis.rpush(key, *values)  # type: ignore
         return res == 1  # type: ignore
-
-    # async def hmget(self, key: TKey, *fields: str) -> list[TVal | None]:
-    #     return await self._redis.hmget(key, *fields)  # type: ignore
-
-    # async def hmset(self, key: TKey, mapping: dict[str, ty.Any]) -> None:
-    #     await self._redis.hmset(key, mapping)  # type: ignore
-
-    # async def hget(self, key: TKey, field: str) -> TVal | None:
-    #     return await self._redis.hget(key, field)  # type: ignore
-
-    # async def hincrby(self, key: TKey, field: str, amount: int) -> bool:
-    #     res: IntBool = await self._redis.hincrby(key, field, amount)  # type: ignore
-    #     return res == 1
-
-    # async def decrby(self, key: TKey, amount: int = 1) -> bool:
-    #     res: IntBool = await self._redis.decrby(key, amount)  # type: ignore
-    #     return res == 1  # type: ignore
 
     @asynccontextmanager
     async def pipeline(self, transaction: bool = False):
@@ -160,3 +145,20 @@ class RedisCache[TKey: str, TVal: ty.Any](Cache[TKey, TVal]):
         )
         client = aioredis.Redis.from_pool(pool)
         return cls(redis=client)
+
+    # async def hmget(self, key: TKey, *fields: str) -> list[TVal | None]:
+    #     return await self._redis.hmget(key, *fields)  # type: ignore
+
+    # async def hmset(self, key: TKey, mapping: dict[str, ty.Any]) -> None:
+    #     await self._redis.hmset(key, mapping)  # type: ignore
+
+    # async def hget(self, key: TKey, field: str) -> TVal | None:
+    #     return await self._redis.hget(key, field)  # type: ignore
+
+    # async def hincrby(self, key: TKey, field: str, amount: int) -> bool:
+    #     res: IntBool = await self._redis.hincrby(key, field, amount)  # type: ignore
+    #     return res == 1
+
+    # async def decrby(self, key: TKey, amount: int = 1) -> bool:
+    #     res: IntBool = await self._redis.decrby(key, amount)  # type: ignore
+    #     return res == 1  # type: ignore

@@ -22,7 +22,7 @@ USER_OPENAI_KEYS_TABLE: ty.Final[sa.TableClause] = sa.table(
     "user_api_keys",
     sa.column("id", sa.String),
     sa.column("user_id", sa.String),
-    sa.column("api_key", sa.BINARY),
+    sa.column("api_key", sa.String),
     sa.column("api_type", sa.String),
     sa.column("is_active", sa.Boolean),
     sa.column("gmt_modified", sa.DateTime),
@@ -91,10 +91,10 @@ class UserRepository(IUserRepository):
         return load_userauth(user_data)
 
     async def add_api_key_for_user(
-        self, user_id: str, encrypted_api_key: bytes
+        self, user_id: str, encrypted_api_key: str, api_type: str
     ) -> None:
         stmt = sa.insert(USER_OPENAI_KEYS_TABLE).values(
-            user_id=user_id, api_key=encrypted_api_key
+            user_id=user_id, api_key=encrypted_api_key, api_type=api_type
         )
 
         async with self._aioengine.begin() as conn:

@@ -1,7 +1,8 @@
 import typing as ty
+from collections import defaultdict
 from functools import singledispatchmethod
 
-from src.app.auth.model import UserSignedUp
+from src.app.auth.model import UserAPIKeyAdded, UserSignedUp
 from src.app.gpt.params import ChatGPTRoles, CompletionModels
 from src.domain.interface import ICommand, IRepository
 from src.domain.model.base import (
@@ -131,6 +132,7 @@ class ChatSession(Entity):
 class User(Entity):
     entity_id: str = Field(alias="user_id")
     session_ids: list[str] = Field(default_factory=list)
+    api_keys: dict[str, list[str]] = Field(default_factory=lambda: defaultdict(list))
 
     def predict_command(self, command: ICommand) -> list[SessionCreated]:
         if isinstance(command, CreateSession):
@@ -139,9 +141,6 @@ class User(Entity):
             ]
         else:
             raise NotImplementedError
-
-    def _add_session(self, session_id: str) -> None:
-        self.session_ids.append(session_id)
 
     @singledispatchmethod
     def handle(self, command: Command) -> None:
@@ -159,7 +158,12 @@ class User(Entity):
 
     @apply.register
     def _(self, event: SessionCreated) -> ty.Self:
-        self._add_session(event.session_id)
+        self.session_ids.append(event.session_id)
+        return self
+
+    @apply.register
+    def _(self, event: UserAPIKeyAdded) -> ty.Self:
+        self.api_keys[event.api_type].append(event.api_key)
         return self
 
     @classmethod

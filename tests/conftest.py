@@ -18,7 +18,6 @@ def event_loop():
 
 class TestSettings(Settings):
     __test__ = False
-    # OPENAI_API_KEY: str = "fake_api_key"
 
     class DB(Settings.DB):
         DATABASE: pathlib.Path
@@ -30,16 +29,7 @@ class TestSettings(Settings):
 
 @pytest.fixture(scope="session")
 def settings() -> TestSettings:
-    db_path = pathlib.Path(":memory:")
-    db = TestSettings.DB(DATABASE=db_path)
-    ss = TestSettings(
-        db=db,
-        RUNTIME_ENV="test",
-        actor_refs=TestSettings.ActorRefs(),
-        api=TestSettings.API(HOST="localhost", PORT=8000, API_VERSION="0.1.0"),
-        security=TestSettings.Security(SECRET_KEY="test", ALGORITHM="HS256"),
-        redis=TestSettings.Redis(HOST="localhost", PORT=6379, DB=0),
-    )
+    ss = TestSettings.from_file("test_settings.toml")
     return ss
 
 

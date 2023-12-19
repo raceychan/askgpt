@@ -92,9 +92,12 @@ class SessionSchema(TableBase):
 
 class UserAPIKeySchema(TableBase):
     __tablename__: str = "user_api_keys"  # type: ignore
+    __table_args__ = (
+        sa.UniqueConstraint("user_id", "api_key", name="user_api_key_unique"),
+    )
 
     id = sa.Column("id", sa.Integer, autoincrement=True, primary_key=True)
     user_id = sa.Column("user_id", sa.Integer, sa.ForeignKey("users.id"))
     api_type = sa.Column("api_type", sa.String, index=True)
-    api_key = sa.Column("api_key", sa.BINARY, unique=True, index=True)
+    api_key = sa.Column("api_key", sa.String, unique=True, index=True)
     is_active = sa.Column("is_active", sa.Boolean, default=True)

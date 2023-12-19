@@ -9,7 +9,7 @@ from src.infra import cache, encrypt, factory, mq
 
 
 class TokenRegistry:
-    def __init__(self, cache: cache.RedisCache[str, str]):
+    def __init__(self, cache: cache.RedisCache):
         self._cache = cache
 
     def keybuilder(self, user_id: str) -> str:
@@ -110,22 +110,32 @@ class AuthService:
         await self._producer.publish(user_signed_up)
         return user_auth.entity_id
 
-    async def add_api_key(self, user_id: str, api_key: str) -> None:
+    async def add_api_key(self, user_id: str, api_key: str, api_type: str) -> None:
         user = await self._user_repo.get(user_id)
         if user is None:
             raise errors.UserNotFoundError("user not found")
 
-        encrypted = self._token_encrypt.encrypt_string(api_key)
-        await self._user_repo.add_api_key_for_user(user_id, encrypted)
+        encrypted_key = self._token_encrypt.encrypt_string(api_key).decode()
+
+        event = model.UserAPIKeyAdded(
+            user_id=user_id,
+            api_key=encrypted_key,
+            api_type=api_type,
+        )
+        # NOTE: same api_key will be different encrypted string, leading to duplicate rows of same api key
+        await self._user_repo.add_api_key_for_user(user_id, encrypted_key, api_type)
+        await self._producer.publish(event)
 
     @classmethod
     def from_settings(cls, settings: Settings) -> "AuthService":
         aioengine = factory.get_async_engine(settings)
         user_repo = repository.UserRepository(aioengine)
+        encrypt = factory.get_encrypt(settings=settings)
+        producer = factory.get_producer(settings=settings)
         return cls(
             user_repo=user_repo,
             token_registry=TokenRegistry(cache=factory.get_cache(settings)),
-            token_encrypt=factory.get_encrypt(settings=settings),
-            producer=factory.get_producer(settings=settings),
+            token_encrypt=encrypt,
+            producer=producer,
             security_settings=settings.security,
         )

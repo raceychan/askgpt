@@ -11,7 +11,7 @@ from src.app.bootstrap import bootstrap
 from src.app.eventrecord import EventRecord
 from src.domain.config import Settings
 from src.domain.model.test_default import TestDefaults
-from src.infra.cache import MemoryCache
+from src.infra.cache import MemoryCache, RedisCache
 from src.infra.eventstore import EventStore
 from src.infra.mq import BaseConsumer, BaseProducer, QueueBroker
 
@@ -75,3 +75,10 @@ async def eventrecord(consumer: BaseConsumer[ty.Any], eventstore: EventStore):
     es = EventRecord(consumer, eventstore, wait_gap=0.1)
     async with es.lifespan():
         yield es
+
+
+@pytest.fixture(scope="module", autouse=True)
+async def redis_cache(settings: Settings):
+    redis = RedisCache.build(url=settings.redis.URL)
+    async with redis.lifespan():
+        yield redis

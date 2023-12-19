@@ -1,7 +1,9 @@
 from fastapi import APIRouter, Depends
 from fastapi.responses import StreamingResponse
+from starlette import status
 
 from src.app.api.model import RequestBody
+from src.app.api.response import RedirectResponse
 from src.app.api.validation import AccessToken, parse_access_token
 from src.app.gpt.model import ChatGPTRoles, CompletionModels
 from src.app.gpt.service import GPTService
@@ -28,11 +30,13 @@ async def create_session(
     service: GPTService = Depends(get_service),
 ):
     session_id = await service.create_session(user_id=token.sub)
-    return session_id
+    return RedirectResponse(
+        f"/v1/gpt/sessions/{session_id}", status_code=status.HTTP_303_SEE_OTHER
+    )
 
 
 @gpt_router.get("/sessions/{session_id}")
-async def build_session(
+async def get_session(
     session_id: str,
     token: AccessToken = Depends(parse_access_token),
     service: GPTService = Depends(get_service),

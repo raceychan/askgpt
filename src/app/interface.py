@@ -1,8 +1,11 @@
 import abc
 import typing as ty
-from functools import cached_property, singledispatchmethod
+from functools import singledispatchmethod
 
-from src.domain.interface import ActorRef, ICommand, IEvent, IEventStore, IMessage
+from src.domain.interface import ActorRef as ActorRef
+from src.domain.interface import ICommand, IEvent
+from src.domain.interface import IEventStore as IEventStore
+from src.domain.interface import IMessage
 
 
 class AbstractActor(abc.ABC):
@@ -20,11 +23,6 @@ class AbstractActor(abc.ABC):
     async def receive(self, message: IMessage) -> None:
         raise NotImplementedError
 
-    @singledispatchmethod
-    @abc.abstractmethod
-    def apply(self, event: IEvent) -> ty.Self:
-        raise NotImplementedError
-
     def reply(self, message: IMessage) -> None:
         """
         sth like:
@@ -33,13 +31,22 @@ class AbstractActor(abc.ABC):
         raise NotImplementedError
 
 
+class AbstractStetefulActor(AbstractActor):
+    @singledispatchmethod
+    @abc.abstractmethod
+    def apply(self, event: IEvent) -> ty.Self:
+        raise NotImplementedError
+
+    @abc.abstractmethod
+    def rebuild(self, events: "list[IEvent]") -> ty.Self:
+        ...
+
+
 class IJournal(ty.Protocol):
     eventstore: IEventStore
 
-    @cached_property
     def ref(self) -> ActorRef:
         ...
 
     async def list_events(self, ref: ActorRef) -> "list[IEvent]":
         ...
-        # return await self.eventstore.get(entity_id=ref)

@@ -81,14 +81,6 @@ class GPTService:
                 completion_model=completion_model,
             )
 
-    async def create_user(
-        self, username: str, useremail: str, password: str
-    ) -> UserActor:
-        user_id = model.uuid_factory()
-        create_user = model.CreateUser(user_id=user_id)
-        await self.system.receive(create_user)
-        return self.system.select_child(user_id)
-
     async def create_session(self, user_id: str) -> str:
         user_actor = self.system.get_child(user_id)
         if not user_actor:
@@ -112,6 +104,8 @@ class GPTService:
         if session_actor is None:
             session_actor = await user_actor.rebuild_session(session_id)
         return session_actor
+
+
 
     async def start(self) -> None:
         if self.state.is_running:
@@ -141,7 +135,10 @@ class GPTService:
     def from_settings(cls, settings: Settings) -> ty.Self:
         aioengine = factory.get_async_engine(settings)
         system = GPTSystem(
-            settings=settings, ref=settings.actor_refs.SYSTEM, boxfactory=QueueBox
+            settings=settings,
+            ref=settings.actor_refs.SYSTEM,
+            boxfactory=QueueBox,
+            cache=factory.get_cache(settings),
         )
         session_repo = repository.SessionRepository(aioengine)
         service = cls(system=system, session_repo=session_repo)

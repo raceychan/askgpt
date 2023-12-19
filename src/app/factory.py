@@ -1,29 +1,19 @@
-from functools import lru_cache
-
 #
-from src.app.auth.service import Authenticator
+from src.app.auth.service import TokenRegistry
 from src.app.eventrecord import EventRecord
-from src.domain.config import Settings
-from src.infra.factory import (
-    get_consumer,
-    get_eventstore,
-    get_localcache,
-    get_token_encrypt,
-)
+from src.domain.config import Settings, settingfactory
+from src.infra.factory import get_cache, get_consumer, get_eventstore
 
 
-@lru_cache(maxsize=1)
+@settingfactory
 def get_eventrecord(settings: Settings):
     return EventRecord(
         consumer=get_consumer(settings),
         eventstore=get_eventstore(settings),
+        wait_gap=settings.event_record.EventFetchInterval,
     )
 
 
-@lru_cache(maxsize=1)
-async def get_authenticator(settings: Settings):
-    return Authenticator(
-        token_cache=get_localcache(),
-        token_encrypt=get_token_encrypt(settings=settings),
-        token_ttl=settings.security.ACCESS_TOKEN_EXPIRE_MINUTES,
-    )
+@settingfactory
+async def get_token_registry(settings: Settings):
+    return TokenRegistry(cache=get_cache(settings))

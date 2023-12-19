@@ -1,6 +1,7 @@
 import functools
 import pathlib
 import typing as ty
+from functools import lru_cache
 
 from pydantic import BaseModel, ConfigDict
 
@@ -8,8 +9,18 @@ from src.domain.interface import SQL_ISOLATIONLEVEL, EventLogRef, JournalRef, Sy
 from src.infra.fileutil import FileUtil
 
 
+class SettingsFactory[T](ty.Protocol):
+    def __call__(self, settings: "Settings") -> T:
+        ...
+
+
+def settingfactory[T: ty.Any](factory: SettingsFactory[T]) -> SettingsFactory[T]:
+    return lru_cache(maxsize=1)(factory)
+
+
 class TimeScale:
     "A more type-aware approach to time scale"
+    Second = ty.NewType("Second", int)
     Minute = ty.NewType("Minute", int)
     Hour = ty.NewType("Hour", int)
     Day = ty.NewType("Day", int)
@@ -33,15 +44,17 @@ class SettingsBase(BaseModel):
 
 
 class Settings(SettingsBase):
-    # TODO: get rid of default values, define them in TestSettings
     PROJECT_NAME: ty.ClassVar[str] = "askgpt"
     PROJECT_ROOT: ty.ClassVar[pathlib.Path] = pathlib.Path.cwd()
 
-    # OPENAI_API_KEY: str
     RUNTIME_ENV: ty.Literal["dev", "prod", "test"]
 
     # make pyright happy, Settings is hashable by setting frozen=True
     __hash__: ty.Callable[[None], int]
+
+    @property
+    def is_prod_env(self):
+        return self.RUNTIME_ENV == "prod"
 
     class DB(SettingsBase):
         DB_DRIVER: str = "sqlite"
@@ -89,7 +102,7 @@ class Settings(SettingsBase):
     actor_refs: ActorRefs
 
     class Security(SettingsBase):
-        SECRET_KEY: str  # secrets.token_urlsafe(32)
+        SECRET_KEY: str  # 32 bytes url safe string
         ALGORITHM: str  # jose.constants.ALGORITHMS
         ACCESS_TOKEN_EXPIRE_MINUTES: TimeScale.Minute = TimeScale.Minute(WEEK)
 
@@ -131,9 +144,10 @@ class Settings(SettingsBase):
 
     redis: Redis
 
-    @property
-    def is_prod_env(self):
-        return self.RUNTIME_ENV == "prod"
+    class EventRecord(SettingsBase):
+        EventFetchInterval: float = 0.1
+
+    event_record: EventRecord
 
     @classmethod
     @functools.lru_cache(maxsize=1)

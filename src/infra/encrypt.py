@@ -62,5 +62,5 @@ class Encrypt:
     def encrypt_string(self, string: str) -> bytes:
         return encrypt_string(string, self._secret_key.encode())
 
-    def decrypt_string(self, string: bytes) -> str:
-        return decrypt_string(string, self._secret_key.encode())
+    def decrypt_string(self, encrypted: bytes) -> str:
+        return decrypt_string(encrypted, self._secret_key.encode())

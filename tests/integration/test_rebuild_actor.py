@@ -5,6 +5,7 @@ from src.app.gpt import gptclient, model, service
 from src.app.gpt.params import ChatResponse
 from src.domain import config
 from src.domain.model.test_default import TestDefaults
+from src.infra.cache import RedisCache
 
 
 @pytest.fixture(scope="module")
@@ -19,9 +20,16 @@ def chat_messages(test_defaults: TestDefaults):
 
 
 @pytest.fixture(scope="module")
-async def gptsystem(settings: config.Settings, eventstore: service.EventStore):
+async def gptsystem(
+    settings: config.Settings,
+    eventstore: service.EventStore,
+    redis_cache: RedisCache,
+):
     system = service.GPTSystem(
-        boxfactory=QueueBox, ref=settings.actor_refs.SYSTEM, settings=settings
+        boxfactory=QueueBox,
+        ref=settings.actor_refs.SYSTEM,
+        settings=settings,
+        cache=redis_cache,
     )
     await system.start(eventstore=eventstore)
     return system
@@ -68,16 +76,13 @@ def openai_client(chat_response: ChatResponse):
 
 
 @pytest.fixture(scope="module")
-async def session_actor(
-    user_actor: service.UserActor, openai_client: gptclient.OpenAIClient
-):
+async def session_actor(user_actor: service.UserActor):
     cmd = model.CreateSession(
         session_id=TestDefaults.SESSION_ID, user_id=TestDefaults.USER_ID
     )
     await user_actor.handle(cmd)
     assert user_actor.entity.session_ids
     session = user_actor.select_child(TestDefaults.SESSION_ID)
-    session.gpt_client = openai_client
     return session
 
 
@@ -90,12 +95,17 @@ def command_factory(chat_message: model.ChatMessage):
     )
 
 
+async def test_system_cache(gptsystem: service.GPTSystem):
+    cache = gptsystem.cache
+    assert cache is not None
+    assert isinstance(cache, RedisCache)
+
+
 async def test_ask_question(
     session_actor: service.SessionActor, chat_messages: list[model.ChatMessage]
 ):
-    prompt = chat_messages[0]
+    prompt = chat_messages[0]  # type: ignore
     cmd = command_factory(prompt)
-
     assert session_actor.message_count == 0
     await session_actor.receive(cmd)
     journal = session_actor.system.journal
@@ -148,10 +158,6 @@ async def test_user_rebuild_session(user_actor: service.UserActor):
     )
 
     assert current_ss_actor.message_count == user_built_session.message_count
-
-
-# async def test_user_rebuild_sessions(user_actor: service.UserActor):
-#     await user_actor.rebuild_sessions()
 
 
 async def test_user_self_rebuild(eventstore: service.EventStore):

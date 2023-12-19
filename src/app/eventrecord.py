@@ -38,9 +38,11 @@ class EventRecord:
                 await self._eventstore.add(message)
             except asyncio.CancelledError:
                 break
+            except Exception as e:
+                logger.exception("Unhandled exception in event record", exc_info=e)
 
     async def start(self):
-        logger.info("starting event record")
+        logger.info("started collecting event record")
         if self.__main_task is None or self.__main_task.done():
             self.__main_task = asyncio.create_task(self._poll_forever())
 
@@ -52,7 +54,7 @@ class EventRecord:
             except asyncio.CancelledError:
                 pass  # Task cancellation is expected
             finally:
-                logger.info("stopping event record")
+                logger.info("stopped collection event record")
                 self.__main_task = None
 
     @asynccontextmanager

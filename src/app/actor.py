@@ -4,7 +4,7 @@ import typing as ty
 from collections import deque
 from functools import cached_property, singledispatchmethod
 
-from src.app.interface import AbstractActor, IJournal
+from src.app.interface import AbstractActor, AbstractStetefulActor, IJournal
 from src.domain.config import Settings
 from src.domain.error import SystemNotSetError
 from src.domain.interface import (
@@ -139,8 +139,6 @@ class Actor[TChild: "Actor[ty.Any]"](AbstractActor):
 
         if isinstance(message, Command):
             await self.handle(message)
-        elif isinstance(message, Event):
-            self.apply(message)
         else:
             raise TypeError("Unknown message type")
 
@@ -185,6 +183,28 @@ class Actor[TChild: "Actor[ty.Any]"](AbstractActor):
         elif sys_ is not system:
             raise Exception("Call set_system twice while system is already set")
 
+    @cached_property
+    def ref(self) -> ActorRef:
+        return self.__class__.__name__.lower()
+
+
+class StatefulActor[TChild: Actor[ty.Any], TState: ty.Any](
+    AbstractStetefulActor, Actor[TChild]
+):
+    state: TState
+
+    async def on_receive(self) -> None:
+        message = await self.mailbox.get()
+        if message is None:
+            raise Exception("Mailbox is empty")
+
+        if isinstance(message, Command):
+            await self.handle(message)
+        elif isinstance(message, Event):
+            self.apply(message)
+        else:
+            raise TypeError("Unknown message type")
+
     def rebuild(self, events: list[IEvent]) -> ty.Self:
         if not events:
             raise EmptyEvents(f"No events to rebuild {self.__class__.__name__}")
@@ -194,25 +214,15 @@ class Actor[TChild: "Actor[ty.Any]"](AbstractActor):
 
         return self
 
-    @cached_property
-    def ref(self) -> ActorRef:
-        return self.__class__.__name__.lower()
 
-
-class StatefulActor[TChild: Actor[ty.Any], TState: ty.Any](Actor[TChild]):
-    state: TState
-
-
-class EntityActor[TChild: Actor[ty.Any], TEntity: IEntity](
-    StatefulActor[TChild, TEntity]
-):
+class EntityActor[TChild: Actor[ty.Any], TEntity: IEntity](Actor[TChild]):
     def __init__(
         self,
         entity: TEntity,
         boxfactory: BoxFactory,
     ):
         super().__init__(boxfactory=boxfactory)
-        self.state = self.entity = entity
+        self.entity = entity
 
     @singledispatchmethod
     def apply(self, event: Event) -> ty.Self:
@@ -283,10 +293,6 @@ class System[TChild: Actor[ty.Any]](Actor[TChild]):
     @cached_property
     def ref(self) -> ActorRef:
         return self._ref
-
-    @singledispatchmethod
-    def apply(self, event: Event) -> ty.Self:
-        raise NotImplementedError
 
     @classmethod
     def from_settings(cls, settings: Settings) -> "System[TChild]":

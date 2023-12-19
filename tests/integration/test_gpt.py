@@ -4,6 +4,7 @@ from src.app.actor import MailBox, QueueBox
 from src.app.gpt import errors, gptsystem, model, service
 from src.domain import config
 from src.domain.model.test_default import TestDefaults
+from src.infra.cache import MemoryCache
 from src.infra.eventstore import EventStore
 
 
@@ -15,7 +16,10 @@ class EchoMailbox(MailBox):
 @pytest.fixture(scope="module")
 async def gpt_system(settings: config.Settings, eventstore: service.EventStore):
     system = service.GPTSystem(
-        boxfactory=QueueBox, ref=settings.actor_refs.SYSTEM, settings=settings
+        boxfactory=QueueBox,
+        ref=settings.actor_refs.SYSTEM,
+        settings=settings,
+        cache=MemoryCache(),
     )
     await system.start(eventstore=eventstore)
     return system

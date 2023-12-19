@@ -146,12 +146,12 @@ class DomainModel(BaseModel):
             int: sa.Integer,
             datetime.datetime: sa.DateTime,
             bool: sa.Boolean,
-            float: sa.Float,
+            float: sa.Float,  # type: ignore
             list: sa.JSON,
             dict: sa.JSON,
-            uuid.UUID: sa.UUID,
+            uuid.UUID: sa.UUID,  # type: ignore
             None: sa.Null,
-            decimal.Decimal: sa.Numeric,
+            decimal.Decimal: sa.Numeric,  # type: ignore
         }
 
         tablename = table_name or str_to_snake(cls.__name__)
@@ -199,7 +199,7 @@ class Event(Message):
         cls._event_registry[cls_id] = cls
 
     @classmethod
-    def match_event_type(cls, event_type: str) -> type["Event"]:
+    def match_event_type(cls, event_type: str, version: str) -> type["Event"]:
         """
         Current implementation only works when event_type is globally unique
         for more complex application, we might need to consider using event_type of format
@@ -209,18 +209,47 @@ class Event(Message):
         eg:
         askgpt.user_service.user.user_created
         """
+        # TODO: use version to differentiate event type
         return cls._event_registry[event_type]
 
     @classmethod
     def rebuild(cls, event_data: ty.Mapping[str, ty.Any]) -> "Event":
-        event_type = cls.match_event_type(event_data["event_type"])
-        event = event_type(**event_data)
+        event_type = cls.match_event_type(
+            event_data["event_type"], event_data["version"]
+        )
+        event = event_type.model_validate(event_data)
         return event
 
     @computed_field
     @property
     def event_type(self) -> str:
         return str_to_snake(self.__class__.__name__)
+
+    def model_dump(
+        self,
+        mode: str = "python",
+        include: set[str] | None = None,
+        exclude: set[str] | None = None,
+        by_alias: bool = False,
+        exclude_unset: bool = False,
+        exclude_defaults: bool = False,
+        exclude_none: bool = False,
+        round_trip: bool = False,
+        warnings: bool = True,
+    ):
+        data = super().model_dump(
+            mode=mode,
+            include=include,
+            exclude=exclude,
+            by_alias=by_alias,
+            exclude_unset=exclude_unset,
+            exclude_defaults=exclude_defaults,
+            exclude_none=exclude_none,
+            round_trip=round_trip,
+            warnings=warnings,
+        )
+        data.update(version=self.version)
+        return data
 
 
 class Envelope(DomainModel):

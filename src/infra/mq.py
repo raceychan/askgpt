@@ -18,12 +18,10 @@ class MessageBroker[TMessage](abc.ABC):
 
     @abc.abstractmethod
     async def get(self) -> TMessage | None:
-        # self.consumer.get()
         raise NotImplementedError
 
     @abc.abstractmethod
     async def put(self, message: TMessage) -> None:
-        # self.producer.send()
         raise NotImplementedError
 
     async def start(self) -> None:
