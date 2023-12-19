@@ -2,7 +2,7 @@ import typing as ty
 from contextlib import asynccontextmanager
 
 from src.app.actor import QueueBox
-from src.app.gpt import model, repository
+from src.app.gpt import model, params, repository
 from src.app.gpt.gptsystem import GPTSystem, SessionActor, SystemState, UserActor
 from src.domain._log import logger
 from src.domain.config import Settings
@@ -61,7 +61,10 @@ class GPTService:
         question: str,
         role: model.ChatGPTRoles,
         completion_model: model.CompletionModels,
+        options: params.CompletionOptions | None = None,
     ) -> ty.AsyncGenerator[str | None, None]:
+        # TODO: receive a options object so it goes like
+        # user_id, session_id, completion_options
         session_actor = await self.get_session(user_id=user_id, session_id=session_id)
         return session_actor.send_chatmessage(
             message=model.ChatMessage(role=role, content=question),
@@ -104,8 +107,6 @@ class GPTService:
         if session_actor is None:
             session_actor = await user_actor.rebuild_session(session_id)
         return session_actor
-
-
 
     async def start(self) -> None:
         if self.state.is_running:

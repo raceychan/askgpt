@@ -125,6 +125,7 @@ class APIPool:
 
     @asynccontextmanager
     async def reserve_client(self):
+        # TODO: create corresponding ai client from api keytype
         api_key = await self.acquire()
 
         try:
@@ -211,15 +212,3 @@ class TokenBucket:
 
     async def reserve_token(self, token_cost: int = 1) -> None:
         raise NotImplementedError
-
-
-# class ClientPool:
-#     def __init__(self, api_pool: APIPool, token_bucket: TokenBucket):
-#         self.api_pool = api_pool
-#         self.token_bucket = token_bucket
-#         self._client_pool: dict[str, OpenAIClient] = dict()
-
-#     async def get_client(self):
-#         async with self.api_pool.lifespan() as api_key:
-#             client = OpenAIClient.from_apikey(api_key)
-#             return client

@@ -5,17 +5,40 @@ from starlette import status
 from src.app.api.model import RequestBody
 from src.app.api.response import RedirectResponse
 from src.app.api.validation import AccessToken, parse_access_token
-from src.app.gpt.model import ChatGPTRoles, CompletionModels
+from src.app.gpt.params import ChatGPTRoles, CompletionModels
 from src.app.gpt.service import GPTService
 from src.domain.config import get_setting
 
 gpt_router = APIRouter(prefix="/gpt")
 
 
+import typing as ty
+
+
 class SendMessageRequest(RequestBody):
     question: str
     role: ChatGPTRoles
     model: CompletionModels = "gpt-3.5-turbo"
+    frequency_penalty: float | None = None
+    function_call: ty.Any = None
+    functions: list[ty.Any] | None = None
+    logit_bias: dict[str, int] | None = None
+    max_tokens: int | None = None
+    n: int | None = None
+    presence_penalty: float | None = None
+    response_format: ty.Any = None
+    seed: int | None = None
+    stop: str | None | list[str] = None
+    stream: bool
+    temperature: float | None = None
+    tool_choice: ty.Any = None
+    tools: list[ty.Any] | None = None
+    top_p: float | None = None
+    user: str | None = None
+    extra_headers: ty.Mapping[str, str | ty.Literal[False]] | None
+    extra_query: ty.Mapping[str, object] | None
+    extra_body: object | None = None
+    timeout: float | None = None
 
 
 async def get_service():

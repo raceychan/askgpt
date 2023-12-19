@@ -3,7 +3,7 @@ name = "askgpt"
 version = "0.1.0"
 description = ""
 authors = ["raceychan <raceychan@gmail.com>"]
-license = "MIT"
+license = "GPL"
 readme = "README.md"
 
 

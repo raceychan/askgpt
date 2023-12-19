@@ -36,7 +36,8 @@ def settings() -> TestSettings:
         actor_refs=TestSettings.ActorRefs(),
         RUNTIME_ENV="test",
         api=TestSettings.API(HOST="localhost", PORT=8000, API_VERSION="0.1.0"),
-        security=TestSettings.Security(SECRET_KEY="test"),
+        security=TestSettings.Security(SECRET_KEY="test", ALGORITHM="HS256"),
         redis=TestSettings.Redis(HOST="localhost", PORT=6379, DB=1),
+        event_record=TestSettings.EventRecord(),
     )
     return ss

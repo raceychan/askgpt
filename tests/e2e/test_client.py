@@ -4,7 +4,6 @@ from src.app.api.endpoints.gpt import SendMessageRequest
 from src.infra.fileutil import fileutil
 
 test_data = fileutil.read_file("tests/test_data.json")
-session_id = "634015ba-2dd3-4fd2-9af0-5713c5ba1aca"
 
 
 async def test_ask_question():

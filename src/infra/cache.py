@@ -26,8 +26,11 @@ class ScriptFunc[
 
 class Cache[TKey: ty.Hashable, TValue: ty.Any](abc.ABC):
     """
-    TODO: refactor
+    TODO: refactor, seperate different interface from cache
+    redis.Redis has all interfaces of set, list, hashmap, etc.
+    but we only need some of them at a time, so we should seperate them.
 
+    eg:
     cache.map.set
     cache.set.add
     cache.list.append
@@ -120,8 +123,8 @@ class RedisCache(Cache[ty.Hashable, ty.Any]):
     async def rpush(self, key: ty.Hashable, *values: ty.Sequence[ty.Any]) -> bool:
         if not values:
             raise ValueError("values must not be empty")
-        res = await self._redis.rpush(key, *values)  # type: ignore
-        return res == 1  # type: ignore
+        res: RedisBool = await self._redis.rpush(key, *values)  # type: ignore
+        return res == 1
 
     @asynccontextmanager
     async def pipeline(self, transaction: bool = False):
@@ -145,20 +148,3 @@ class RedisCache(Cache[ty.Hashable, ty.Any]):
         )
         client = aioredis.Redis.from_pool(pool)
         return cls(redis=client)
-
-    # async def hmget(self, key: TKey, *fields: str) -> list[TVal | None]:
-    #     return await self._redis.hmget(key, *fields)  # type: ignore
-
-    # async def hmset(self, key: TKey, mapping: dict[str, ty.Any]) -> None:
-    #     await self._redis.hmset(key, mapping)  # type: ignore
-
-    # async def hget(self, key: TKey, field: str) -> TVal | None:
-    #     return await self._redis.hget(key, field)  # type: ignore
-
-    # async def hincrby(self, key: TKey, field: str, amount: int) -> bool:
-    #     res: IntBool = await self._redis.hincrby(key, field, amount)  # type: ignore
-    #     return res == 1
-
-    # async def decrby(self, key: TKey, amount: int = 1) -> bool:
-    #     res: IntBool = await self._redis.decrby(key, amount)  # type: ignore
-    #     return res == 1  # type: ignore

@@ -122,6 +122,7 @@ class AuthService:
             api_key=encrypted_key,
             api_type=api_type,
         )
+
         # NOTE: same api_key will be different encrypted string, leading to duplicate rows of same api key
         await self._user_repo.add_api_key_for_user(user_id, encrypted_key, api_type)
         await self._producer.publish(event)

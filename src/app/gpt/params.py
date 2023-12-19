@@ -9,7 +9,6 @@ from openai.types.chat import (
     completion_create_params,
 )
 
-
 from src.domain.model.base import ValueObject
 
 # TODO: read
@@ -63,20 +62,6 @@ class CompletionOptions(ty.TypedDict, total=False):
     extra_query: Query | None
     extra_body: Body | None
     timeout: float | None | NotGiven
-
-
-# from openai.types.chat import ChatCompletionChunk
-# from openai.types.chat.chat_completion_chunk import Choice, ChoiceDelta
-
-# delta = ChoiceDelta(content="pong")
-# choice = Choice(delta=delta, finish_reason="stop", index=0)
-# chunk = ChatCompletionChunk(
-#    id="sth",
-#    choices=[choice],
-#    created=0,
-#    model="model",
-#    object="chat.completion.chunk",
-# )
 
 
 class ChatResponse(ValueObject):

@@ -4,15 +4,11 @@
 
 ### P1
 
-- [ ] Required OPENAI_API_KEY for user to use this system
-
-### P2
-
-- [ ] finish reading [YouTube: Vaughn Vernon: Reactive Domain-Driven Design Made Explicit
-](https://www.youtube.com/watch?v=TkKhS3ImbQI)
-- [-] ?we might seperate actor events like system_started and system_stoped, and domain events like SessionCreated, ChatMessageSent;
+- [ ] README.md
 
 ## Done
+
+- [x] Required OPENAI_API_KEY for user to use this system
 
 - [x] build user system, user identity
 

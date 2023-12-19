@@ -382,3 +382,4 @@ class GPTSystem(System[UserActor]):
     async def stop(self) -> None:
         logger.info("system stopped")
         self.state = self.state.stop()
+
