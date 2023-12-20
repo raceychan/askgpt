@@ -5,6 +5,7 @@
 ### P1
 
 - [ ] README.md
+- [ ] deprive the AI agents part and make it a standalone project
 
 ## Done
 
