@@ -6,6 +6,7 @@ from dataclasses import dataclass
 from src.app.auth.service import AuthService
 from src.app.gpt import model, params, service
 from src.domain._log import logger
+from src.domain.base import EMPTY_STR
 from src.domain.config import get_setting
 
 
@@ -15,12 +16,12 @@ class InvalidOption(Exception):
 
 @dataclass
 class CLIOptions(Namespace):
-    username: str = ""
-    email: str = ""
-    password: str = ""
-    question: str = ""
-    user_id: str = ""
-    session_id: str = ""
+    username: str = EMPTY_STR
+    email: str = EMPTY_STR
+    password: str = EMPTY_STR
+    question: str = EMPTY_STR
+    user_id: str = EMPTY_STR
+    session_id: str = EMPTY_STR
     model: params.CompletionModels = "gpt-3.5-turbo"
     interactive: bool = False
     command: ty.Literal["gpt", "auth"] = "gpt"

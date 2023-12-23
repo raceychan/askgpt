@@ -2,9 +2,7 @@ import sqlalchemy as sa
 from sqlalchemy import orm as sa_orm
 from sqlalchemy.ext import asyncio as sa_aio
 from sqlalchemy.sql import func
-
 from src.domain.model.name_tools import str_to_snake
-from src.infra.sa_utils import test_table_exist
 
 
 # Reference: https://docs.sqlalchemy.org/en/14/orm/declarative_mixins.html
@@ -50,14 +48,6 @@ class TableBase:
         )
         return clause
 
-    @classmethod
-    async def assure_table_exist(cls, engine: sa_aio.AsyncEngine) -> bool:
-        row = await test_table_exist(engine, cls.__tablename__)
-        if cls.__tablename__ == row["name"]:
-            return True
-
-        raise Exception(f"Table {cls.__tablename__} does not exist")
-
 
 class EventSchema(TableBase):
     __tablename__: str = "domain_events"  # type: ignore
@@ -85,7 +75,7 @@ class SessionSchema(TableBase):
     __tablename__: str = "sessions"  # type: ignore
 
     id = sa.Column("id", sa.String, primary_key=True)
-    user_id = sa.Column("user_id", sa.Integer, sa.ForeignKey("users.id"))
+    user_id = sa.Column("user_id", sa.String, sa.ForeignKey("users.id"))
     session_id = sa.Column("session_id", sa.String, unique=True, index=True)
     is_active = sa.Column("is_active", sa.Boolean, default=True)
 
@@ -97,7 +87,14 @@ class UserAPIKeySchema(TableBase):
     )
 
     id = sa.Column("id", sa.Integer, autoincrement=True, primary_key=True)
-    user_id = sa.Column("user_id", sa.Integer, sa.ForeignKey("users.id"))
+    user_id = sa.Column("user_id", sa.String, sa.ForeignKey("users.id"))
     api_type = sa.Column("api_type", sa.String, index=True)
     api_key = sa.Column("api_key", sa.String, unique=True, index=True)
     is_active = sa.Column("is_active", sa.Boolean, default=True)
+
+
+async def create_tables(engine: sa_aio.AsyncEngine):
+    # tables = TableBase.metadata.tables.keys()
+
+    async with engine.begin() as conn:
+        await conn.run_sync(TableBase.metadata.create_all)

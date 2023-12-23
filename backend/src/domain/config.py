@@ -1,10 +1,8 @@
-import functools
 import pathlib
 import typing as ty
-from functools import lru_cache
 
 from pydantic import BaseModel, ConfigDict
-
+from src.domain.base import EMPTY_STR, freeze, freezelru
 from src.domain.interface import SQL_ISOLATIONLEVEL, EventLogRef, JournalRef, SystemRef
 from src.infra.fileutil import FileUtil
 
@@ -15,7 +13,7 @@ class SettingsFactory[T](ty.Protocol):
 
 
 def settingfactory[T: ty.Any](factory: SettingsFactory[T]) -> SettingsFactory[T]:
-    return lru_cache(maxsize=1)(factory)
+    return freezelru(factory)
 
 
 class TimeScale:
@@ -42,6 +40,10 @@ class SettingsBase(BaseModel):
         extra="forbid",
     )
 
+    def __hash__(self) -> int:
+        vals = tuple(freeze(v) for v in self.__dict__.values())
+        return hash(self.__class__) + hash(vals)
+
 
 class Settings(SettingsBase):
     PROJECT_NAME: ty.ClassVar[str] = "askgpt"
@@ -49,28 +51,23 @@ class Settings(SettingsBase):
 
     RUNTIME_ENV: ty.Literal["dev", "prod", "test"]
 
-    # make pyright happy, Settings is hashable by setting frozen=True
-    __hash__: ty.Callable[[None], int]
-
     @property
     def is_prod_env(self):
         return self.RUNTIME_ENV == "prod"
 
     class DB(SettingsBase):
-        DB_DRIVER: str = "sqlite"
-        ASYNC_DB_DRIVER: str = "aiosqlite"
-        DATABASE: pathlib.Path
-        ISOLATION_LEVEL: SQL_ISOLATIONLEVEL = "SERIALIZABLE"
-        ENGINE_ECHO: bool = False
+        DIALECT: str
+        DRIVER: str
 
-        USER: str = ""
-        PASSWORD: str = ""
-        HOST: str = ""
-        PORT: str = ""
+        USER: str = EMPTY_STR
+        PASSWORD: str = EMPTY_STR
+        HOST: str = EMPTY_STR
+        PORT: int = -1
 
         @property
         def DB_URL(self) -> str:
-            base = f"{self.DB_DRIVER}://"
+            proto = f"{self.DIALECT}+{self.DRIVER}" if self.DRIVER else self.DIALECT
+            base = f"{proto}://"
             if self.USER and self.PASSWORD:
                 base += f"{self.USER}:{self.PASSWORD}"
             elif self.USER:
@@ -80,17 +77,31 @@ class Settings(SettingsBase):
 
             if self.HOST:
                 base += f"@{self.HOST}"
-            if self.PORT:
+            if self.PORT != -1:
                 base += f":{self.PORT}"
             if self.DATABASE:
                 base += f"/{self.DATABASE}"
             return base
 
-        @property
-        def ASYNC_DB_URL(self) -> str:
-            return self.DB_URL.replace(
-                self.DB_DRIVER, f"{self.DB_DRIVER}+{self.ASYNC_DB_DRIVER}", 1
-            )
+        DATABASE: pathlib.Path
+        ISOLATION_LEVEL: SQL_ISOLATIONLEVEL
+        ENGINE_ECHO: bool = False
+
+        class CONNECT_ARGS(SettingsBase):
+            """
+            Driver-specific connection arguments
+            https://magicstack.github.io/asyncpg/current/api/index.html
+            """
+
+            server_settings: dict[str, ty.Any]
+
+        connect_args: CONNECT_ARGS
+
+        class ExeuctionOptions(SettingsBase):
+            "Sqlalchemy engine-specific options"
+            ...
+
+        execution_options: ExeuctionOptions
 
     db: DB
 
@@ -150,7 +161,7 @@ class Settings(SettingsBase):
     event_record: EventRecord
 
     @classmethod
-    @functools.lru_cache(maxsize=1)
+    @freezelru
     def from_file(cls, filename: str) -> ty.Self:
         fileutil = FileUtil.from_cwd()
         return cls(**fileutil.read_file(filename))
@@ -163,9 +174,10 @@ class Settings(SettingsBase):
         return str(file_path).replace("/", ".")[:-3]
 
 
-@functools.lru_cache(maxsize=1)
+@freezelru
 def get_setting(filename: str = "settings.toml") -> Settings:
     """
     offcial factory of settings with default filename
     """
-    return Settings.from_file(filename=filename)
+    settings = Settings.from_file(filename=filename)
+    return settings

@@ -3,9 +3,9 @@ import datetime
 import pathlib
 import typing as ty
 from contextlib import asynccontextmanager
-from functools import lru_cache
 
 from redis import asyncio as aioredis
+from src.domain.base import freezelru
 
 type KeyBuilder = ty.Callable[[str, str, str], str]
 type RedisBool = ty.Literal[0, 1]
@@ -68,7 +68,7 @@ class MemoryCache[TKey: str, TVal: ty.Any](Cache[TKey, TVal]):
         self._cache.pop(key, None)
 
     @classmethod
-    @lru_cache(maxsize=1)
+    @freezelru
     def from_singleton(cls) -> ty.Self:
         return cls()
 

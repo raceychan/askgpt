@@ -4,14 +4,7 @@ from src.infra import cache, encrypt, eventstore, mq, sa_utils
 
 
 def get_async_engine(settings: Settings):
-    engine = sa_utils.async_engine_factory(
-        db_url=settings.db.ASYNC_DB_URL,
-        echo=settings.db.ENGINE_ECHO,
-        isolation_level=settings.db.ISOLATION_LEVEL,
-        pool_pre_ping=True,
-    )
-
-    return engine
+    return sa_utils.asyncengine(get_engine(settings))
 
 
 def get_engine(settings: Settings):
@@ -20,6 +13,8 @@ def get_engine(settings: Settings):
         echo=settings.db.ENGINE_ECHO,
         isolation_level=settings.db.ISOLATION_LEVEL,
         pool_pre_ping=True,
+        connect_args=settings.db.connect_args.model_dump(),
+        execution_options=settings.db.execution_options.model_dump(),
     )
     return engine
 

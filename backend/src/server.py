@@ -2,7 +2,6 @@ from contextlib import AsyncExitStack, asynccontextmanager
 
 import uvicorn
 from fastapi import APIRouter, FastAPI
-
 from src.app.api.error_handlers import HandlerRegistry
 from src.app.api.middleware import LoggingMiddleware, TraceMiddleware
 from src.app.api.router import api_router
@@ -10,23 +9,22 @@ from src.app.bootstrap import bootstrap
 from src.app.factory import get_eventrecord
 from src.domain._log import logger
 from src.domain.config import get_setting
-from src.infra.factory import get_async_engine
 
 stack = AsyncExitStack()
+
+# async with bootstrap(settings) as stack:
+#     yield stack
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     settings = get_setting()
-    engine = get_async_engine(settings)
-    await bootstrap(engine)
+    await bootstrap(settings)
     record = get_eventrecord(settings)
 
     async with stack:
         await stack.enter_async_context(record.lifespan())
         yield
-
-    # await engine.dispose()
 
 
 def add_exception_handlers(app: FastAPI):

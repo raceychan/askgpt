@@ -7,7 +7,6 @@ import typing as ty
 
 import loguru
 from loguru import logger as logger_
-
 from src.domain.config import Settings, get_setting
 
 __all__ = ["logger"]

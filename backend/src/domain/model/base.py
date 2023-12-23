@@ -14,7 +14,6 @@ from pydantic import SerializeAsAny as SerializeAsAny
 from pydantic import computed_field as computed_field
 from pydantic import field_serializer as field_serializer
 from pydantic import validator as validator
-
 from src.domain.model.interface import ICommand, IEvent, utc_datetime
 from src.domain.model.name_tools import str_to_snake
 
@@ -36,31 +35,6 @@ def utcts_factory(ts: float | None = None) -> utc_datetime:
         return datetime.datetime.fromtimestamp(ts)
 
     return datetime.datetime.utcnow()
-
-
-class attribute[TOwner: ty.Any, TField: ty.Any]:
-    """
-    A dynamic property descriptor, servers similar purpose as property
-    but works for both class and instance.
-    """
-
-    def __init__(
-        self,
-        fget: ty.Callable[[TOwner | type[TOwner]], TField] | None = None,
-        fset: ty.Callable[[TOwner | type[TOwner], TField], None] | None = None,
-    ):
-        self.fget = fget
-        self.fset = fset
-
-    def __get__(self, instance: TOwner | None, owner: type[TOwner]) -> ty.Any:
-        if self.fget:
-            return self.fget(instance) if instance else self.fget(owner)
-        raise AttributeError("unreadable attribute")
-
-    def setter(
-        self, fset: ty.Callable[[TOwner | type[TOwner], TField], None]
-    ) -> ty.Self:
-        return type(self)(self.fget, fset)
 
 
 class DomainModel(BaseModel):

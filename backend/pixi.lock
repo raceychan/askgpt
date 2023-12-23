@@ -163,6 +163,28 @@ package:
   size: 11352
   timestamp: 1691763717537
 - platform: linux-64
+  name: asyncpg
+  version: 0.29.0
+  category: main
+  manager: conda
+  dependencies:
+  - async-timeout >=4.0.3
+  - libgcc-ng >=12
+  - python >=3.12,<3.13.0a0
+  - python_abi 3.12.* *_cp312
+  url: https://conda.anaconda.org/conda-forge/linux-64/asyncpg-0.29.0-py312h98912ed_0.conda
+  hash:
+    md5: 13d059426344a35f1668500fadea9359
+    sha256: 1c5bac21573a67d02d82d326f86f8ffd8978612327ad5805521ad0665a15e355
+  build: py312h98912ed_0
+  arch: x86_64
+  subdir: linux-64
+  build_number: 0
+  license: Apache-2.0
+  license_family: Apache
+  size: 678412
+  timestamp: 1700296630977
+- platform: linux-64
   name: bcrypt
   version: 4.0.1
   category: main
@@ -543,25 +565,6 @@ package:
   noarch: python
   size: 70958
   timestamp: 1698674807133
-- platform: linux-64
-  name: gmp
-  version: 6.3.0
-  category: main
-  manager: conda
-  dependencies:
-  - libgcc-ng >=12
-  - libstdcxx-ng >=12
-  url: https://conda.anaconda.org/conda-forge/linux-64/gmp-6.3.0-h59595ed_0.conda
-  hash:
-    md5: 0e33ef437202db431aa5a928248cf2e8
-    sha256: 2a50495b6bbbacb03107ea0b752d8358d4a40b572d124a8cade068c147f344f5
-  build: h59595ed_0
-  arch: x86_64
-  subdir: linux-64
-  build_number: 0
-  license: GPL-2.0-or-later AND LGPL-3.0-or-later
-  size: 563123
-  timestamp: 1699629991732
 - platform: linux-64
   name: greenlet
   version: 3.0.1
@@ -1753,28 +1756,6 @@ package:
   noarch: python
   size: 102747
   timestamp: 1636257201998
-- platform: linux-64
-  name: pycryptodome
-  version: 3.19.0
-  category: main
-  manager: conda
-  dependencies:
-  - gmp >=6.2.1,<7.0a0
-  - libgcc-ng >=12
-  - python >=3.12.0rc3,<3.13.0a0
-  - python_abi 3.12.* *_cp312
-  url: https://conda.anaconda.org/conda-forge/linux-64/pycryptodome-3.19.0-py312h8666cd8_1.conda
-  hash:
-    md5: 0867d714065ec157ffaf4ed01db1025f
-    sha256: 1e88b261cefc343d652db287a1c71101f02570bc34876d19bc27be3fe35e2169
-  build: py312h8666cd8_1
-  arch: x86_64
-  subdir: linux-64
-  build_number: 1
-  license: BSD-2-Clause
-  license_family: BSD
-  size: 1587261
-  timestamp: 1695466914530
 - platform: linux-64
   name: pydantic
   version: 2.5.2

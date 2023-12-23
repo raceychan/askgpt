@@ -1,8 +1,13 @@
-FROM python:3.12 AS builder
+FROM python:3.12 AS python-base
 
+
+FROM python-base as builder-base
 # install pixi
 RUN curl -fsSL https://pixi.sh/install.sh | bash
-ENV PATH="/root/.pixi/bin:${PATH}"
+
+
+ENV PIXI_HOME="/root/.pixi"
+ENV PATH="$PIXI_HOME/bin:${PATH}"
 
 # Set the working directory in the Docker image
 WORKDIR /app
@@ -13,8 +18,4 @@ COPY pixi.lock pixi.toml ./
 # # Install dependencies using Pixi
 RUN pixi install
 
-# Copy only the src directory into the Docker image
 COPY src ./src
-
-# Set the command to run the application
-CMD ["pixi", "run", "python", "-m", "src.server"]

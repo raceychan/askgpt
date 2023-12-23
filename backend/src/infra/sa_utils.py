@@ -1,64 +1,20 @@
 import typing as ty
 from contextlib import contextmanager
-from functools import lru_cache
 
 import sqlalchemy as sa
 from sqlalchemy.ext import asyncio as sa_aio
+from src.domain.base import freezelru
 
 
-async def test_table_exist(
-    async_engine: sa_aio.AsyncEngine, tablename: str
-) -> dict[str, ty.Any]:
-    sql = f"""
-    SELECT 
-        name 
-    FROM 
-        sqlite_schema 
-    WHERE
-        type='table' AND name='{tablename}' 
-    ORDER BY 
-        name
-    """.strip()
-
-    async with async_engine.begin() as cursor:
-        res = await cursor.execute(sa.text(sql))
-        row = res.one()
-
-    return dict(row._mapping)  # type: ignore
+def asyncengine(engine: sa.Engine) -> sa_aio.AsyncEngine:
+    return sa_aio.AsyncEngine(engine)
 
 
-@lru_cache(maxsize=1)
-def async_engine_factory(
-    db_url: str,
-    *,
-    echo: bool | ty.Literal["debug"] = False,
-    hide_parameters: bool = False,
-    pool_pre_ping: bool = True,
-    pool_recycle: int = 3600,
-    poolclass: type[sa.Pool] | None = None,
-    execution_options: dict[str, ty.Any] | None = None,
-    isolation_level: sa.engine.interfaces.IsolationLevel = "READ COMMITTED",
-) -> sa_aio.AsyncEngine:
-    """
-    lru-cached async engine factory
-    """
-    engine = sa_aio.create_async_engine(
-        db_url,
-        echo=echo,
-        hide_parameters=hide_parameters,
-        pool_pre_ping=pool_pre_ping,
-        pool_recycle=pool_recycle,
-        poolclass=poolclass,
-        execution_options=execution_options,
-        isolation_level=isolation_level,
-    )
-    return engine
-
-
-@lru_cache(maxsize=1)
+@freezelru
 def engine_factory(
     db_url: str,
     *,
+    connect_args: dict[str, ty.Any] | None = None,
     echo: bool | ty.Literal["debug"] = False,
     hide_parameters: bool = False,
     pool_pre_ping: bool = True,
@@ -67,6 +23,13 @@ def engine_factory(
     execution_options: dict[str, ty.Any] | None = None,
     isolation_level: sa.engine.interfaces.IsolationLevel = "READ COMMITTED",
 ):
+    extra = dict()
+
+    if execution_options:
+        extra.update(execution_options=execution_options)
+    if connect_args:
+        extra.update(connect_args=connect_args)
+
     engine = sa.create_engine(
         db_url,
         echo=echo,
@@ -74,8 +37,8 @@ def engine_factory(
         pool_pre_ping=pool_pre_ping,
         pool_recycle=pool_recycle,
         poolclass=poolclass,
-        execution_options=execution_options,
         isolation_level=isolation_level,
+        **extra,
     )
     return engine
 

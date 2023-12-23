@@ -1,10 +1,7 @@
-from sqlalchemy.ext import asyncio as sa_aio
+from src.domain.config import Settings
+from src.infra import factory, schema
 
-from src.infra.schema import EventSchema, UserSchema
 
-
-async def bootstrap(aioengine: sa_aio.AsyncEngine):
-    await EventSchema.create_table_async(aioengine)
-    await EventSchema.assure_table_exist(aioengine)
-    await UserSchema.create_table_async(aioengine)
-    await UserSchema.assure_table_exist(aioengine)
+async def bootstrap(settings: Settings):
+    aioengine = factory.get_async_engine(settings)
+    await schema.create_tables(aioengine)

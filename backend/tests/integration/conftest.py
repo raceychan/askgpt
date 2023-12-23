@@ -3,7 +3,6 @@ import typing as ty
 
 import pytest
 from sqlalchemy.ext import asyncio as sa_aio
-
 from src.app.actor import MailBox
 from src.app.auth.model import UserAuth
 from src.app.auth.repository import UserAuth
@@ -24,7 +23,7 @@ class EchoMailbox(MailBox):
 @pytest.fixture(scope="module")
 def async_engine(settings: Settings):
     engine = sa_aio.create_async_engine(
-        settings.db.ASYNC_DB_URL,
+        settings.db.DB_URL,
         echo=settings.db.ENGINE_ECHO,
         pool_pre_ping=True,
         isolation_level=settings.db.ISOLATION_LEVEL,

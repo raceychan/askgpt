@@ -2,13 +2,12 @@ import abc
 import typing as ty
 from collections import deque
 from contextlib import asynccontextmanager
-from functools import cached_property
+from functools import cache, cached_property
 
 import httpx
 import openai
 from openai.types import beta as openai_beta
 from openai.types import chat as openai_chat
-
 from src.app.gpt import model, params
 from src.infra.cache import RedisBool, RedisCache, ScriptFunc
 
@@ -65,6 +64,7 @@ class OpenAIClient(AIClient):
         return [message.asdict(exclude={"user_id"}) for message in messages]
 
     @classmethod
+    @cache
     def from_apikey(cls, api_key: str) -> ty.Self:
         client = openai.AsyncOpenAI(api_key=api_key)
         return cls(client=client)

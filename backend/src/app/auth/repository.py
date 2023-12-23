@@ -2,7 +2,6 @@ import typing as ty
 
 import sqlalchemy as sa
 from sqlalchemy.ext import asyncio as sa_aio
-
 from src.app.auth.model import IUserRepository, UserAuth, UserInfo
 
 USER_TABLE: ty.Final[sa.TableClause] = sa.table(

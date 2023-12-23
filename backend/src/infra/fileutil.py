@@ -3,6 +3,8 @@ import functools
 import pathlib
 import typing as ty
 
+from src.domain.base import freezelru
+
 
 class EndOfChainError(Exception):
     ...
@@ -132,7 +134,7 @@ class TOMLFileLoader(FileLoader):
 
     def loads(self, file: pathlib.Path) -> dict[str, ty.Any]:
         try:
-            import tomllib as tomli
+            import tomllib as tomli  # tomllib available ^3.11
         except ImportError as ie:
             raise UnsupportedFileFormatError(file) from ie
 
@@ -175,6 +177,9 @@ class FileUtil:
         self.work_dir = work_dir
         self.file_loader = file_loader
 
+    def __repr__(self):
+        return f"{self.__class__.__name__}(work_dir={self.work_dir})"
+
     def find(self, filename: str, dir: str | None = None) -> pathlib.Path:
         work_dir = pathlib.Path(dir) if dir is not None else self.work_dir
 
@@ -197,7 +202,7 @@ class FileUtil:
         return data
 
     @classmethod
-    @functools.lru_cache(maxsize=1)
+    @freezelru
     def from_cwd(cls) -> ty.Self:
         return cls(work_dir=pathlib.Path.cwd(), file_loader=FileLoader.from_chain())
 

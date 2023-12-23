@@ -23,10 +23,9 @@ install:
 shell:
 	pixi shell
 
-
 .PHONY: server
 server:
-	pixi run python -m src.server
+	python -m src.server
 
 .PHONY: build
 build:
@@ -35,3 +34,16 @@ build:
 .PHONY: run
 run:
 	docker run -p 8000:8000 askgpt
+
+.PHONY:
+clean:
+	rm -rf .pytest_cache .mypy_cache .coverage .coverage.* .coverage* .pytest_cache .pyt
+
+.PHONY:
+prod:
+	gunicorn src.server:main \
+	--workers 4 \
+	-k uvicorn.workers.UvicornWorker
+
+# --uvicorn.log-config=none 
+# --uvicorn.factory
