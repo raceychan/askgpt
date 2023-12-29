@@ -1,12 +1,10 @@
 import asyncio
-import typing as ty
 
 import pytest
-
-from src.app.gpt.gptclient import TokenBucket
 from src.domain.config import get_setting
 from src.infra.cache import RedisBool, RedisCache, ScriptFunc
 from src.infra.fileutil import FileUtil
+from src.infra.tokenbucket import TokenBucket
 
 
 @pytest.fixture(scope="module")

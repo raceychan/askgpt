@@ -69,6 +69,7 @@ class UserActor(GPTBaseActor["SessionActor", model.User]):
     def __init__(self, user: model.User):
         super().__init__(boxfactory=QueueBox, entity=user)
         self.user_api_pool = None
+        self._keyspace = self.system.settings.redis.KEY_SPACE("apikeypool")
 
     def get_user_api_pool(self):
         if self.user_api_pool is not None:
@@ -84,12 +85,7 @@ class UserActor(GPTBaseActor["SessionActor", model.User]):
 
     @cached_property
     def apipool_key(self) -> str:
-        key = cache.keybuilder(
-            projectname=self.system.settings.PROJECT_NAME,
-            module="apikeypool",
-            key=self.entity_id,
-        )
-        return key
+        return self._keyspace(self.entity_id).key
 
     def create_session(self, event: model.SessionCreated) -> "SessionActor":
         session_actor = SessionActor.apply(event)

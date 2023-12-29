@@ -1,6 +1,6 @@
 from src.domain.config import Settings, settingfactory
 from src.domain.interface import IEvent
-from src.infra import cache, encrypt, eventstore, mq, sa_utils
+from src.infra import cache, encrypt, eventstore, fileutil, mq, sa_utils, tokenbucket
 
 
 def get_async_engine(settings: Settings):
@@ -13,7 +13,7 @@ def get_engine(settings: Settings):
         echo=settings.db.ENGINE_ECHO,
         isolation_level=settings.db.ISOLATION_LEVEL,
         pool_pre_ping=True,
-        connect_args=settings.db.connect_args.model_dump(),
+        connect_args=settings.db.connect_args.model_dump(exclude_none=True),
         execution_options=settings.db.execution_options.model_dump(),
     )
     return engine
@@ -27,6 +27,7 @@ def get_eventstore(settings: Settings) -> eventstore.EventStore:
 
 @settingfactory
 def get_queuebroker(settings: Settings):
+    # TODO: return different broker based on settings
     return mq.QueueBroker[IEvent]()
 
 
@@ -42,8 +43,13 @@ def get_producer(settings: Settings):
 
 @settingfactory
 def get_cache(settings: Settings):
-    cache_url = settings.redis.URL
-    return cache.RedisCache.build(cache_url)
+    config = settings.redis
+    return cache.RedisCache.build(
+        url=config.URL,
+        keyspace=config.KEY_SPACE,
+        decode_responses=config.DECODE_RESPONSES,
+        max_connections=config.MAX_CONNECTIONS,
+    )
 
 
 @settingfactory
@@ -62,3 +68,13 @@ def get_encrypt(settings: Settings):
 @settingfactory
 def get_sqldbg(settings: Settings):
     return sa_utils.SQLDebugger(get_engine(settings))
+
+
+@settingfactory
+def get_bucket_factory(settings: Settings):
+    redis = get_cache(settings)
+    script = settings.redis.TOKEN_BUCKET_SCRIPT
+    script_func = redis.load_script(script)
+    return tokenbucket.BucketFactory(
+        redis=redis, script=script_func, namespace="bucket"
+    )

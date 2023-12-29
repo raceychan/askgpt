@@ -2,12 +2,11 @@ from time import perf_counter
 from urllib.parse import quote
 
 from fastapi import Request
-from starlette.middleware.base import BaseHTTPMiddleware, RequestResponseEndpoint
-from starlette.types import ASGIApp, Receive, Scope, Send
-
 from src.app.api.xheaders import XHeaders
 from src.domain._log import logger
 from src.domain.model.base import uuid_factory
+from starlette.middleware.base import BaseHTTPMiddleware, RequestResponseEndpoint
+from starlette.types import ASGIApp, Receive, Scope, Send
 
 MIN_PROCESS_TIME = 0.001  # 1ms
 
@@ -34,8 +33,8 @@ class TraceMiddleware:
 class LoggingMiddleware(BaseHTTPMiddleware):
     """
     NOTE: we might want to implement our own ExceptionMiddleware here
-    so that a consisten response with domain-defined x-headers always be returned
-    whether the exception is raise or not
+    so that a consistent response with domain-defined x-headers will always be returned
+    regardless of the exception is raise or not
     """
 
     async def dispatch(self, request: Request, call_next: RequestResponseEndpoint):
@@ -55,13 +54,13 @@ class LoggingMiddleware(BaseHTTPMiddleware):
                 response = await call_next(request)
                 status_code = response.status_code
             except Exception as e:
-                logger.exception("internal exception occurred")
+                logger.exception("Internal exception occurred")
                 raise e
             finally:
                 post_process = perf_counter()
                 duration = max(round(post_process - pre_process, 3), MIN_PROCESS_TIME)
                 logger.info(
-                    f"""{client_host}:{client_port} - "{request.method} {path_query} HTTP/{request.scope["http_version"]}" {status_code}""",
+                    f'{client_host}:{client_port} - "{request.method} {path_query} HTTP/{request.scope["http_version"]}" {status_code}',
                     duration=duration,
                 )
 

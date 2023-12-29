@@ -87,3 +87,7 @@ class ServerSideError(DomainError):
 
 class ClientSideError(DomainError):
     source = "client"  # 400 < status < 500
+
+
+class QuotaExceededError(ClientSideError):
+    "Request quota exceeded"

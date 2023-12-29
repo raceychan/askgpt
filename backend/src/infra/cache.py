@@ -5,14 +5,9 @@ import typing as ty
 from contextlib import asynccontextmanager
 
 from redis import asyncio as aioredis
-from src.domain.base import freezelru
+from src.domain.base import KeySpace, freezelru
 
-type KeyBuilder = ty.Callable[[str, str, str], str]
 type RedisBool = ty.Literal[0, 1]
-
-
-def keybuilder(projectname: str, module: str, key: str) -> str:
-    return f"{projectname}:{module}:{key}"
 
 
 class ScriptFunc[
@@ -53,6 +48,10 @@ class Cache[TKey: ty.Hashable, TValue: ty.Any](abc.ABC):
     async def remove(self, key: TKey) -> None:
         ...
 
+    @abc.abstractproperty
+    def keyspace(self) -> KeySpace:
+        ...
+
 
 class MemoryCache[TKey: str, TVal: ty.Any](Cache[TKey, TVal]):
     def __init__(self):
@@ -67,6 +66,10 @@ class MemoryCache[TKey: str, TVal: ty.Any](Cache[TKey, TVal]):
     async def remove(self, key: TKey) -> None:
         self._cache.pop(key, None)
 
+    @property
+    def keyspace(self) -> KeySpace:
+        return KeySpace("memory")
+
     @classmethod
     @freezelru
     def from_singleton(cls) -> ty.Self:
@@ -74,8 +77,13 @@ class MemoryCache[TKey: str, TVal: ty.Any](Cache[TKey, TVal]):
 
 
 class RedisCache(Cache[ty.Hashable, ty.Any]):
-    def __init__(self, redis: aioredis.Redis):
+    def __init__(self, redis: aioredis.Redis, keyspace: KeySpace):
         self._redis = redis
+        self._keyspace = keyspace
+
+    @property
+    def keyspace(self) -> KeySpace:
+        return self._keyspace
 
     @property
     def client(self):
@@ -140,11 +148,20 @@ class RedisCache(Cache[ty.Hashable, ty.Any]):
             await self._redis.aclose()
 
     @classmethod
-    def build(cls, url: str, decode_responses: bool = True, max_connections: int = 10):
+    def build(
+        cls,
+        url: str,
+        keyspace: str | KeySpace,
+        decode_responses: bool = True,
+        max_connections: int = 10,
+    ):
         pool = aioredis.BlockingConnectionPool.from_url(  # type: ignore
             url,
             decode_responses=decode_responses,
             max_connections=max_connections,
         )
         client = aioredis.Redis.from_pool(pool)
-        return cls(redis=client)
+        return cls(
+            redis=client,
+            keyspace=KeySpace(keyspace) if isinstance(keyspace, str) else keyspace,
+        )

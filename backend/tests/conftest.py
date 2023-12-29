@@ -2,7 +2,6 @@ import asyncio
 import pathlib
 
 import pytest
-
 from src.domain.config import Settings
 from src.domain.model.test_default import TestDefaults
 from src.infra import encrypt

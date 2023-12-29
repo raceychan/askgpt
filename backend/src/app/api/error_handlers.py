@@ -2,15 +2,14 @@ import inspect
 import types
 import typing as ty
 
-from fastapi import Request
-from starlette import status
-from starlette.background import BackgroundTask
-from starlette.responses import JSONResponse, Response
-
+from fastapi import FastAPI, Request
 from src.app.api.errors import DomainError, ErrorDetail
 from src.app.api.xheaders import XHeaders
 from src.app.auth.errors import AuthenticationError
 from src.app.gpt.errors import OrphanSessionError
+from starlette import status
+from starlette.background import BackgroundTask
+from starlette.responses import JSONResponse, Response
 
 
 class ServerResponse(Response):
@@ -61,41 +60,48 @@ class ErrorResponse(JSONResponse):
 type ExceptionHandler[E] = ty.Callable[[Request, E], ErrorResponse]
 
 
-class HandlerRegistry[E: Exception | int]:
+class HandlerRegistry[Exc: Exception | int]:
     """
-    add error handler to fastapi according to their signature
+    Add error handler to fastapi according to their signature
     """
 
-    _registry: dict[E, ExceptionHandler[E]] = {}
+    _registry: dict[type[Exc] | int, ExceptionHandler[Exc]] = {}
+
+    def __iter__(
+        self,
+    ) -> ty.Iterator[tuple[type[Exc] | int, ExceptionHandler[Exc]]]:
+        return iter(self._registry.items())
+
+    def inject_handlers(self, app: FastAPI) -> None:
+        for exc, handler in self:
+            app.add_exception_handler(exc, handler)  # type: ignore
 
     @classmethod
-    def register(cls, handler: ExceptionHandler[E]) -> None:
+    def register(cls, handler: ExceptionHandler[Exc]) -> None:
+        """\
+        >>> @HandlerRegistry.register
+        def any_error_handler(request: Request, exc: Exception | ty.Literal[500]) -> ErrorResponse:
+        """
         exc_type = cls.extra_exception_handler(handler)
-        tp_args = ty.get_args(exc_type)
-        if tp_args:
-            for t in tp_args:
-                t = ty.cast(E, t)
-                cls._registry[t] = handler
+        exc_types = ty.get_args(exc_type)
+
+        if exc_types:
+            for exctype in exc_types:
+                cls._registry[exctype] = handler
         else:
-            exc_type = ty.cast(E, exc_type)
+            exc_type = ty.cast(type[Exc] | int, exc_type)
             cls._registry[exc_type] = handler
 
     @classmethod
     def extra_exception_handler(
-        cls, handler: ExceptionHandler[E]
-    ) -> E | types.UnionType:
+        cls, handler: ExceptionHandler[Exc]
+    ) -> type[Exc] | int | types.UnionType | int:
         sig = inspect.signature(handler)
-
-        params = [p for p in sig.parameters.values()]
-        exc_type = params[1].annotation
+        _, exc = sig.parameters.values()
+        exc_type = exc.annotation
         if exc_type is inspect._empty:  # type: ignore
-            raise ValueError
+            raise ValueError(f"handler {handler} has no annotation for {exc.name}")
         return exc_type
-
-    def __iter__(
-        self,
-    ) -> ty.Iterator[tuple[E, ExceptionHandler[E]]]:
-        return iter(self._registry.items())
 
 
 @HandlerRegistry.register

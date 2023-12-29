@@ -3,7 +3,7 @@ import typing as ty
 from argparse import ArgumentParser, Namespace
 from dataclasses import dataclass
 
-from src.app.auth.service import AuthService
+from src.app.factory import AuthService, get_auth_service
 from src.app.gpt import model, params, service
 from src.domain._log import logger
 from src.domain.base import EMPTY_STR
@@ -111,7 +111,7 @@ def main():
     options = CLIOptions.parse()
     settings = get_setting()
     gpt = service.GPTService.from_settings(settings)
-    auth = AuthService.from_settings(settings)
+    auth = get_auth_service(settings)
 
     if options.command == "auth":
         asyncio.run(auth_dispatch(auth, options))
@@ -120,4 +120,7 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
+    raise NotImplementedError(
+        "Cli needs re-implementation and is currently disabled due to the complexity of apis"
+    )
+    # main()

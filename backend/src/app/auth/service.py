@@ -1,30 +1,32 @@
 from datetime import datetime, timedelta
 
+# from src.app import factory as app_factory
 from src.app.auth import errors, model, repository
 from src.domain._log import logger
 from src.domain.config import Settings
 from src.domain.interface import IEvent
 from src.domain.model.base import str_to_snake, utcts_factory, uuid_factory
-from src.infra import cache, encrypt, factory, mq
+from src.infra import cache, encrypt
+from src.infra import factory as infra_factory
+from src.infra import mq
 
 
 class TokenRegistry:
-    def __init__(self, cache: cache.RedisCache):
-        self._cache = cache
+    def __init__(self, token_cache: cache.RedisCache, keyspace: cache.KeySpace):
+        self._cache = token_cache
+        self._keyspace = keyspace(str_to_snake(self.__class__.__name__))
 
-    def keybuilder(self, user_id: str) -> str:
-        return (
-            f"{Settings.PROJECT_NAME}:{str_to_snake(self.__class__.__name__)}:{user_id}"
-        )
+    def token_key(self, user_id: str) -> str:
+        return self._keyspace(user_id).key
 
     async def is_token_valid(self, user_id: str, token: str) -> bool:
-        return await self._cache.sismember(self.keybuilder(user_id), token)
+        return await self._cache.sismember(self.token_key(user_id), token)
 
     async def register_token(self, user_id: str, token: str) -> None:
         """
         Register token to user
         """
-        await self._cache.sadd(self.keybuilder(user_id), token)
+        await self._cache.sadd(self.token_key(user_id), token)
 
     async def revoke_tokens(self, user_id: str, token: str) -> None:
         """
@@ -123,20 +125,6 @@ class AuthService:
             api_type=api_type,
         )
 
-        # NOTE: same api_key will be different encrypted string, leading to duplicate rows of same api key
+        # NOTE: api key will changed when encrypted, leading to multiple rows of same api key
         await self._user_repo.add_api_key_for_user(user_id, encrypted_key, api_type)
         await self._producer.publish(event)
-
-    @classmethod
-    def from_settings(cls, settings: Settings) -> "AuthService":
-        aioengine = factory.get_async_engine(settings)
-        user_repo = repository.UserRepository(aioengine)
-        encrypt = factory.get_encrypt(settings=settings)
-        producer = factory.get_producer(settings=settings)
-        return cls(
-            user_repo=user_repo,
-            token_registry=TokenRegistry(cache=factory.get_cache(settings)),
-            token_encrypt=encrypt,
-            producer=producer,
-            security_settings=settings.security,
-        )

@@ -3,12 +3,12 @@ import typing as ty
 from fastapi import APIRouter, Depends
 from fastapi.security import OAuth2PasswordRequestForm
 from pydantic import EmailStr
+from src.app.api.dependencies import AccessToken, parse_access_token
 from src.app.api.model import RequestBody
 from src.app.api.response import RedirectResponse, redirect
-from src.app.api.validation import AccessToken, parse_access_token
 from src.app.auth.errors import InvalidCredentialError, UserNotFoundError
 from src.app.auth.model import UserAuth
-from src.app.auth.service import AuthService
+from src.app.factory import get_auth_service
 from src.domain.base import EMPTY_STR
 from src.domain.config import get_setting
 
@@ -16,7 +16,7 @@ auth_router = APIRouter(prefix="/auth")
 user_router = APIRouter(prefix="/users")
 
 
-service = AuthService.from_settings(get_setting())
+service = get_auth_service((get_setting()))
 
 
 class TokenResponse(ty.TypedDict):

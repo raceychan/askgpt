@@ -52,6 +52,8 @@ class ActorRegistry[TRef: ActorRef, TActor: "AbstractActor"]:
 
 
 class MailBox(abc.ABC):
+    # subclass should define __slots__ for memory efficiency
+
     @abc.abstractmethod
     def __len__(self) -> int:
         ...
@@ -83,6 +85,7 @@ class MailBox(abc.ABC):
 
 
 class QueueBox(MailBox):
+    __slots__ = ("_queue",)
     def __init__(self, maxsize: int = 0):
         self._queue: deque[IMessage] = deque(maxlen=maxsize or None)
 

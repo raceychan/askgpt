@@ -1,13 +1,12 @@
 from fastapi import APIRouter, Depends
 from fastapi.responses import StreamingResponse
-from starlette import status
-
+from src.app.api.dependencies import AccessToken, parse_access_token
 from src.app.api.model import RequestBody
 from src.app.api.response import RedirectResponse
-from src.app.api.validation import AccessToken, parse_access_token
 from src.app.gpt.params import ChatGPTRoles, CompletionModels
 from src.app.gpt.service import GPTService
 from src.domain.config import get_setting
+from starlette import status
 
 gpt_router = APIRouter(prefix="/gpt")
 

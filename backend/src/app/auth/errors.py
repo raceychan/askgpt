@@ -25,5 +25,5 @@ class UserAlreadyExistError(AuthenticationError):
 
 class InvalidCredentialError(AuthenticationError):
     """
-    Could not validate credentials
+    Could not validate user credentials
     """

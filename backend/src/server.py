@@ -1,6 +1,5 @@
 from contextlib import AsyncExitStack, asynccontextmanager
 
-import uvicorn
 from fastapi import APIRouter, FastAPI
 from src.app.api.error_handlers import HandlerRegistry
 from src.app.api.middleware import LoggingMiddleware, TraceMiddleware
@@ -12,8 +11,41 @@ from src.domain.config import get_setting
 
 stack = AsyncExitStack()
 
-# async with bootstrap(settings) as stack:
-#     yield stack
+# TODO: implement container to store dependencies
+# reff: https://python-dependency-injector.ets-labs.org/examples/fastapi-sqlalchemy.html
+
+
+class Container:
+    """
+
+    a centralized place to store dependencies
+    push dependencies to exit stack when initializing them
+    pop dependencies from exit stack when exiting them
+    for every dependency, instantiate with a factory function
+
+    difference with fastapi.dependencies.Depends:
+    1. exit stack
+    2. this is for app-wide dependencies, not request-wide dependencies
+    3. define a per_request:bool, if true, reinstantiate the dependency for every request
+
+    eg.
+
+
+    def get_auth_service(
+        settings,
+        user_repo = Depends(get_user_repo),
+        token_registry = Depends(get_token_registry),
+        token_encrypt = Depends(get_encryp),
+        producer = Depends(get_producer),
+
+    ):
+        ...
+
+
+    auth_service: AuthService = Depends(get_auth_service)
+    """
+
+    ...
 
 
 @asynccontextmanager
@@ -39,6 +71,7 @@ def add_middlewares(app: FastAPI):
     """
     app.add_middleware(LoggingMiddleware)
     app.add_middleware(TraceMiddleware)
+    # TODO: add throttling middleware
 
 
 def main():
@@ -65,7 +98,9 @@ def main():
     return app
 
 
-if __name__ == "__main__":
+def server():
+    import uvicorn
+
     settings = get_setting()
     modulename = settings.get_modulename(__file__)
     uvicorn.run(  # type: ignore
@@ -77,3 +112,7 @@ if __name__ == "__main__":
         reload_excludes=["test_*.py", "conftest.py"],
         log_config=None,
     )
+
+
+if __name__ == "__main__":
+    server()

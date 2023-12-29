@@ -2,7 +2,6 @@ import typing as ty
 
 import pytest
 from sqlalchemy.ext.asyncio import AsyncEngine
-
 from src.app.auth.errors import UserAlreadyExistError
 from src.app.auth.repository import UserRepository
 from src.app.auth.service import AuthService, TokenRegistry
@@ -22,9 +21,11 @@ async def auth_service(
     producer: MessageProducer[ty.Any],
 ):
     return AuthService(
-        UserRepository(async_engine),
+        user_repo=UserRepository(async_engine),
         token_encrypt=token_encrypt,
-        token_registry=TokenRegistry(local_cache),
+        token_registry=TokenRegistry(
+            token_cache=local_cache, keyspace=settings.redis.KEY_SPACE("token_registry")
+        ),
         producer=producer,
         security_settings=settings.security,
     )

@@ -2,14 +2,14 @@ import abc
 import typing as ty
 from collections import deque
 from contextlib import asynccontextmanager
-from functools import cache, cached_property
+from functools import cache
 
 import httpx
 import openai
 from openai.types import beta as openai_beta
 from openai.types import chat as openai_chat
-from src.app.gpt import model, params
-from src.infra.cache import RedisBool, RedisCache, ScriptFunc
+from src.app.gpt import errors, model, params
+from src.infra.cache import RedisCache
 
 MAX_RETRIES: int = 3
 
@@ -99,6 +99,7 @@ class OpenAIClient(AIClient):
 # https://medium.com/@colemanhindes/unofficial-gpt-3-developer-faq-fcb770710f42
 # Only 2 concurrent requests can be made per API key at a time.
 class APIPool:
+    # TODO?: should this be an api throttler?
     def __init__(self, pool_key: str, api_keys: ty.Sequence[str], redis: RedisCache):
         self.pool_key = pool_key
         self.api_keys = deque(api_keys)
@@ -156,59 +157,3 @@ class APIPool:
         # remove api keys from redis, clear client cache
         await self._redis.remove(self.pool_key)
         self.__started = False
-
-
-class TokenBucket:
-    def __init__(
-        self,
-        redis: RedisCache,
-        tokenbucket_lua: ScriptFunc[list[str], list[float | int], RedisBool],
-        *,
-        bucket_key: str,  # based on user_id
-        max_tokens: int,
-        refill_rate: float,
-    ):
-        self.redis = redis
-        self.bucket_key = bucket_key
-        self.max_tokens = max_tokens
-        self.refill_rate = refill_rate
-        self.tokenbucket = tokenbucket_lua
-
-    @cached_property
-    def _refill_token_script(
-        self,
-    ) -> ScriptFunc[list[str], list[float | int], RedisBool]:
-        lua = """
-        -- Refill token bucket algorithm
-        -- Keys: [bucket_key]
-        -- Args: [token_cost, max_tokens]
-
-        local bucket_key = KEYS[1]
-        local token_cost = tonumber(ARGV[1])
-        local max_tokens = tonumber(ARGV[2])
-
-        -- Increment the token count
-        local current_tokens = tonumber(redis.call('HINCRBY', bucket_key, 'tokens', token_cost))
-
-        -- Ensure the token count does not exceed the max limit
-        if current_tokens > max_tokens then
-            redis.call('HSET', bucket_key, 'tokens', max_tokens)
-        end
-
-        return true
-        """
-        return self.redis.load_script(lua)
-
-    async def release(self, token_cost: int = 1):
-        res = await self._refill_token_script(
-            keys=[self.bucket_key], args=[token_cost, self.max_tokens]
-        )
-        return res == 1
-
-    async def acquire(self, token_cost: int = 1) -> bool:
-        args = [self.max_tokens, self.refill_rate, token_cost]
-        res = await self.tokenbucket(keys=[self.bucket_key], args=args)
-        return res == 1
-
-    async def reserve_token(self, token_cost: int = 1) -> None:
-        raise NotImplementedError

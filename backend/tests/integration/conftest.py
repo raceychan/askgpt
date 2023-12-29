@@ -37,8 +37,8 @@ def local_cache():
 
 
 @pytest.fixture(scope="module", autouse=True)
-async def tables(async_engine: sa_aio.AsyncEngine):
-    await bootstrap(async_engine)
+async def tables(settings: Settings):
+    await bootstrap(settings)
 
 
 @pytest.fixture(scope="module")
@@ -78,6 +78,6 @@ async def eventrecord(consumer: BaseConsumer[ty.Any], eventstore: EventStore):
 
 @pytest.fixture(scope="module", autouse=True)
 async def redis_cache(settings: Settings):
-    redis = RedisCache.build(url=settings.redis.URL)
+    redis = RedisCache.build(url=settings.redis.URL, keyspace=settings.redis.KEY_SPACE)
     async with redis.lifespan():
         yield redis

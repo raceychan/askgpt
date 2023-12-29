@@ -1,8 +1,8 @@
 import pathlib
 import typing as ty
 
-from pydantic import BaseModel, ConfigDict
-from src.domain.base import EMPTY_STR, freeze, freezelru
+from pydantic import BaseModel, ConfigDict, field_validator
+from src.domain.base import EMPTY_STR, KeySpace, freeze, freezelru
 from src.domain.interface import SQL_ISOLATIONLEVEL, EventLogRef, JournalRef, SystemRef
 from src.infra.fileutil import FileUtil
 
@@ -93,7 +93,7 @@ class Settings(SettingsBase):
             https://magicstack.github.io/asyncpg/current/api/index.html
             """
 
-            server_settings: dict[str, ty.Any]
+            server_settings: dict[str, ty.Any] | None = None
 
         connect_args: CONNECT_ARGS
 
@@ -148,6 +148,13 @@ class Settings(SettingsBase):
         DB: int
         MAX_CONNECTIONS: int = 10
         DECODE_RESPONSES: bool = True
+        TOKEN_BUCKET_SCRIPT: pathlib.Path = pathlib.Path("src/script/tokenbucket.lua")
+        KEY_SPACE: KeySpace
+
+        @field_validator("KEY_SPACE", mode="before")
+        @classmethod
+        def validate_key_space(cls, v: str) -> KeySpace:
+            return KeySpace(v)
 
         @property
         def URL(self) -> str:

@@ -1,11 +1,8 @@
-# Distributed GPT Client
+# AskGPT
 
-AskGPT
+## Introduction
 
-## Introducing AskGPT
-
-Multi-Tenant Chatbot Platform
-AskGPT is a Multi-Tenant Chatbot Platform, an advanced solution designed to empower businesses with scalable and secure access to cutting-edge language models like OpenAI's ChatGPT and various LLMs models. it stands out with its robust multi-tenant architecture, powerful actor-based computational model, and a reactive, user-friendly interface.
+AskGPT is a production-ready Dstirbuted, multi-Tenant ML-OPS platform that enables businesses to leverage cutting-edge language models like OpenAI's ChatGPT and various LLMs models. It's built with a robust multi-tenant architecture, powerful actor-based computational model, and a reactive, user-friendly interface.
 
 ## Note
 
