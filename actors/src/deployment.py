@@ -12,8 +12,9 @@ class GrpcDeployment:
 
     def Complete(self, request: CompletionRequest) -> CompletionResponse:
         output = complete(self.llm, request.question)
-        print("output: ", output)
-        return CompletionResponse(completion=output)
+        completion = "".join(i for i in output)
+        print("completion: ", completion)
+        return CompletionResponse(completion=completion)
 
 
 if __name__ == "__main__":

@@ -8,15 +8,11 @@ def load_model(model_path: str = MODEL_PATH):
     llm = Llama(model_path=model_path)
     return llm
 
+
 def complete(llm: Llama, prompt: str):
-    output = llm(
-        prompt,
-        max_tokens=32,
-        stop=["Q:", "\n"],
-        echo=False
-    )
+    output = llm(prompt, max_tokens=32, stop=["Q:", "\n"], echo=False)
     for choice in output["choices"]:
-        yield choice.text
+        yield choice["text"]
 
 
 if __name__ == "__main__":

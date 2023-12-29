@@ -7,8 +7,8 @@ from llama_pb2_grpc import CompletionServiceStub
 
 channel = grpc.insecure_channel("localhost:9000")
 stub = CompletionServiceStub(channel)
-request = CompletionRequest(question="how are you doing today")
+request = CompletionRequest(question="Q: at what templerature will water freeze? A: ")
 
 if __name__ == "__main__":
     comp = stub.Complete(request=request)
-
+    print(comp.completion)
