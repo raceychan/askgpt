@@ -6,5 +6,7 @@ generate:
 	--python_out=$(OUT_DIR) \
 	--grpc_python_out=$(OUT_DIR) \
 	--pyi_out=$(OUT_DIR) \
-	../proto/*.proto
+	../proto/$(file)	
+
+#../proto/*.proto
 
