@@ -79,13 +79,15 @@ def debug_sink(msg: loguru.Message):
 
     console.print(log, style=COLOR_MAPPER[record["level"].name])
     if record["exception"] and record["level"].name == "debug":
-        # trace_text = traceback.format_exc()
-        # console.print(trace_text, style="red")
         console.print_exception(show_locals=True)
 
 
-def config_logs(settings: Settings):
+def config_logs(settings: Settings | None = None):
     logger_.remove(0)
+    if not settings:
+        logger_.add(debug_sink, level="INFO")
+        return logger_
+
     if settings.is_prod_env:
         logger_.add(prod_sink, level="INFO")
     else:
@@ -93,4 +95,4 @@ def config_logs(settings: Settings):
     return logger_
 
 
-logger = config_logs(get_setting())
+logger = config_logs()  # get_setting())

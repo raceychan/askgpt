@@ -57,12 +57,21 @@ class SessionCreated(Event):
 
 
 class SendChatMessage(Command):
+    """
+    TODO:
+    refactor,
+    class SendChatMessage(Command):
+        client_type: str # openai, llama2 etc.
+        chat_message: ChatMessage
+    """
+
     message_body: str
     model: CompletionModels = "gpt-3.5-turbo"
     stream: bool = True
     entity_id: str = Field(alias="session_id")
     user_id: str
     role: ChatGPTRoles
+    client_type: str = "openai"
 
     @computed_field  # type: ignore
     @property

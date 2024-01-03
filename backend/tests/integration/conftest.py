@@ -6,10 +6,10 @@ from sqlalchemy.ext import asyncio as sa_aio
 from src.app.actor import MailBox
 from src.app.auth.model import UserAuth
 from src.app.auth.repository import UserAuth
-from src.app.bootstrap import bootstrap
 from src.app.eventrecord import EventRecord
 from src.domain.config import Settings
 from src.domain.model.test_default import TestDefaults
+from src.infra import schema
 from src.infra.cache import MemoryCache, RedisCache
 from src.infra.eventstore import EventStore
 from src.infra.mq import BaseConsumer, BaseProducer, QueueBroker
@@ -25,8 +25,8 @@ def async_engine(settings: Settings):
     engine = sa_aio.create_async_engine(
         settings.db.DB_URL,
         echo=settings.db.ENGINE_ECHO,
-        pool_pre_ping=True,
         isolation_level=settings.db.ISOLATION_LEVEL,
+        pool_pre_ping=True,
     )
     return engine
 
@@ -37,8 +37,8 @@ def local_cache():
 
 
 @pytest.fixture(scope="module", autouse=True)
-async def tables(settings: Settings):
-    await bootstrap(settings)
+async def tables(async_engine: sa_aio.AsyncEngine):
+    await schema.create_tables(async_engine)
 
 
 @pytest.fixture(scope="module")
@@ -78,6 +78,13 @@ async def eventrecord(consumer: BaseConsumer[ty.Any], eventstore: EventStore):
 
 @pytest.fixture(scope="module", autouse=True)
 async def redis_cache(settings: Settings):
-    redis = RedisCache.build(url=settings.redis.URL, keyspace=settings.redis.KEY_SPACE)
+    redis = RedisCache.build(
+        url=settings.redis.URL,
+        decode_responses=settings.redis.DECODE_RESPONSES,
+        max_connections=settings.redis.MAX_CONNECTIONS,
+        keyspace=settings.redis.KEY_SPACE,
+        socket_timeout=settings.redis.SOCKET_TIMEOUT,
+        socket_connect_timeout=settings.redis.SOCKET_CONNECT_TIMEOUT,
+    )
     async with redis.lifespan():
         yield redis

@@ -2,17 +2,23 @@ import pathlib
 import typing as ty
 
 from pydantic import BaseModel, ConfigDict, field_validator
-from src.domain.base import EMPTY_STR, KeySpace, freeze, freezelru
+from src.domain.base import KeySpace, freeze, freezelru
 from src.domain.interface import SQL_ISOLATIONLEVEL, EventLogRef, JournalRef, SystemRef
 from src.infra.fileutil import FileUtil
 
 
 class SettingsFactory[T](ty.Protocol):
-    def __call__(self, settings: "Settings") -> T:
+    def __call__(self, settings: "Settings") -> T:  # | ty.AsyncGenerator[T, None]:
+        ...
+
+
+class PureFacotry[T](ty.Protocol):
+    def __call__(self) -> T:
         ...
 
 
 def settingfactory[T: ty.Any](factory: SettingsFactory[T]) -> SettingsFactory[T]:
+    "Cached factory that returns a cached instance for each settings instance"
     return freezelru(factory)
 
 
@@ -48,7 +54,6 @@ class SettingsBase(BaseModel):
 class Settings(SettingsBase):
     PROJECT_NAME: ty.ClassVar[str] = "askgpt"
     PROJECT_ROOT: ty.ClassVar[pathlib.Path] = pathlib.Path.cwd()
-
     RUNTIME_ENV: ty.Literal["dev", "prod", "test"]
 
     @property
@@ -59,10 +64,10 @@ class Settings(SettingsBase):
         DIALECT: str
         DRIVER: str
 
-        USER: str = EMPTY_STR
-        PASSWORD: str = EMPTY_STR
-        HOST: str = EMPTY_STR
-        PORT: int = -1
+        USER: str
+        PASSWORD: str
+        HOST: str
+        PORT: int
 
         @property
         def DB_URL(self) -> str:
@@ -95,7 +100,7 @@ class Settings(SettingsBase):
 
             server_settings: dict[str, ty.Any] | None = None
 
-        connect_args: CONNECT_ARGS
+        connect_args: dict  # CONNECT_ARGS
 
         class ExeuctionOptions(SettingsBase):
             "Sqlalchemy engine-specific options"
@@ -143,13 +148,16 @@ class Settings(SettingsBase):
     api: API
 
     class Redis(SettingsBase):
+        SCHEME: ty.Literal["redis", "rediss", "unix"] = "redis"
         HOST: str
-        PORT: int
-        DB: int
-        MAX_CONNECTIONS: int = 10
-        DECODE_RESPONSES: bool = True
+        PORT: int | str
+        DB: int | str
         TOKEN_BUCKET_SCRIPT: pathlib.Path = pathlib.Path("src/script/tokenbucket.lua")
         KEY_SPACE: KeySpace
+        MAX_CONNECTIONS: int = 10
+        DECODE_RESPONSES: bool = True
+        SOCKET_TIMEOUT: int
+        SOCKET_CONNECT_TIMEOUT: int = 2
 
         @field_validator("KEY_SPACE", mode="before")
         @classmethod
@@ -158,7 +166,7 @@ class Settings(SettingsBase):
 
         @property
         def URL(self) -> str:
-            return f"redis://{self.HOST}:{self.PORT}/{self.DB}"
+            return f"{self.SCHEME}://{self.HOST}:{self.PORT}/{self.DB}"
 
     redis: Redis
 
@@ -171,7 +179,8 @@ class Settings(SettingsBase):
     @freezelru
     def from_file(cls, filename: str) -> ty.Self:
         fileutil = FileUtil.from_cwd()
-        return cls(**fileutil.read_file(filename))
+        config_data = fileutil.read_file(filename)
+        return cls.model_validate(config_data)
 
     def get_modulename(self, filename: str) -> str:
         """

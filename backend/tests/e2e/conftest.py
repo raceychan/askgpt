@@ -2,7 +2,6 @@ import asyncio
 import pathlib
 
 import pytest
-
 from src.domain.config import Settings
 
 
@@ -17,27 +16,31 @@ class TestSettings(Settings):
     __test__ = False
 
     class DB(Settings.DB):
-        DATABASE: pathlib.Path
+        DIALECT: str = "sqlite"
+        DRIVER: str = "aiosqlite"
+        DATABASE: pathlib.Path = pathlib.Path("./database/test.db")
         ENGINE_ECHO: bool = False
+        HOST: str | None = None
+        PORT: int | None = None
+        USER: str | None = None
+        PASSWORD: str | None = None
 
     class ActorRefs(Settings.ActorRefs):
         ...
 
+    db: DB
+
 
 @pytest.fixture(scope="session")
 def settings() -> TestSettings:
-    db_path = pathlib.Path("./database/test.db")
-    # api_key = "fake_api_key"
-
-    db = TestSettings.DB(DATABASE=db_path)
     ss = TestSettings(
-        # OPENAI_API_KEY=api_key,
-        db=db,
         actor_refs=TestSettings.ActorRefs(),
         RUNTIME_ENV="test",
         api=TestSettings.API(HOST="localhost", PORT=8000, API_VERSION="0.1.0"),
         security=TestSettings.Security(SECRET_KEY="test", ALGORITHM="HS256"),
-        redis=TestSettings.Redis(HOST="localhost", PORT=6379, DB=1),
+        redis=TestSettings.Redis(
+            HOST="localhost", PORT=6379, DB=1, KEY_SPACE="test", SOCKET_TIMEOUT=2
+        ),
         event_record=TestSettings.EventRecord(),
     )
     return ss

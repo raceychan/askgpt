@@ -1,17 +1,11 @@
 import asyncio
 
 import pytest
-from src.domain.config import get_setting
+
+from src.domain.config import Settings
 from src.infra.cache import RedisBool, RedisCache, ScriptFunc
 from src.infra.fileutil import FileUtil
 from src.infra.tokenbucket import TokenBucket
-
-
-@pytest.fixture(scope="module")
-async def redis_cache():
-    redis = RedisCache.build(url=get_setting().redis.URL, max_connections=100)
-    async with redis.lifespan() as r:
-        yield r
 
 
 @pytest.fixture(scope="module")

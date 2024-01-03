@@ -59,6 +59,7 @@ class GPTService:
         user_id: str,
         session_id: str,
         question: str,
+        model_type: str,
         role: model.ChatGPTRoles,
         completion_model: model.CompletionModels,
         options: params.CompletionOptions | None = None,
@@ -68,6 +69,7 @@ class GPTService:
         session_actor = await self.get_session(user_id=user_id, session_id=session_id)
         return session_actor.send_chatmessage(
             message=model.ChatMessage(role=role, content=question),
+            model_type=model_type,
             completion_model=completion_model,
         )
 

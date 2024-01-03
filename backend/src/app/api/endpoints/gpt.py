@@ -1,20 +1,30 @@
+import typing as ty
+
 from fastapi import APIRouter, Depends
 from fastapi.responses import StreamingResponse
 from src.app.api.dependencies import AccessToken, parse_access_token
 from src.app.api.model import RequestBody
 from src.app.api.response import RedirectResponse
+from src.app.factory import get_gpt_service
 from src.app.gpt.params import ChatGPTRoles, CompletionModels
 from src.app.gpt.service import GPTService
-from src.domain.config import get_setting
+from src.domain.config import Settings, get_setting
 from starlette import status
 
 gpt_router = APIRouter(prefix="/gpt")
 
 
-import typing as ty
+def service_facotry(
+    settings: ty.Annotated[Settings, Depends(get_setting)]
+) -> GPTService:
+    return get_gpt_service(settings)
+
+
+ServiceDep = ty.Annotated[GPTService, Depends(service_facotry)]
 
 
 class SendMessageRequest(RequestBody):
+    client_type: str = "openai"
     question: str
     role: ChatGPTRoles
     model: CompletionModels = "gpt-3.5-turbo"
@@ -40,16 +50,10 @@ class SendMessageRequest(RequestBody):
     timeout: float | None = None
 
 
-async def get_service():
-    service = GPTService.from_settings(get_setting())
-    async with service.lifespan():
-        yield service
-
-
 @gpt_router.post("/sessions")
 async def create_session(
+    service: ServiceDep,
     token: AccessToken = Depends(parse_access_token),
-    service: GPTService = Depends(get_service),
 ):
     session_id = await service.create_session(user_id=token.sub)
     return RedirectResponse(
@@ -59,9 +63,9 @@ async def create_session(
 
 @gpt_router.get("/sessions/{session_id}")
 async def get_session(
+    service: ServiceDep,
     session_id: str,
     token: AccessToken = Depends(parse_access_token),
-    service: GPTService = Depends(get_service),
 ):
     session_actor = await service.get_session(user_id=token.sub, session_id=session_id)
     return session_actor.entity
@@ -69,14 +73,15 @@ async def get_session(
 
 @gpt_router.post("/sessions/{session_id}/messages")
 async def send_message(
+    service: ServiceDep,
     session_id: str,
     req: SendMessageRequest,
     access_token: AccessToken = Depends(parse_access_token),
-    service: GPTService = Depends(get_service),
 ):
     stream_ans = await service.stream_chat(
         user_id=access_token.sub,
         session_id=session_id,
+        model_type=req.client_type,
         question=req.question,
         role=req.role,
         completion_model=req.model,

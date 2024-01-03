@@ -4,7 +4,9 @@ from src.app.gpt import gptclient, model, service
 from src.app.gpt.params import ChatResponse
 from src.domain import config
 from src.domain.model.test_default import TestDefaults
-from src.infra.cache import RedisCache
+from src.infra import cache, factory
+
+# from src.infra.cache import Cache, MemoryCache, RedisCache
 
 
 @pytest.fixture(scope="module")
@@ -22,13 +24,13 @@ def chat_messages(test_defaults: TestDefaults):
 async def gptsystem(
     settings: config.Settings,
     eventstore: service.EventStore,
-    redis_cache: RedisCache,
+    redis_cache: cache.RedisCache,
 ):
     system = service.GPTSystem(
         boxfactory=QueueBox,
         ref=settings.actor_refs.SYSTEM,
         settings=settings,
-        cache=redis_cache,
+        cache=cache.MemoryCache(),  # redis_cache,
     )
     await system.start(eventstore=eventstore)
     return system
@@ -60,13 +62,14 @@ def chat_response():
     return chunk
 
 
-@pytest.fixture(scope="module")
+@pytest.fixture(scope="module", autouse=True)
 def openai_client(chat_response: ChatResponse):
     async def wrapper():
         yield chat_response
 
+    @gptclient.ClientRegistry.register("test")
     class FakeClient(gptclient.OpenAIClient):
-        async def send_chat(  # type: ignore
+        async def complete(  # type: ignore
             self, **kwargs  # type: ignore
         ):
             return wrapper()
@@ -85,26 +88,37 @@ async def session_actor(user_actor: service.UserActor):
     return session
 
 
-def command_factory(chat_message: model.ChatMessage):
+def test_user_add_key(settings: config.Settings, user_actor: service.UserActor):
+    api_key = factory.get_encrypt(settings).encrypt_string("random").decode()
+    cmd = model.UserAPIKeyAdded(
+        user_id=user_actor.entity_id,
+        api_key=api_key,
+        api_type="test",
+    )
+    user_actor.apply(cmd)
+
+
+def sendchatmessage(chat_message: model.ChatMessage):
     return model.SendChatMessage(
         session_id=TestDefaults.SESSION_ID,
         user_id=TestDefaults.USER_ID,
         message_body=chat_message.content,
         role=chat_message.role,
+        client_type="test",
     )
 
 
 async def test_system_cache(gptsystem: service.GPTSystem):
-    cache = gptsystem.cache
-    assert cache is not None
-    assert isinstance(cache, RedisCache)
+    system_cache = gptsystem.cache
+    assert system_cache is not None
+    assert isinstance(system_cache, cache.Cache)
 
 
 async def test_ask_question(
     session_actor: service.SessionActor, chat_messages: list[model.ChatMessage]
 ):
     prompt = chat_messages[0]  # type: ignore
-    cmd = command_factory(prompt)
+    cmd = sendchatmessage(prompt)
     assert session_actor.message_count == 0
     await session_actor.receive(cmd)
     journal = session_actor.system.journal

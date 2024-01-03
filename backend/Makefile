@@ -41,7 +41,7 @@ clean:
 
 .PHONY:
 prod:
-	gunicorn src.server:main \
+	gunicorn src.server:app_factory \
 	--workers 4 \
 	-k uvicorn.workers.UvicornWorker
 

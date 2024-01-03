@@ -1,5 +1,4 @@
 import pytest
-
 from src.app.actor import MailBox, QueueBox
 from src.app.gpt import errors, gptsystem, model, service
 from src.domain import config
@@ -55,7 +54,7 @@ def system_started(settings: config.Settings):
 @pytest.fixture(scope="module")
 def user_created():
     dfs = TestDefaults
-    return model.UserCreated(user_id=dfs.USER_ID)  # , user_info=dfs.USER_INFO)
+    return model.UserCreated(user_id=dfs.USER_ID)
 
 
 @pytest.fixture(scope="module")
@@ -70,10 +69,9 @@ async def test_create_user_from_system(
     eventstore: EventStore,
     create_user: model.CreateUser,
 ):
+    user_events = await eventstore.get(create_user.entity_id)
     defaults = TestDefaults
-    command = model.CreateUser(
-        user_id=defaults.USER_ID
-    )  # , user_info=defaults.USER_INFO)
+    command = model.CreateUser(user_id=defaults.USER_ID)
 
     await gpt_system.receive(command)
 

@@ -1,6 +1,6 @@
 from src.domain.config import Settings, settingfactory
 from src.domain.interface import IEvent
-from src.infra import cache, encrypt, eventstore, fileutil, mq, sa_utils, tokenbucket
+from src.infra import cache, encrypt, eventstore, mq, sa_utils, tokenbucket
 
 
 def get_async_engine(settings: Settings):
@@ -13,7 +13,7 @@ def get_engine(settings: Settings):
         echo=settings.db.ENGINE_ECHO,
         isolation_level=settings.db.ISOLATION_LEVEL,
         pool_pre_ping=True,
-        connect_args=settings.db.connect_args.model_dump(exclude_none=True),
+        connect_args=settings.db.connect_args,
         execution_options=settings.db.execution_options.model_dump(),
     )
     return engine
@@ -47,8 +47,10 @@ def get_cache(settings: Settings):
     return cache.RedisCache.build(
         url=config.URL,
         keyspace=config.KEY_SPACE,
+        socket_timeout=config.SOCKET_TIMEOUT,
         decode_responses=config.DECODE_RESPONSES,
         max_connections=config.MAX_CONNECTIONS,
+        socket_connect_timeout=config.SOCKET_CONNECT_TIMEOUT,
     )
 
 

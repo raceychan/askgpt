@@ -11,7 +11,7 @@ from src.app.actor import (
     StatefulActor,
     System,
 )
-from src.app.auth.model import UserSignedUp
+from src.app.auth import model as auth_model
 from src.app.gpt import errors, gptclient, model
 from src.domain._log import logger
 from src.domain.config import Settings
@@ -69,23 +69,25 @@ class UserActor(GPTBaseActor["SessionActor", model.User]):
     def __init__(self, user: model.User):
         super().__init__(boxfactory=QueueBox, entity=user)
         self.user_api_pool = None
-        self._keyspace = self.system.settings.redis.KEY_SPACE("apikeypool")
 
-    def get_user_api_pool(self):
+    def get_user_api_pool(self, api_type: str):
         if self.user_api_pool is not None:
             return self.user_api_pool
 
         user_api_pool = gptclient.APIPool(
             pool_key=self.apipool_key,
-            api_keys=self.decrypt_openai_keys(),
-            redis=self.system.cache,  # type: ignore
+            api_type=api_type,
+            api_keys=self.decrypt_api_keys(api_type),
+            cache=self.system.cache,
         )
         self.user_api_pool = user_api_pool
         return self.user_api_pool
 
     @cached_property
-    def apipool_key(self) -> str:
-        return self._keyspace(self.entity_id).key
+    def apipool_key(self) -> cache.KeySpace:
+        global_keyspace = self.system.settings.redis.KEY_SPACE
+        pool_keyspace = global_keyspace / gptclient.APIPool.keyspace
+        return pool_keyspace / self.entity_id
 
     def create_session(self, event: model.SessionCreated) -> "SessionActor":
         session_actor = SessionActor.apply(event)
@@ -111,13 +113,25 @@ class UserActor(GPTBaseActor["SessionActor", model.User]):
             self.childs[session_actor.entity_id] = session_actor
         return session_actor
 
-    def decrypt_openai_keys(self):
+    def decrypt_api_keys(self, api_type: str, encryptor=None) -> tuple[str, ...]:
+        keys = self.entity.api_keys.get(api_type)
+        if not keys:
+            return tuple()
+
+        encryptor = encryptor or factory.get_encrypt(self.system.settings)
+
+        return tuple(encryptor.decrypt_string(key.encode()) for key in keys)
+
+    def decrypt_all_keys(self) -> dict[str, tuple[str, ...]]:
         if not self.entity.api_keys:
             raise errors.APIKeyNotProvidedError(self.entity_id)
-        openai_keys = self.entity.api_keys["openai"]
+
         encryptor = factory.get_encrypt(self.system.settings)
-        keys = tuple(encryptor.decrypt_string(key.encode()) for key in openai_keys)
-        return keys
+        decrypted = {
+            api_type: self.decrypt_api_keys(api_type, encryptor)
+            for api_type in self.entity.api_keys
+        }
+        return decrypted
 
     @singledispatchmethod
     async def handle(self, command: Command) -> None:
@@ -139,7 +153,7 @@ class UserActor(GPTBaseActor["SessionActor", model.User]):
         for e in events:
             await self.publish(e)
 
-    @apply.register(UserSignedUp)
+    @apply.register(auth_model.UserSignedUp)
     @apply.register(model.UserCreated)
     @classmethod
     def _(cls, event: model.UserCreated) -> ty.Self:
@@ -165,25 +179,26 @@ class SessionActor(GPTBaseActor["SessionActor", model.ChatSession]):
         return self.entity.messages
 
     @asynccontextmanager
-    async def get_client(self):
+    async def get_client(self, client_type: str = "openai"):
         user = self.system.get_child(self.entity.user_id)
         if not user:
             user = await self.system.rebuild_user(self.entity.user_id)
 
         # TODO: use asyncexitstack
-        api_pool = user.get_user_api_pool()
+        api_pool = user.get_user_api_pool(api_type=client_type)
         async with api_pool.lifespan():
             async with api_pool.reserve_client() as client:
                 yield client
 
     async def _send_chatmessage(
         self,
+        model_type: str,
         message: model.ChatMessage,
         model: model.CompletionModels,
         stream: bool = True,
     ) -> ty.AsyncGenerator[str, None]:
-        async with self.get_client() as client:
-            chunks = await client.send_chat(
+        async with self.get_client(client_type=model_type) as client:
+            chunks = await client.complete(
                 messages=self.chat_context + [message],
                 model=model,
                 user=self.entity.user_id,
@@ -198,29 +213,34 @@ class SessionActor(GPTBaseActor["SessionActor", model.ChatSession]):
                 yield content
 
     async def send_chatmessage(
-        self, message: model.ChatMessage, completion_model: model.CompletionModels
+        self,
+        message: model.ChatMessage,
+        model_type: str,
+        completion_model: model.CompletionModels,
     ) -> ty.AsyncGenerator[str, None]:
         "send messages and publish events"
-        chunks = self._send_chatmessage(message=message, model=completion_model)
+        chunks = self._send_chatmessage(
+            message=message, model=completion_model, model_type=model_type
+        )
         answer = ""
         async for chunk in chunks:
             answer += chunk
             yield chunk
 
-        message_sent = model.ChatMessageSent(
-            session_id=self.entity_id,
-            chat_message=message,
-        )
+        events = [
+            model.ChatMessageSent(
+                session_id=self.entity_id,
+                chat_message=message,
+            ),
+            model.ChatResponseReceived(
+                session_id=self.entity_id,
+                chat_message=model.ChatMessage(role="assistant", content=answer),
+            ),
+        ]
 
-        response_received = model.ChatResponseReceived(
-            session_id=self.entity_id,
-            chat_message=model.ChatMessage(role="assistant", content=answer),
-        )
-
-        self.entity.apply(message_sent)
-        self.entity.apply(response_received)
-        await self.publish(message_sent)
-        await self.publish(response_received)
+        for e in events:
+            self.entity.apply(e)
+            await self.publish(e)
 
     @property
     def message_count(self) -> int:
@@ -241,24 +261,27 @@ class SessionActor(GPTBaseActor["SessionActor", model.ChatSession]):
     @handle.register
     async def _(self, command: model.SendChatMessage) -> None:
         chunks = self._send_chatmessage(
-            message=command.chat_message, model=command.model
-        )
-        message_sent = model.ChatMessageSent(
-            session_id=self.entity_id,
-            chat_message=command.chat_message,
+            message=command.chat_message,
+            model=command.model,
+            model_type=command.client_type,
         )
 
         answer = await async_receiver(chunks)
 
-        response_received = model.ChatResponseReceived(
-            session_id=self.entity_id,
-            chat_message=model.ChatMessage(role="assistant", content=answer),
-        )
+        events = [
+            model.ChatMessageSent(
+                session_id=self.entity_id,
+                chat_message=command.chat_message,
+            ),
+            model.ChatResponseReceived(
+                session_id=self.entity_id,
+                chat_message=model.ChatMessage(role="assistant", content=answer),
+            ),
+        ]
 
-        self.entity.apply(message_sent)
-        self.entity.apply(response_received)
-        await self.publish(message_sent)
-        await self.publish(response_received)
+        for e in events:
+            self.entity.apply(e)
+            await self.publish(e)
 
     @singledispatchmethod
     def apply(self, unknown: object) -> ty.Self:

@@ -1,14 +1,11 @@
 from datetime import datetime, timedelta
 
-# from src.app import factory as app_factory
 from src.app.auth import errors, model, repository
 from src.domain._log import logger
 from src.domain.config import Settings
 from src.domain.interface import IEvent
 from src.domain.model.base import str_to_snake, utcts_factory, uuid_factory
-from src.infra import cache, encrypt
-from src.infra import factory as infra_factory
-from src.infra import mq
+from src.infra import cache, encrypt, mq
 
 
 class TokenRegistry:

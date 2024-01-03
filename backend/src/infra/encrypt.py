@@ -1,5 +1,4 @@
 import typing as ty
-from functools import lru_cache
 
 import bcrypt
 from cryptography.fernet import Fernet
@@ -37,8 +36,8 @@ def encrypt_string(string: str, key: bytes) -> bytes:
     return encryptor.encrypt(string.encode())
 
 
-def decrypt_string(string: bytes, key: bytes) -> str:
-    fernet = get_fernet(key)
+def decrypt_string(string: bytes, security_key: bytes) -> str:
+    fernet = get_fernet(security_key)
     return fernet.decrypt(string).decode()
 
 

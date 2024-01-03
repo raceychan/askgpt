@@ -7,50 +7,22 @@ from src.app.api.router import api_router
 from src.app.bootstrap import bootstrap
 from src.app.factory import get_eventrecord
 from src.domain._log import logger
-from src.domain.config import get_setting
+from src.domain.config import Settings, get_setting
 
 stack = AsyncExitStack()
 
 # TODO: implement container to store dependencies
 # reff: https://python-dependency-injector.ets-labs.org/examples/fastapi-sqlalchemy.html
 
-
-class Container:
-    """
-
-    a centralized place to store dependencies
-    push dependencies to exit stack when initializing them
-    pop dependencies from exit stack when exiting them
-    for every dependency, instantiate with a factory function
-
-    difference with fastapi.dependencies.Depends:
-    1. exit stack
-    2. this is for app-wide dependencies, not request-wide dependencies
-    3. define a per_request:bool, if true, reinstantiate the dependency for every request
-
-    eg.
+from src.app.service_registry import ServiceRegistryBase
 
 
-    def get_auth_service(
-        settings,
-        user_repo = Depends(get_user_repo),
-        token_registry = Depends(get_token_registry),
-        token_encrypt = Depends(get_encryp),
-        producer = Depends(get_producer),
-
-    ):
-        ...
-
-
-    auth_service: AuthService = Depends(get_auth_service)
-    """
-
+class ApplicationServices(ServiceRegistryBase):
     ...
 
 
 @asynccontextmanager
-async def lifespan(app: FastAPI):
-    settings = get_setting()
+async def lifespan(app: FastAPI, settings: Settings = get_setting()):
     await bootstrap(settings)
     record = get_eventrecord(settings)
 
@@ -59,13 +31,13 @@ async def lifespan(app: FastAPI):
         yield
 
 
-def add_exception_handlers(app: FastAPI):
+def add_exception_handlers(app: FastAPI) -> None:
     registry: HandlerRegistry[Exception] = HandlerRegistry()
     for exc, handler in registry:
         app.add_exception_handler(exc, handler)  # type: ignore
 
 
-def add_middlewares(app: FastAPI):
+def add_middlewares(app: FastAPI) -> None:
     """
     FILO
     """
@@ -74,8 +46,7 @@ def add_middlewares(app: FastAPI):
     # TODO: add throttling middleware
 
 
-def main():
-    settings = get_setting("settings.toml")
+def app_factory(*, lifespan=lifespan, settings=get_setting("settings.toml")) -> FastAPI:
     app = FastAPI(
         title=settings.PROJECT_NAME,
         description="gpt service at your home",
@@ -88,23 +59,25 @@ def main():
 
     root_router = APIRouter()
     root_router.include_router(api_router)
-    root_router.add_api_route("/health", lambda: "health", tags=["health check"])
+    root_router.add_api_route("/health", lambda: "ok", tags=["health check"])
 
     app.include_router(root_router, prefix=settings.api.API_VERSION_STR)
     add_exception_handlers(app)
     add_middlewares(app)
 
-    logger.success("server is running now")
+    logger.success(
+        f"server is running at {settings.api.HOST}:{settings.api.PORT}",
+        version=f"{settings.api.API_VERSION_STR}",
+    )
     return app
 
 
-def server():
+def server(settings: Settings) -> None:
     import uvicorn
 
-    settings = get_setting()
     modulename = settings.get_modulename(__file__)
     uvicorn.run(  # type: ignore
-        f"{modulename}:main",
+        f"{modulename}:app_factory",
         host=settings.api.HOST,
         port=settings.api.PORT,
         factory=True,
@@ -115,4 +88,4 @@ def server():
 
 
 if __name__ == "__main__":
-    server()
+    server(get_setting("settings.toml"))

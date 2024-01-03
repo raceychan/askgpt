@@ -13,7 +13,7 @@ services:
       - gunicorn
 
     command: 
-      - "src.server:main"
+      - "src.server:app_factory"
       - "--workers"
       - "4"
       - "-k"

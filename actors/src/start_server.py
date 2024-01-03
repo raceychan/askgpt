@@ -17,8 +17,7 @@ def build_options():
 
 def start_server():
     serve.start(
-        detached=True,
-        http_options={"http_port": 8000},
+        # http_options={"http_port": 8000},
         grpc_port=grpc_port,
         grpc_options=build_options(),
     )
@@ -26,4 +25,3 @@ def start_server():
 
 if __name__ == "__main__":
     start_server()
-

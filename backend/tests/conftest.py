@@ -21,9 +21,15 @@ class TestSettings(Settings):
     class DB(Settings.DB):
         DATABASE: pathlib.Path
         ENGINE_ECHO: bool = False
+        HOST: str | None = None
+        PORT: int | None = -1
+        USER: str | None = None
+        PASSWORD: str | None = None
 
     class ActorRefs(Settings.ActorRefs):
         ...
+
+    db: DB
 
 
 @pytest.fixture(scope="session")
