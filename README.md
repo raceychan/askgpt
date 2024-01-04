@@ -1,18 +1,28 @@
 # AskGPT
 
+- [AskGPT](#askgpt)
+  - [Introduction](#introduction)
+  - [supported-platform](#supported-platform)
+  - [Local Model Serving](#local-model-serving)
+  - [Note](#note)
+  - [Usage](#usage)
+  - [Test](#test)
+  - [deployment](#deployment)
+    - [single-node](#single-node)
+  - [External-Dependencies](#external-dependencies)
+  - [Features](#features)
+
+
 ## Introduction
 
 AskGPT is a production-ready Dstirbuted, multi-Tenant ML-OPS platform that enables businesses to leverage cutting-edge language models like OpenAI's ChatGPT and various LLMs models. It's built with a robust multi-tenant architecture, powerful actor-based computational model, and a reactive, user-friendly interface.
 
-## Note
 
-Chat Completion is not async and not blocking, meaning that you can send multiple requests to the corresponding endpoints and expect streaming response concurrently from the server.
-
-However, API throttling might apply depending on spec of each model, for remote model like openai chatgpt, you can increase the number of current request by adding more api-keys, askgpt will  manage api throttling for you.  
 
 ## supported-platform
 
-openai chatcompletion
+* openai
+* all models supported by llama.cpp
 
 ## Local Model Serving
 
@@ -20,27 +30,39 @@ Local model serving is supported using llama.cpp, download your model in
 `actors/src/models`
 and define corresponding api in the `backend/src/app/api` directory.
 
+## Note
+
+Chat Completion is not async and not blocking, meaning that you can send multiple requests to the corresponding endpoints and expect streaming response concurrently from the server.
+
+However, API throttling might apply depending on spec of each model, for remote model like openai chatgpt, you can increase the number of current request by adding more api-keys, askgpt will  manage api throttling for you.  
+
 ## Usage
 
 1. create your own `settings.toml` in the project root under `askgpt/src`
 
 2. In your terminal:
 
-```python
+```bash
 make install
 make server
 ```
 
-## docker
+## Test
 
 ```bash
-docker build -t askgpt .
+make test
 ```
 
-## docker-compose
+## deployment
+
+### single-node
+
+single-node deployment can be done using docker-compose, multicode are well supported.
+all-heavy workloads are handled by ray-core, which should be pre-deployed as a cluster in the production environment.
 
 ```bash
-docker-compose up -d askgpt
+cd askgpt # project root
+docker-compose up -d
 ```
 
 ## External-Dependencies
@@ -76,4 +98,3 @@ With that being said, our current choices of components are
 8. Concurrency-First, Asynchronous Architecture: The system is built with a concurrency-first, async-first, and distributed-first approach, ensuring high responsiveness and reliability. This architecture is key to handling high-volume, parallel requests without compromising on performance.
 
 9. CQRS for Comprehensive Audit Logs: Incorporating Command Query Responsibility Segregation (CQRS), our platform provides detailed audit logs, enhancing transparency and traceability. This is vital for monitoring system usage, troubleshooting, and complying with regulatory requirements.
-
