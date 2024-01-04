@@ -5,6 +5,7 @@
   - [supported-platform](#supported-platform)
   - [Local Model Serving](#local-model-serving)
   - [Note](#note)
+  - [Community](#community)
   - [Usage](#usage)
   - [Test](#test)
   - [deployment](#deployment)
@@ -32,6 +33,10 @@ and define corresponding api in the `backend/src/app/api` directory.
 Chat Completion is not async and not blocking, meaning that you can send multiple requests to the corresponding endpoints and expect streaming response concurrently from the server.
 
 However, API throttling might apply depending on spec of each model, for remote model like openai chatgpt, you can increase the number of current request by adding more api-keys, askgpt will  manage api throttling for you.  
+
+## Community
+
+1. discord: [askgpt-discussion](https://discord.gg/D44Hz9pTMe)
 
 ## Usage
 
