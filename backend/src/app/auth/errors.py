@@ -10,6 +10,10 @@ class UserNotFoundError(AuthenticationError):
     Unable to find user with the same email
     """
 
+    def __init__(self, *, user_email: str):
+        msg = f"user {user_email} not found"
+        super().__init__(msg)
+
 
 class InvalidPasswordError(AuthenticationError):
     """

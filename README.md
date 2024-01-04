@@ -12,17 +12,14 @@
   - [External-Dependencies](#external-dependencies)
   - [Features](#features)
 
-
 ## Introduction
 
 AskGPT is a production-ready Dstirbuted, multi-Tenant ML-OPS platform that enables businesses to leverage cutting-edge language models like OpenAI's ChatGPT and various LLMs models. It's built with a robust multi-tenant architecture, powerful actor-based computational model, and a reactive, user-friendly interface.
 
-
-
 ## supported-platform
 
-* openai
-* all models supported by llama.cpp
+- openai
+- all models supported by llama.cpp
 
 ## Local Model Serving
 

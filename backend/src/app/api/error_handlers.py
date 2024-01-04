@@ -5,7 +5,7 @@ import typing as ty
 from fastapi import FastAPI, Request
 from src.app.api.errors import DomainError, ErrorDetail
 from src.app.api.xheaders import XHeaders
-from src.app.auth.errors import AuthenticationError
+from src.app.auth.errors import AuthenticationError, UserNotFoundError
 from src.app.gpt.errors import OrphanSessionError
 from starlette import status
 from starlette.background import BackgroundTask
@@ -139,6 +139,19 @@ def authentication_error_handler(
     return ErrorResponse(
         detail=exc.detail,
         status_code=status.HTTP_401_UNAUTHORIZED,
+        request_id=request_id,
+        headers={"WWW-Authenticate": "Bearer"},
+    )
+
+
+@HandlerRegistry.register
+def usernotfound_error_handler(
+    request: Request, exc: UserNotFoundError
+) -> ErrorResponse:
+    request_id = request.headers[XHeaders.REQUEST_ID.value]
+    return ErrorResponse(
+        detail=exc.detail,
+        status_code=status.HTTP_404_NOT_FOUND,
         request_id=request_id,
         headers={"WWW-Authenticate": "Bearer"},
     )

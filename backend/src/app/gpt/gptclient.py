@@ -42,15 +42,14 @@ class ClientRegistry:
 
 
 class AIClient(abc.ABC):
-    @abc.abstractmethod
-    def complete(
+    async def complete(
         self,
         messages: list[model.ChatMessage],
         model: model.CompletionModels,
         user: str,
         stream: bool = True,
         **options: ty.Unpack[params.CompletionOptions],  # type: ignore
-    ) -> ty.AsyncGenerator[openai_chat.ChatCompletionChunk, None]:
+    ) -> ty.AsyncIterable[openai_chat.ChatCompletionChunk]:
         ...
 
     @classmethod
@@ -88,9 +87,9 @@ class OpenAIClient(AIClient):
         user: str,
         stream: bool = True,
         **options: ty.Unpack[params.CompletionOptions],  # type: ignore
-    ) -> ty.AsyncGenerator[openai_chat.ChatCompletionChunk, None]:
+    ) -> ty.AsyncIterable[openai_chat.ChatCompletionChunk]:
         msgs = self.message_adapter(messages)
-        resp = await self._client.chat.completions.create(  # type: ignore
+        resp = await self._client.chat.completions.create(
             messages=msgs,  # type: ignore
             model=model,
             stream=stream,
@@ -98,7 +97,7 @@ class OpenAIClient(AIClient):
             **options,
         )
 
-        return resp  # type: ignore
+        return resp
 
     def message_adapter(
         self, messages: list[model.ChatMessage]

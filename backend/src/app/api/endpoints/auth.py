@@ -84,9 +84,9 @@ async def add_api_key(
 
 @user_router.get("/")
 async def find_user_by_email(service: ServiceDep, email: str) -> PublicUserInfo | None:
-    user = await service.search_user_by_email(email)
+    user = await service.find_user(email)
     if not user:
-        raise UserNotFoundError("user not found")
+        raise UserNotFoundError(user_email=email)
 
     return PublicUserInfo(
         user_id=user.entity_id,

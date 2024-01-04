@@ -12,7 +12,7 @@ from src.app.actor import (
     System,
 )
 from src.app.auth import model as auth_model
-from src.app.gpt import errors, gptclient, model
+from src.app.gpt import errors, gptclient, model, params
 from src.domain._log import logger
 from src.domain.config import Settings
 from src.domain.fmtutils import async_receiver
@@ -196,6 +196,7 @@ class SessionActor(GPTBaseActor["SessionActor", model.ChatSession]):
         message: model.ChatMessage,
         model: model.CompletionModels,
         stream: bool = True,
+        **options: params.CompletionOptions,
     ) -> ty.AsyncGenerator[str, None]:
         async with self.get_client(client_type=model_type) as client:
             chunks = await client.complete(
@@ -203,6 +204,7 @@ class SessionActor(GPTBaseActor["SessionActor", model.ChatSession]):
                 model=model,
                 user=self.entity.user_id,
                 stream=stream,
+                **options,
             )
 
         async for resp in chunks:
@@ -217,10 +219,11 @@ class SessionActor(GPTBaseActor["SessionActor", model.ChatSession]):
         message: model.ChatMessage,
         model_type: str,
         completion_model: model.CompletionModels,
+        **options: params.CompletionOptions,
     ) -> ty.AsyncGenerator[str, None]:
         "send messages and publish events"
         chunks = self._send_chatmessage(
-            message=message, model=completion_model, model_type=model_type
+            message=message, model=completion_model, model_type=model_type, **options
         )
         answer = ""
         async for chunk in chunks:
@@ -364,7 +367,8 @@ class GPTSystem(System[UserActor]):
 
     async def start(self, eventstore: eventstore.EventStore) -> "GPTSystem":
         if self._system_state.is_running:
-            raise errors.InvalidStateError("system already started")
+            return self
+            # raise errors.InvalidStateError("system already started")
 
         self.setup_journal(eventstore=eventstore, boxfactory=QueueBox)
         self.state = self.state.start()

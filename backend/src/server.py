@@ -11,14 +11,11 @@ from src.domain.config import Settings, get_setting
 
 stack = AsyncExitStack()
 
-# TODO: implement container to store dependencies
-# reff: https://python-dependency-injector.ets-labs.org/examples/fastapi-sqlalchemy.html
-
 
 @asynccontextmanager
 async def lifespan(app: FastAPI, settings: Settings = get_setting()):
     await bootstrap(settings)
-    async with ApplicationServices(settings) as registry:
+    async with ApplicationServices(settings):
         yield
 
 
@@ -68,7 +65,7 @@ def server(settings: Settings) -> None:
 
     modulename = settings.get_modulename(__file__)
     uvicorn.run(  # type: ignore
-        f"{modulename}:app_factory",
+        f"{modulename}:{app_factory.__name__}",
         host=settings.api.HOST,
         port=settings.api.PORT,
         factory=True,

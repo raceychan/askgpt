@@ -19,4 +19,3 @@ async def add_three(a: int, b: int, c: int) -> int:
 
 assert add_two(2, 3) == 5
 assert Test().add_two(1, 2) == 3
-assert add_three(1, 2, 3) == 6

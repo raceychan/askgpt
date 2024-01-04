@@ -5,26 +5,21 @@ from src.infra.service_registry import Dependency, ServiceRegistryBase
 
 class ServiceMock:
     async def __aenter__(self):
-        print("\n service enter")
         return self
 
     async def __aexit__(self, exc_type, exc_val, exc_tb):
-        print("\n service exit")
         pass
 
 
 def servicefacotry(settings):
-    print("received", settings)
     return ServiceMock()
 
 
 class SyncService:
     def __enter__(self):
-        print("\n base enter")
         return self
 
     def __exit__(self, exc_type, exc_val, exc_tb):
-        print("\n base exit")
         pass
 
 
@@ -54,7 +49,9 @@ class ServiceRegistry(ServiceRegistryBase):
 
 @pytest.fixture(scope="module", autouse=True)
 async def service_registry(settings):
-    async with ServiceRegistry(settings) as registry:
+    registry = ServiceRegistry(settings)
+
+    async with registry:
         yield registry
 
 

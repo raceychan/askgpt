@@ -79,13 +79,13 @@ class AuthService:
         user = await self._user_repo.search_user_by_email(email)
 
         if user is None:
-            raise errors.UserNotFoundError("user not found")
+            raise errors.UserNotFoundError(user_email=email)
 
         if not user.user_info.verify_password(password):
             raise errors.InvalidPasswordError("Invalid password")
 
         if not user.is_active:
-            raise errors.UserNotFoundError("user not found")
+            raise errors.UserNotFoundError(user_email=email)
 
         user.login()
 
@@ -118,7 +118,7 @@ class AuthService:
     async def add_api_key(self, user_id: str, api_key: str, api_type: str) -> None:
         user = await self._user_repo.get(user_id)
         if user is None:
-            raise errors.UserNotFoundError("user not found")
+            raise errors.UserNotFoundError(user_email=user_id)
 
         encrypted_key = self._token_encrypt.encrypt_string(api_key).decode()
 
@@ -131,9 +131,6 @@ class AuthService:
         # NOTE: api key will changed when encrypted, leading to multiple rows of same api key
         await self._user_repo.add_api_key_for_user(user_id, encrypted_key, api_type)
         await self._producer.publish(event)
-
-    async def search_user_by_email(self, email: str) -> model.UserAuth | None:
-        return await self._user_repo.search_user_by_email(email)
 
     async def get_user_detail(self, user_id: str) -> model.UserAuth | None:
         return await self._user_repo.get(user_id)

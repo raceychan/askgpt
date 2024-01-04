@@ -61,9 +61,9 @@ class DomainError(Exception):
     source: ty.Literal["server", "client"]
     service: str
 
-    def __init__(self, message: str | None = None):
+    def __init__(self, message: str = ""):
         super().__init__(message)
-        self.message = message or ""
+        self.message = message
         self.detail = self._generate_detail()
 
     def __repr__(self):

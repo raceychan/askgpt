@@ -59,15 +59,14 @@ class GPTService:
         model_type: str,
         role: model.ChatGPTRoles,
         completion_model: model.CompletionModels,
-        options: params.CompletionOptions | None = None,
+        **options: ty.Unpack[params.CompletionOptions],
     ) -> ty.AsyncGenerator[str | None, None]:
-        # TODO: receive a options object so it goes like
-        # user_id, session_id, completion_options
         session_actor = await self.get_session(user_id=user_id, session_id=session_id)
         return session_actor.send_chatmessage(
             message=model.ChatMessage(role=role, content=question),
             model_type=model_type,
             completion_model=completion_model,
+            options=options,
         )
 
     async def interactive(
@@ -109,6 +108,9 @@ class GPTService:
 
     async def start(self) -> None:
         if self.state.is_running:
+            return
+
+        if self.system.state is SystemState.running:
             return
 
         await self.system.start(
