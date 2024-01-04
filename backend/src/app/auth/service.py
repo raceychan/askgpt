@@ -1,3 +1,4 @@
+from contextlib import asynccontextmanager
 from datetime import datetime, timedelta
 
 from src.app.auth import errors, model, repository
@@ -47,6 +48,14 @@ class AuthService:
         self._producer = producer
         self._security_settings = security_settings
 
+    @asynccontextmanager
+    async def lifespan(self):
+        try:
+            yield self
+        finally:
+            await self._user_repo._aioengine.dispose()
+            await self._token_registry._cache.close()
+
     @property
     def user_repo(self):
         return self._user_repo
@@ -84,9 +93,6 @@ class AuthService:
         return self._create_access_token(user.entity_id, user.role)
 
     async def find_user(self, useremail: str) -> model.UserAuth | None:
-        """
-        make sure user does not exist
-        """
         user_or_none = await self._user_repo.search_user_by_email(useremail)
         return user_or_none
 
@@ -125,3 +131,9 @@ class AuthService:
         # NOTE: api key will changed when encrypted, leading to multiple rows of same api key
         await self._user_repo.add_api_key_for_user(user_id, encrypted_key, api_type)
         await self._producer.publish(event)
+
+    async def search_user_by_email(self, email: str) -> model.UserAuth | None:
+        return await self._user_repo.search_user_by_email(email)
+
+    async def get_user_detail(self, user_id: str) -> model.UserAuth | None:
+        return await self._user_repo.get(user_id)

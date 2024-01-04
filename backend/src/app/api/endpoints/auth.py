@@ -8,25 +8,11 @@ from src.app.api.model import RequestBody
 from src.app.api.response import RedirectResponse, redirect
 from src.app.auth.errors import InvalidCredentialError, UserNotFoundError
 from src.app.auth.model import UserAuth
-from src.app.factory import AuthService, get_auth_service
+from src.app.factory import ApplicationServices, AuthService
 from src.domain.base import EMPTY_STR
-from src.domain.config import Settings, get_setting
 
 auth_router = APIRouter(prefix="/auth")
 user_router = APIRouter(prefix="/users")
-
-
-def auth_settings():
-    return get_setting("settings.toml")
-
-
-def auth_service(
-    settings: ty.Annotated[Settings, Depends(auth_settings)]
-) -> AuthService:
-    return get_auth_service(settings)
-
-
-ServiceDep = ty.Annotated[AuthService, Depends(auth_service)]
 
 
 class TokenResponse(ty.TypedDict):
@@ -51,6 +37,13 @@ class UserAddAPIRequest(RequestBody):
     api_type: ty.Literal["openai"] = "openai"
 
 
+def get_auth_service():
+    return ApplicationServices.auth_service
+
+
+ServiceDep = ty.Annotated[AuthService, Depends(get_auth_service)]
+
+
 @auth_router.post("/login")
 async def login(
     service: ServiceDep, login_form: OAuth2PasswordRequestForm = Depends()
@@ -61,7 +54,7 @@ async def login(
 
 
 @auth_router.post("/signup")
-async def create_user(service: ServiceDep, req: CreateUserRequest) -> RedirectResponse:
+async def signup_user(service: ServiceDep, req: CreateUserRequest) -> RedirectResponse:
     "Request will be redirected to user route for user info"
     user_id = await service.signup_user(req.user_name, req.email, req.password)
     return redirect(user_router, user_id)
@@ -74,7 +67,7 @@ async def user_detail(
     "Private user info"
     if not user_id == token.sub:
         raise InvalidCredentialError("user does not match with credentials")
-    user = await service.user_repo.get(user_id)
+    user = await service.get_user_detail(user_id)
     return user
 
 
@@ -91,7 +84,7 @@ async def add_api_key(
 
 @user_router.get("/")
 async def find_user_by_email(service: ServiceDep, email: str) -> PublicUserInfo | None:
-    user = await service.user_repo.search_user_by_email(email)
+    user = await service.search_user_by_email(email)
     if not user:
         raise UserNotFoundError("user not found")
 

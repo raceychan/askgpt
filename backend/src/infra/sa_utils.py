@@ -114,6 +114,11 @@ class SQLDebugger:
         self.engine.dispose()
         self.console.print(f"\n[bold green]connection released[/]")
 
+    def confirm(self, sql: str) -> bool:
+        self.show_sql(sql)
+        self.console.print("\n[bold red]Are you sure to execute? \\[yes/N][/]")
+        return input() == "yes"
+
     @contextmanager
     def lifespan(self):
         try:
@@ -134,7 +139,7 @@ class SQLDebugger:
         return cls.from_url(url)
 
 
-if __name__ == "__main__":
+def sqlcli():
     import sys
     from argparse import ArgumentParser
 
@@ -155,9 +160,12 @@ if __name__ == "__main__":
             sql.interactive()
             sys.exit(0)
         sql_caluse = ns.sql
-        sql.console.print(f"[bold green]Received SQL:[/bold green]")
-        sql.show_sql(sql_caluse)
-        sql.console.print("\n[bold red]Are you sure to execute? \\[yes/N][/]")
-        if input() != "yes":
-            sys.exit(0)
-        result = sql.execute(sql_caluse)
+
+        if sql.confirm(sql_caluse):
+            result = sql.execute(sql_caluse)
+            print(result)
+        sys.exit(0)
+
+
+if __name__ == "__main__":
+    sqlcli()

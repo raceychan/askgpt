@@ -10,6 +10,53 @@ Chat Completion is not async and not blocking, meaning that you can send multipl
 
 However, API throttling might apply depending on spec of each model, for remote model like openai chatgpt, you can increase the number of current request by adding more api-keys, askgpt will  manage api throttling for you.  
 
+## supported-platform
+
+openai chatcompletion
+
+## Local Model Serving
+
+Local model serving is supported using llama.cpp, download your model in
+`actors/src/models`
+and define corresponding api in the `backend/src/app/api` directory.
+
+## Usage
+
+1. create your own `settings.toml` in the project root under `askgpt/src`
+
+2. In your terminal:
+
+```python
+make install
+make server
+```
+
+## docker
+
+```bash
+docker build -t askgpt .
+```
+
+## docker-compose
+
+```bash
+docker-compose up -d askgpt
+```
+
+## External-Dependencies
+
+All external dependencies are plugable by design, client code are well-encapsulated to be easily extended with sub-class.
+
+With that being said, our current choices of components are
+
+| Component | Name |
+| ------ | ------ |
+| Message Queue | Apache Pulsar |
+| Cache | Redis |
+| SQL-database | Postgresql |
+| Distributed actors | Ray-core |
+| LLMS models | Huggingface Transformers |
+
 ## Features
 
 1. Robust Multi-Tenancy: AskGPT is built with multi-tenancy at its core. Administrators can effortlessly share API access with sub-users, ensuring that each tenant's data and messages remain isolated and secure. This feature is ideal for businesses that require compartmentalized access for different departments or client accounts.
@@ -30,24 +77,3 @@ However, API throttling might apply depending on spec of each model, for remote 
 
 9. CQRS for Comprehensive Audit Logs: Incorporating Command Query Responsibility Segregation (CQRS), our platform provides detailed audit logs, enhancing transparency and traceability. This is vital for monitoring system usage, troubleshooting, and complying with regulatory requirements.
 
-## Usage
-
-1. create your own `settings.toml` in the project root under `askgpt/src`
-
-2. In your terminal:
-
-```python
-make install
-make server
-```
-
-## External-Dependencies
-
-All external dependencies are plugable by design, client code are well-encapsulated to be easily extended with sub-class.
-
-With that being said, our current choices of components are
-
-MQ: apache-pulsar
-Cache: redis
-SQL-database: postgresql
-Distributed actors: ray-core

@@ -1,7 +1,6 @@
 import pytest
-
 from src import cli
-from src.app.gpt import service
+from src.app.factory import GPTService, get_gpt_service
 from src.domain.config import Settings
 from src.domain.model.test_default import TestDefaults
 
@@ -30,16 +29,16 @@ def auth_options():
 
 @pytest.fixture(scope="module")
 async def gpt(settings: Settings):
-    gpt_service = service.GPTService.from_settings(settings)
+    gpt_service = get_gpt_service(settings)
     async with gpt_service.lifespan() as gpt:
         yield gpt
 
 
 @pytest.mark.skip(reason="io involved")
-async def test_create_user(gpt: service.GPTService, auth_options: cli.CLIOptions):
+async def test_create_user(gpt: GPTService, auth_options: cli.CLIOptions):
     await cli.app(gpt, auth_options)
 
 
 @pytest.mark.skip(reason="io involved")
-async def test_cli_app(gpt: service.GPTService, gpt_options: cli.CLIOptions):
+async def test_cli_app(gpt: GPTService, gpt_options: cli.CLIOptions):
     await cli.app(gpt, gpt_options)

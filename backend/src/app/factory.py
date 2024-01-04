@@ -1,9 +1,11 @@
 from src.app.auth.repository import UserRepository
 from src.app.auth.service import AuthService, TokenRegistry
 from src.app.eventrecord import EventRecord
-from src.app.gpt.service import GPTService
+from src.app.gpt.repository import SessionRepository
+from src.app.gpt.service import GPTService, GPTSystem, QueueBox
 from src.domain.config import Settings, settingfactory
 from src.infra import factory as infra_factory
+from src.infra.service_registry import Dependency, ServiceRegistryBase
 
 
 @settingfactory
@@ -46,7 +48,20 @@ def get_auth_service(settings: Settings):
 
 
 @settingfactory
-async def get_gpt_service(settings: Settings):
-    service = GPTService.from_settings(settings)
-    async with service.lifespan():
-        yield service
+def get_gpt_service(settings: Settings):
+    aioengine = infra_factory.get_async_engine(settings)
+    system = GPTSystem(
+        settings=settings,
+        ref=settings.actor_refs.SYSTEM,
+        boxfactory=QueueBox,
+        cache=infra_factory.get_cache(settings),
+    )
+    session_repo = SessionRepository(aioengine)
+    service = GPTService(system=system, session_repo=session_repo)
+    return service
+
+
+class ApplicationServices(ServiceRegistryBase):
+    auth_service = Dependency(AuthService, get_auth_service)
+    gpt_service = Dependency(GPTService, get_gpt_service)
+    eventrecord = Dependency(EventRecord, get_eventrecord)

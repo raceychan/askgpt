@@ -94,6 +94,9 @@ class Cache[TKey: ty.Hashable, TValue: ty.Any](abc.ABC):
     # @cached_property
     # def list(self):
     #     return CacheList(self)
+    @abc.abstractmethod
+    async def close(self):
+        raise NotImplementedError
 
 
 class MemoryCache[TKey: str, TVal: ty.Any](Cache[TKey, TVal]):
@@ -131,6 +134,9 @@ class MemoryCache[TKey: str, TVal: ty.Any](Cache[TKey, TVal]):
     @freezelru
     def from_singleton(cls) -> ty.Self:
         return cls()
+
+    async def close(self):
+        self._cache.clear()
 
 
 class RedisCache[TKey: str | memoryview | bytes](Cache[TKey, ty.Any]):
@@ -172,6 +178,7 @@ class RedisCache[TKey: str | memoryview | bytes](Cache[TKey, ty.Any]):
     ) -> ScriptFunc[ty.Any, ty.Any, ty.Any]:
         if isinstance(script, pathlib.Path):
             script = script.read_text()
+
         return self._redis.register_script(script)
 
     async def sadd(self, key: TKey, *values: ty.Any) -> bool:
@@ -205,7 +212,10 @@ class RedisCache[TKey: str | memoryview | bytes](Cache[TKey, ty.Any]):
         try:
             yield self
         finally:
-            await self._redis.aclose()
+            await self.close()
+
+    async def close(self):
+        await self._redis.aclose(close_connection_pool=True)
 
     @classmethod
     def build(

@@ -5,22 +5,19 @@ from fastapi.responses import StreamingResponse
 from src.app.api.dependencies import AccessToken, parse_access_token
 from src.app.api.model import RequestBody
 from src.app.api.response import RedirectResponse
-from src.app.factory import get_gpt_service
+from src.app.factory import ApplicationServices
 from src.app.gpt.params import ChatGPTRoles, CompletionModels
 from src.app.gpt.service import GPTService
-from src.domain.config import Settings, get_setting
 from starlette import status
 
 gpt_router = APIRouter(prefix="/gpt")
 
 
-def service_facotry(
-    settings: ty.Annotated[Settings, Depends(get_setting)]
-) -> GPTService:
-    return get_gpt_service(settings)
+def get_gpt_service() -> GPTService:
+    return ApplicationServices.gpt_service
 
 
-ServiceDep = ty.Annotated[GPTService, Depends(service_facotry)]
+ServiceDep = ty.Annotated[GPTService, Depends(get_gpt_service)]
 
 
 class SendMessageRequest(RequestBody):

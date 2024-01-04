@@ -1,12 +1,9 @@
 import typing as ty
 from contextlib import asynccontextmanager
 
-from src.app.actor import QueueBox
+from src.app.actor import QueueBox as QueueBox
 from src.app.gpt import model, params, repository
 from src.app.gpt.gptsystem import GPTSystem, SessionActor, SystemState, UserActor
-from src.domain._log import logger
-from src.domain.config import Settings
-from src.infra import factory
 from src.infra.eventstore import EventStore
 
 
@@ -117,32 +114,17 @@ class GPTService:
         await self.system.start(
             eventstore=EventStore(aioengine=self._session_repo.aioengine),
         )
-        logger.info("System started")
         self.state = self.state.start()
 
     async def stop(self):
         await self.system.stop()
+        await self._session_repo._aioengine.dispose()
         self.state = self.state.stop()
 
     @asynccontextmanager
     async def lifespan(self):
+        await self.start()
         try:
-            await self.start()
             yield self
-        except KeyboardInterrupt:
-            logger.info("Quit by user")
         finally:
             await self.stop()
-
-    @classmethod
-    def from_settings(cls, settings: Settings) -> ty.Self:
-        aioengine = factory.get_async_engine(settings)
-        system = GPTSystem(
-            settings=settings,
-            ref=settings.actor_refs.SYSTEM,
-            boxfactory=QueueBox,
-            cache=factory.get_cache(settings),
-        )
-        session_repo = repository.SessionRepository(aioengine)
-        service = cls(system=system, session_repo=session_repo)
-        return service

@@ -24,7 +24,6 @@ COLOR_MAPPER = dict(
     ERROR="red",
     CRITICAL="red",
 )
-# loguru_fmt = "<green>{time}</green> | <level>{level: <8}</level> | <cyan>{name}</cyan>:<cyan>{function}</cyan>:<cyan>{line}</cyan> | request_id:{request_id} | <level>{message}</level>"
 
 
 def format_record(record: loguru.Record) -> dict[str, ty.Any]:

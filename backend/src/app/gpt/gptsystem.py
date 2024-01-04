@@ -395,5 +395,4 @@ class GPTSystem(System[UserActor]):
         await self.create_user(command)
 
     async def stop(self) -> None:
-        logger.info("system stopped")
         self.state = self.state.stop()

@@ -3,7 +3,6 @@ import typing as ty
 
 import sqlalchemy as sa
 from sqlalchemy.ext import asyncio as sa_aio
-
 from src.domain.interface import IEvent, IEventStore
 from src.domain.model.base import Event
 
@@ -59,8 +58,8 @@ class EventStore(IEventStore):
         value = dump_event(event)
         stmt = sa.insert(self.table).values(value)
 
-        async with self._aioengine.begin() as cursor:
-            await cursor.execute(stmt)
+        async with self._aioengine.begin() as conn:
+            await conn.execute(stmt)
 
     async def add_all(self, events: list[IEvent]) -> None:
         values = [dump_event(event) for event in events]

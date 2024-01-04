@@ -4,9 +4,11 @@ from src.infra import cache, encrypt, eventstore, mq, sa_utils, tokenbucket
 
 
 def get_async_engine(settings: Settings):
-    return sa_utils.asyncengine(get_engine(settings))
+    async_engine = sa_utils.asyncengine(get_engine(settings))
+    return async_engine
 
 
+@settingfactory
 def get_engine(settings: Settings):
     engine = sa_utils.engine_factory(
         db_url=settings.db.DB_URL,
@@ -60,7 +62,7 @@ def get_local_cache(settings: Settings | None = None):
 
 
 @settingfactory
-def get_encrypt(settings: Settings):
+def get_encrypt(settings: Settings) -> encrypt.Encrypt:
     return encrypt.Encrypt(
         secret_key=settings.security.SECRET_KEY,
         algorithm=settings.security.ALGORITHM,

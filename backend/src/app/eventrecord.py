@@ -54,7 +54,7 @@ class EventRecord:
             except asyncio.CancelledError:
                 pass  # Task cancellation is expected
             finally:
-                logger.info("stopped collection event record")
+                logger.info("stopped collecting event record")
                 self.__main_task = None
 
     @asynccontextmanager

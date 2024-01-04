@@ -1,5 +1,6 @@
 import pytest
 from src.app.actor import MailBox, QueueBox
+from src.app.factory import get_gpt_service
 from src.app.gpt import errors, gptsystem, model, service
 from src.domain import config
 from src.domain.model.test_default import TestDefaults
@@ -192,7 +193,7 @@ def test_service_state_stop():
 
 @pytest.fixture(scope="module")
 async def gpt_service(settings: config.Settings):
-    gpt = service.GPTService.from_settings(settings)
+    gpt = get_gpt_service(settings)
     async with gpt.lifespan():
         yield gpt
 

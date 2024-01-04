@@ -3,7 +3,7 @@ import typing as ty
 from argparse import ArgumentParser, Namespace
 from dataclasses import dataclass
 
-from src.app.factory import AuthService, get_auth_service
+from src.app.factory import AuthService, get_auth_service, get_gpt_service
 from src.app.gpt import model, params, service
 from src.domain._log import logger
 from src.domain.base import EMPTY_STR
@@ -110,7 +110,7 @@ async def app(gpt: service.GPTService, options: CLIOptions) -> None:
 def main():
     options = CLIOptions.parse()
     settings = get_setting()
-    gpt = service.GPTService.from_settings(settings)
+    gpt = get_gpt_service(settings)
     auth = get_auth_service(settings)
 
     if options.command == "auth":

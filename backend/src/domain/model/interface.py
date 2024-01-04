@@ -1,3 +1,4 @@
+import contextlib
 import datetime
 import typing as ty
 from functools import singledispatchmethod
@@ -53,3 +54,5 @@ class IEvent(IMessage, ty.Protocol):
 
 class IQuery(IMessage, ty.Protocol):
     entity_id: str
+
+

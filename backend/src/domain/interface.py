@@ -1,3 +1,5 @@
+import abc
+import contextlib
 import typing as ty
 
 from src.domain.model.interface import ICommand as ICommand
@@ -28,3 +30,10 @@ type SQL_ISOLATIONLEVEL = ty.Literal[
 
 class AbstractActorRef(ty.Protocol):
     ...
+
+
+@ty.runtime_checkable
+class LiveService(ty.Protocol):
+    @contextlib.asynccontextmanager
+    async def lifespan(self):
+        yield self

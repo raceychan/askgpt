@@ -1,6 +1,6 @@
 import pytest
 from rich import print
-from src.app.service_registry import Dependency, ServiceRegistryBase
+from src.infra.service_registry import Dependency, ServiceRegistryBase
 
 
 class ServiceMock:
@@ -31,6 +31,9 @@ class SyncService:
 class Base:
     pass
 
+    async def lifespan(self):
+        yield self
+
 
 def syncfactory(settings):
     return SyncService()
@@ -47,17 +50,14 @@ def configs() -> str:
 class ServiceRegistry(ServiceRegistryBase):
     service = Dependency(ServiceMock, servicefacotry)
     sync = Dependency(SyncService, syncfactory)
-    base = Dependency(Base, basefactory)
 
 
 @pytest.fixture(scope="module", autouse=True)
 async def service_registry(settings):
     async with ServiceRegistry(settings) as registry:
         yield registry
-    ...
 
 
 def test_getdeps(service_registry: ServiceRegistry):
     service_registry.service
     service_registry.sync
-    service_registry.base

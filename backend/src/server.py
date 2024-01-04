@@ -5,7 +5,7 @@ from src.app.api.error_handlers import HandlerRegistry
 from src.app.api.middleware import LoggingMiddleware, TraceMiddleware
 from src.app.api.router import api_router
 from src.app.bootstrap import bootstrap
-from src.app.factory import get_eventrecord
+from src.app.factory import ApplicationServices
 from src.domain._log import logger
 from src.domain.config import Settings, get_setting
 
@@ -14,20 +14,11 @@ stack = AsyncExitStack()
 # TODO: implement container to store dependencies
 # reff: https://python-dependency-injector.ets-labs.org/examples/fastapi-sqlalchemy.html
 
-from src.app.service_registry import ServiceRegistryBase
-
-
-class ApplicationServices(ServiceRegistryBase):
-    ...
-
 
 @asynccontextmanager
 async def lifespan(app: FastAPI, settings: Settings = get_setting()):
     await bootstrap(settings)
-    record = get_eventrecord(settings)
-
-    async with stack:
-        await stack.enter_async_context(record.lifespan())
+    async with ApplicationServices(settings) as registry:
         yield
 
 
