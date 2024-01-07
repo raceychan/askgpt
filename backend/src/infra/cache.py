@@ -5,9 +5,10 @@ import pathlib
 import typing as ty
 from collections import defaultdict
 from contextlib import asynccontextmanager
+from typing import Any
 
 from redis import asyncio as aioredis
-from src.domain.base import KeySpace, freezelru
+from src.domain.base import KeySpace
 
 type RedisBool = ty.Literal[0, 1]
 
@@ -48,21 +49,6 @@ class CacheList[TKey, TValue]:
 
 
 class Cache[TKey: ty.Hashable, TValue: ty.Any](abc.ABC):
-    """
-    TODO: refactor, seperate different interface from cache
-    redis.Redis has all interfaces of set, list, hashmap, etc.
-    but we only need some of them at a time, so we should seperate them.
-
-    eg:
-    cache.map.set
-    cache.set.add
-    cache.list.append
-
-    @property
-    def set(self):
-        return
-    """
-
     @abc.abstractmethod
     async def get(self, key: TKey) -> TValue | None:
         ...
@@ -81,27 +67,35 @@ class Cache[TKey: ty.Hashable, TValue: ty.Any](abc.ABC):
 
     @abc.abstractmethod
     async def rpop(self, key: TKey) -> TValue | None:
+        # TODO: rewrite to be cache.list.pop
         raise NotImplementedError
 
     @abc.abstractmethod
     async def lpop(self, key: TKey) -> TValue | None:
+        # TODO: rewrite to be cache.list.pop(-1)
+        raise NotImplementedError
+
+    @abc.abstractmethod
+    async def close(self):
+        raise NotImplementedError
+
+    @abc.abstractmethod
+    async def sismember(self, key: TKey, member: ty.Any) -> bool:
+        raise NotImplementedError
+
+    @abc.abstractmethod
+    async def sadd(self, key: TKey, *values: ty.Any) -> bool:
         raise NotImplementedError
 
     @abc.abstractproperty
     def keyspace(self) -> KeySpace:
         ...
 
-    # @cached_property
-    # def list(self):
-    #     return CacheList(self)
-    @abc.abstractmethod
-    async def close(self):
-        raise NotImplementedError
-
 
 class MemoryCache[TKey: str, TVal: ty.Any](Cache[TKey, TVal]):
     def __init__(self):
         self._cache: dict[TKey, TVal] = {}
+        self._set = set()
 
     @functools.cached_property
     def list(self) -> CacheList[TKey, TVal]:
@@ -130,13 +124,20 @@ class MemoryCache[TKey: str, TVal: ty.Any](Cache[TKey, TVal]):
     async def lpop(self, key: TKey) -> TVal | None:
         return await self.list.lpop(key)
 
-    @classmethod
-    @freezelru
-    def from_singleton(cls) -> ty.Self:
-        return cls()
+    async def sismember(self, key: TKey, member: Any) -> bool:
+        return member in self._set
+
+    async def sadd(self, key: TKey, *values: Any) -> bool:
+        self._set.add(values)
+        return True
 
     async def close(self):
         self._cache.clear()
+
+    @classmethod
+    @functools.lru_cache(maxsize=1)
+    def from_singleton(cls) -> ty.Self:
+        return cls()
 
 
 class RedisCache[TKey: str | memoryview | bytes](Cache[TKey, ty.Any]):

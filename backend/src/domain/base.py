@@ -4,6 +4,8 @@ Custom types and helpers, do not import any non-builtin here.
 import typing as ty
 from functools import lru_cache, update_wrapper
 
+from src.tools.nameutils import str_to_snake
+
 
 class _NotGiven:
     ...
@@ -107,7 +109,7 @@ class attribute[TOwner: ty.Any, TField: ty.Any]:
 
 
 class KeySpace(ty.NamedTuple):  # use namedtuple for memory efficiency
-    """Organize key to create redis key namespace \n\
+    """Organize key to create redis key namespace
     >>> KeySpace("base")("new").key
     'base:new'
     """
@@ -147,6 +149,19 @@ class KeySpace(ty.NamedTuple):  # use namedtuple for memory efficiency
     def base(self):
         return KeySpace(self.key[: self.key.find(":")])
 
-    def generate_for_cls(self, cls: type) -> "KeySpace":
-        mod = cls.__module__
-        return self(mod + ":" + cls.__name__)
+    def generate_for_cls(self, cls: type, with_module: bool = True) -> "KeySpace":
+        "generate key space for class, under current keyspace"
+        if with_module:
+            key = f"{cls.__module__}:{str_to_snake(cls.__name__)}"
+        else:
+            key = str_to_snake(cls.__name__)
+        return self(key)
+
+
+class TimeScale:
+    "A more type-aware approach to time scale"
+    Second = ty.NewType("Second", int)
+    Minute = ty.NewType("Minute", int)
+    Hour = ty.NewType("Hour", int)
+    Day = ty.NewType("Day", int)
+    Week = ty.NewType("Week", int)

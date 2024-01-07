@@ -4,15 +4,10 @@ from urllib.parse import quote
 from fastapi import Request
 from src.app.api.xheaders import XHeaders
 from src.domain._log import logger
-from src.domain.model.base import uuid_factory
+from src.domain.config import TIME_EPSILON_S, UnknownAddress
+from src.domain.model.base import request_id_factory
 from starlette.middleware.base import BaseHTTPMiddleware, RequestResponseEndpoint
 from starlette.types import ASGIApp, Receive, Scope, Send
-
-MIN_PROCESS_TIME = 0.001  # 1ms
-
-
-def request_id_factory() -> bytes:
-    return uuid_factory().encode()
 
 
 class TraceMiddleware:
@@ -38,7 +33,7 @@ class LoggingMiddleware(BaseHTTPMiddleware):
     """
 
     async def dispatch(self, request: Request, call_next: RequestResponseEndpoint):
-        client_host, client_port = request.client or ("unknown_ip", "unknown_port")
+        client_host, client_port = request.client or UnknownAddress()
         url_parts = request.url.components
         path_query = quote(
             "{}?{}".format(url_parts.path, url_parts.query)
@@ -58,7 +53,7 @@ class LoggingMiddleware(BaseHTTPMiddleware):
                 raise e
             finally:
                 post_process = perf_counter()
-                duration = max(round(post_process - pre_process, 3), MIN_PROCESS_TIME)
+                duration = max(round(post_process - pre_process, 3), TIME_EPSILON_S)
                 logger.info(
                     f'{client_host}:{client_port} - "{request.method} {path_query} HTTP/{request.scope["http_version"]}" {status_code}',
                     duration=duration,
@@ -67,3 +62,12 @@ class LoggingMiddleware(BaseHTTPMiddleware):
             response.headers[XHeaders.REQUEST_ID.value] = request_id
             response.headers[XHeaders.PROCESS_TIME.value] = str(duration)
             return response
+
+
+# class ThrottlingMiddleware(BaseHTTPMiddleware):
+#     def __init__(self, app: ASGIApp, throttler):
+#         super().__init__(app)
+#         self._throttler = throttler
+
+#     async def dispatch(self, request: Request, call_next: RequestResponseEndpoint):
+#         return await call_next(request)

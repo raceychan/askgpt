@@ -3,14 +3,12 @@ from contextlib import contextmanager
 
 import sqlalchemy as sa
 from sqlalchemy.ext import asyncio as sa_aio
-from src.domain.base import freezelru
 
 
 def asyncengine(engine: sa.Engine) -> sa_aio.AsyncEngine:
     return sa_aio.AsyncEngine(engine)
 
 
-@freezelru
 def engine_factory(
     db_url: str,
     *,

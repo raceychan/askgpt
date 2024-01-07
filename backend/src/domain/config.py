@@ -1,10 +1,23 @@
 import pathlib
 import typing as ty
 
-from pydantic import BaseModel, ConfigDict, field_validator
-from src.domain.base import KeySpace, freeze, freezelru
+from pydantic import BaseModel, ConfigDict, computed_field, field_validator
+from src.domain.base import KeySpace, TimeScale, freeze, freezelru
 from src.domain.interface import SQL_ISOLATIONLEVEL, EventLogRef, JournalRef, SystemRef
-from src.infra.fileutil import FileUtil
+from src.tools.fileutil import FileUtil
+
+UNIT = MINUTE = 1
+HOUR = 60 * MINUTE
+DAY = 24 * HOUR
+WEEK = 7 * DAY
+
+
+TIME_EPSILON_S = 0.001  # 1ms
+
+
+class UnknownAddress(ty.NamedTuple):
+    ip: str = "unknown_ip"
+    port: str = "unknown_port"
 
 
 class SettingsFactory[T](ty.Protocol):
@@ -20,21 +33,6 @@ class PureFacotry[T](ty.Protocol):
 def settingfactory[T: ty.Any](factory: SettingsFactory[T]) -> SettingsFactory[T]:
     "Cached factory that returns a cached instance for each settings instance"
     return freezelru(factory)
-
-
-class TimeScale:
-    "A more type-aware approach to time scale"
-    Second = ty.NewType("Second", int)
-    Minute = ty.NewType("Minute", int)
-    Hour = ty.NewType("Hour", int)
-    Day = ty.NewType("Day", int)
-    Week = ty.NewType("Week", int)
-
-
-UNIT = MINUTE = 1
-HOUR = 60 * MINUTE
-DAY = 24 * HOUR
-WEEK = 7 * DAY
 
 
 class SettingsBase(BaseModel):
@@ -153,22 +151,44 @@ class Settings(SettingsBase):
         PORT: int | str
         DB: int | str
         TOKEN_BUCKET_SCRIPT: pathlib.Path = pathlib.Path("src/script/tokenbucket.lua")
-        KEY_SPACE: KeySpace
         MAX_CONNECTIONS: int = 10
         DECODE_RESPONSES: bool = True
         SOCKET_TIMEOUT: int
         SOCKET_CONNECT_TIMEOUT: int = 2
 
-        @field_validator("KEY_SPACE", mode="before")
-        @classmethod
-        def validate_key_space(cls, v: str) -> KeySpace:
-            return KeySpace(v)
+        # KEY_SPACE: KeySpace
 
         @property
         def URL(self) -> str:
             return f"{self.SCHEME}://{self.HOST}:{self.PORT}/{self.DB}"
 
+        class KeySpaces(SettingsBase):
+            APP: KeySpace
+
+            @field_validator("APP", "THROTTLER", mode="before")
+            @classmethod
+            def validate_key_space(cls, v: str) -> KeySpace:
+                return KeySpace(v)
+
+            @computed_field
+            @property
+            def THROTTLER(cls) -> KeySpace:
+                return cls.APP("throttler")
+
+            @computed_field
+            @property
+            def API_POOL(cls) -> KeySpace:
+                return cls.APP("apikeypool")
+
+        keyspaces: KeySpaces
+
     redis: Redis
+
+    class Throttling(SettingsBase):
+        USER_MAX_REQUEST_PER_MINUTE: int
+        USER_MAX_REQUEST_DURATION_MINUTE: int
+
+    throttling: Throttling
 
     class EventRecord(SettingsBase):
         EventFetchInterval: float = 0.1

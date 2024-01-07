@@ -1,17 +1,21 @@
+import typing as ty
+
 from fastapi import Depends
 from fastapi.security import OAuth2PasswordBearer
 from jose.exceptions import JWTError
 from pydantic import ValidationError
+from src.app import factory as app_fatory
+from src.app.api.errors import QuotaExceededError
 from src.app.auth.errors import InvalidCredentialError
 from src.app.auth.model import AccessToken
 from src.domain.config import get_setting
-from src.infra import factory
+from src.infra import factory as infra_factory
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="auth/login")
 
 
 def parse_access_token(token: str = Depends(oauth2_scheme)) -> AccessToken:
-    token_encrypt = factory.get_encrypt(get_setting())
+    token_encrypt = infra_factory.get_encrypt(get_setting())
     try:
         decoded = token_encrypt.decrypt_jwt(token)
         access_token = AccessToken.model_validate(decoded)
@@ -20,13 +24,11 @@ def parse_access_token(token: str = Depends(oauth2_scheme)) -> AccessToken:
     return access_token
 
 
-def throttle_user_usage(
-    token: AccessToken = Depends(parse_access_token),
+async def throttle_user_request(
+    access_token: ty.Annotated[AccessToken, Depends(parse_access_token)],
 ):
-    bucket_factory = factory.get_bucket_factory(get_setting())
-
-    bucket_key = f"askgpt:throttler:global_request:{token.sub}"
-    bucket = bucket_factory.create_bucket(
-        bucket_key=bucket_key, max_tokens=10, refill_rate=0
-    )
-    return bucket
+    throttler = app_fatory.get_user_request_throttler(get_setting())
+    if not await throttler.validate_request(access_token.sub):
+        raise QuotaExceededError(
+            f"You have exceeded your quota of {throttler} requests per minute"
+        )

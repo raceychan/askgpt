@@ -1,6 +1,7 @@
 from src.domain.config import Settings, settingfactory
 from src.domain.interface import IEvent
-from src.infra import cache, encrypt, eventstore, mq, sa_utils, tokenbucket
+from src.infra import cache, encrypt, eventstore, mq, tokenbucket
+from src.tools import sa_utils
 
 
 def get_async_engine(settings: Settings):
@@ -48,7 +49,7 @@ def get_cache(settings: Settings):
     config = settings.redis
     return cache.RedisCache.build(
         url=config.URL,
-        keyspace=config.KEY_SPACE,
+        keyspace=config.keyspaces.APP,
         socket_timeout=config.SOCKET_TIMEOUT,
         decode_responses=config.DECODE_RESPONSES,
         max_connections=config.MAX_CONNECTIONS,
@@ -74,11 +75,12 @@ def get_sqldbg(settings: Settings):
     return sa_utils.SQLDebugger(get_engine(settings))
 
 
-@settingfactory
-def get_bucket_factory(settings: Settings):
+def get_tokenbucket_factory(settings: Settings, keyspace: cache.KeySpace):
     redis = get_cache(settings)
     script = settings.redis.TOKEN_BUCKET_SCRIPT
     script_func = redis.load_script(script)
-    return tokenbucket.BucketFactory(
-        redis=redis, script=script_func, namespace="bucket"
+    return tokenbucket.TokenBucketFactory(
+        redis=redis,
+        script=script_func,
+        keyspace=keyspace,
     )

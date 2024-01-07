@@ -2,7 +2,11 @@ import typing as ty
 
 from fastapi import APIRouter, Depends
 from fastapi.responses import StreamingResponse
-from src.app.api.dependencies import AccessToken, parse_access_token
+from src.app.api.dependencies import (
+    AccessToken,
+    parse_access_token,
+    throttle_user_request,
+)
 from src.app.api.model import RequestBody
 from src.app.api.response import RedirectResponse
 from src.app.factory import ApplicationServices
@@ -84,7 +88,7 @@ async def send_message(
         completion_model=req.model,
         frequency_penalty=req.frequency_penalty,
         function_call=req.function_call,
-        functions=req.functions,
+        functions=req.functions,  # type: ignore
         logit_bias=req.logit_bias,
         max_tokens=req.max_tokens,
         n=req.n,
@@ -95,10 +99,10 @@ async def send_message(
         stream=req.stream,
         temperature=req.temperature,
         tool_choice=req.tool_choice,
-        tools=req.tools,
+        tools=req.tools,  # type: ignore
         top_p=req.top_p,
-        user=req.user,
-        extra_headers=req.extra_headers,
+        user=req.user,  # type: ignore
+        extra_headers=req.extra_headers,  # type: ignore
         extra_query=req.extra_query,
         extra_body=req.extra_body,
         timeout=req.timeout,

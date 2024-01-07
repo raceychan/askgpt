@@ -82,7 +82,7 @@ async def redis_cache(settings: Settings):
         url=settings.redis.URL,
         decode_responses=settings.redis.DECODE_RESPONSES,
         max_connections=settings.redis.MAX_CONNECTIONS,
-        keyspace=settings.redis.KEY_SPACE,
+        keyspace=settings.redis.keyspaces.APP,
         socket_timeout=settings.redis.SOCKET_TIMEOUT,
         socket_connect_timeout=settings.redis.SOCKET_CONNECT_TIMEOUT,
     )

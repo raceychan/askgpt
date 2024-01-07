@@ -3,7 +3,7 @@ import types
 import typing as ty
 
 from fastapi import FastAPI, Request
-from src.app.api.errors import DomainError, ErrorDetail
+from src.app.api.errors import DomainError, ErrorDetail, QuotaExceededError
 from src.app.api.xheaders import XHeaders
 from src.app.auth.errors import AuthenticationError, UserNotFoundError
 from src.app.gpt.errors import OrphanSessionError
@@ -163,5 +163,15 @@ def orphan_session_error_handler(request: Request, exc: OrphanSessionError):
     return ErrorResponse(
         detail=exc.detail,
         status_code=status.HTTP_403_FORBIDDEN,
+        request_id=request_id,
+    )
+
+
+@HandlerRegistry.register
+def quota_exceeded_error_handler(request: Request, exc: QuotaExceededError):
+    request_id = request.headers[XHeaders.REQUEST_ID.value]
+    return ErrorResponse(
+        detail=exc.detail,
+        status_code=status.HTTP_429_TOO_MANY_REQUESTS,
         request_id=request_id,
     )

@@ -1532,6 +1532,27 @@ package:
   size: 2850421
   timestamp: 1700868789416
 - platform: linux-64
+  name: orjson
+  version: 3.9.10
+  category: main
+  manager: conda
+  dependencies:
+  - libgcc-ng >=12
+  - python >=3.12,<3.13.0a0
+  - python_abi 3.12.* *_cp312
+  url: https://conda.anaconda.org/conda-forge/linux-64/orjson-3.9.10-py312hf474a72_0.conda
+  hash:
+    md5: f39f29cdf28f39b7ea64a0dcf7a46c31
+    sha256: b2153cc10b065ddd846196797f53a546f96aa088460e3f1a2b0c34c185c7b136
+  build: py312hf474a72_0
+  arch: x86_64
+  subdir: linux-64
+  build_number: 0
+  license: Apache-2.0
+  license_family: Apache
+  size: 248727
+  timestamp: 1698619297908
+- platform: linux-64
   name: packaging
   version: '23.2'
   category: main

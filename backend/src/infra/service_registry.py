@@ -36,7 +36,7 @@ class ServiceReinitializationError(Exception):
         super().__init__("ServiceRegistry is already initialized")
 
 
-from fastapi.dependencies.utils import get_dependant
+# from fastapi.dependencies.utils import get_dependant
 
 
 class Dependency[TDep: ServiceLike]:

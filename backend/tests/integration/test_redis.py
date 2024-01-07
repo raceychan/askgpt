@@ -1,11 +1,10 @@
 import asyncio
 
 import pytest
-
 from src.domain.config import Settings
 from src.infra.cache import RedisBool, RedisCache, ScriptFunc
-from src.infra.fileutil import FileUtil
 from src.infra.tokenbucket import TokenBucket
+from src.tools.fileutil import FileUtil
 
 
 @pytest.fixture(scope="module")
@@ -16,18 +15,20 @@ def tokenbucket_script(redis_cache: RedisCache):
 
 @pytest.fixture(scope="module")
 async def token_bucket(
+    settings: Settings,
     redis_cache: RedisCache,
     tokenbucket_script: ScriptFunc[list[str], list[float | int], RedisBool],
 ):
+    bucket_key = settings.redis.keyspaces.APP.generate_for_cls(TokenBucket)
     bucket = TokenBucket(
         redis_cache,
-        tokenbucket_lua=tokenbucket_script,  # type: ignore
-        bucket_key="test_bucket",
+        bucket_script=tokenbucket_script,  # type: ignore
+        bucket_key=bucket_key,
         max_tokens=2,
-        refill_rate=0,
+        refill_rate_s=0,
     )
     yield bucket
-    await redis_cache.remove("test_bucket")
+    await redis_cache.remove(bucket_key.key)
 
 
 @pytest.mark.asyncio

@@ -10,9 +10,13 @@ from src.infra import cache, encrypt, mq
 
 
 class TokenRegistry:
-    def __init__(self, token_cache: cache.RedisCache, keyspace: cache.KeySpace):
+    """
+    a registry for refresh-token, validated by redis
+    """
+
+    def __init__(self, token_cache: cache.Cache, keyspace: cache.KeySpace):
         self._cache = token_cache
-        self._keyspace = keyspace(str_to_snake(self.__class__.__name__))
+        self._keyspace = keyspace
 
     def token_key(self, user_id: str) -> str:
         return self._keyspace(user_id).key
@@ -21,15 +25,9 @@ class TokenRegistry:
         return await self._cache.sismember(self.token_key(user_id), token)
 
     async def register_token(self, user_id: str, token: str) -> None:
-        """
-        Register token to user
-        """
         await self._cache.sadd(self.token_key(user_id), token)
 
     async def revoke_tokens(self, user_id: str, token: str) -> None:
-        """
-        Revoke tokens from user
-        """
         await self._cache.remove(user_id)
 
 

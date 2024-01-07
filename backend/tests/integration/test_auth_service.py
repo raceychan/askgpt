@@ -20,11 +20,14 @@ async def auth_service(
     token_encrypt: Encrypt,
     producer: MessageProducer[ty.Any],
 ):
+    keyspace = settings.redis.keyspaces.APP.generate_for_cls(TokenRegistry)
+
     return AuthService(
         user_repo=UserRepository(async_engine),
         token_encrypt=token_encrypt,
         token_registry=TokenRegistry(
-            token_cache=local_cache, keyspace=settings.redis.KEY_SPACE("token_registry")
+            token_cache=local_cache,
+            keyspace=keyspace,
         ),
         producer=producer,
         security_settings=settings.security,

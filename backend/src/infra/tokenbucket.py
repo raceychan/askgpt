@@ -1,8 +1,16 @@
+import typing as ty
 from functools import cached_property
 
-from src.infra.cache import RedisBool, RedisCache, ScriptFunc
+from src.infra.cache import KeySpace, RedisBool, RedisCache, ScriptFunc
 
 type TokenBucketScript = ScriptFunc[list[str], list[float | int], RedisBool]
+# -- Keys: [bucket_key]
+# -- Args: [max_tokens, refill_rate_s, token_cost]
+
+
+class Throttler(ty.Protocol):
+    async def acquire(self, cost: int = 1) -> bool:
+        ...
 
 
 class TokenBucket:
@@ -11,19 +19,19 @@ class TokenBucket:
     def __init__(
         self,
         redis: RedisCache,
-        tokenbucket_lua: TokenBucketScript,
+        bucket_script: TokenBucketScript,
         *,
-        bucket_key: str,
+        bucket_key: KeySpace,
         max_tokens: int,
-        refill_rate: float,
+        refill_rate_s: float,
     ):
         self._redis = redis
-        self._tokenbucket = tokenbucket_lua
+        self._bucketscript = bucket_script
 
         # These three are instance attributes
         self._bucket_key = bucket_key
         self._max_tokens = max_tokens
-        self._refill_rate = refill_rate
+        self._refill_rate_s = refill_rate_s
 
     @cached_property
     def _refill_token_script(
@@ -51,37 +59,40 @@ class TokenBucket:
         """
         return self._redis.load_script(lua)
 
-    async def release(self, token_cost: int = 1):
+    async def release(self, cost: int = 1):
         res = await self._refill_token_script(
-            keys=[self._bucket_key], args=[token_cost, self._max_tokens]
+            keys=[self._bucket_key.key], args=[cost, self._max_tokens]
         )
         return res == 1
 
-    async def acquire(self, token_cost: int = 1) -> bool:
-        args = [self._max_tokens, self._refill_rate, token_cost]
-        res = await self._tokenbucket(keys=[self._bucket_key], args=args)
+    async def acquire(self, cost: int = 1) -> bool:
+        args = [self._max_tokens, self._refill_rate_s, cost]
+        res = await self._bucketscript(keys=[self._bucket_key.key], args=args)
         return res == 1
 
     async def reserve_token(self, token_cost: int = 1) -> None:
         raise NotImplementedError
 
 
-#
-
-
-class BucketFactory:
-    def __init__(self, redis: RedisCache, script: TokenBucketScript, namespace: str):
+class TokenBucketFactory:
+    def __init__(
+        self,
+        redis: RedisCache,
+        script: TokenBucketScript,
+        keyspace: KeySpace | None = None,
+    ):
         self.redis = redis
         self.script = script
-        self.namespace = namespace
+        self.keyspace = keyspace
 
     def create_bucket(
-        self, bucket_key: str, max_tokens: int, refill_rate: float
+        self, bucket_key: str, max_tokens: int, refill_rate_s: float
     ) -> TokenBucket:
+        key_ = self.keyspace(bucket_key) if self.keyspace else KeySpace(bucket_key)
         return TokenBucket(
             self.redis,
             self.script,
-            bucket_key=bucket_key,
+            bucket_key=key_,
             max_tokens=max_tokens,
-            refill_rate=refill_rate,
+            refill_rate_s=refill_rate_s,
         )

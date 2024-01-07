@@ -1,4 +1,4 @@
-from src.domain.model.name_tools import snake_to_pascal, str_to_snake
+from src.tools.nameutils import snake_to_pascal, str_to_snake
 
 
 def test_str_to_snake():

@@ -1,17 +1,18 @@
 from __future__ import annotations  # annotations become strings at runtime
 
 import datetime
-import json
+import sys
 import traceback
 import typing as ty
 
 import loguru
-from loguru import logger as logger_
-from src.domain.config import Settings, get_setting
+import orjson
+from loguru import logger
+from rich.console import Console
+from src.domain.config import get_setting
 
 __all__ = ["logger"]
 
-from rich.console import Console
 
 console = Console(color_system="truecolor")
 
@@ -27,8 +28,10 @@ COLOR_MAPPER = dict(
 
 
 def format_record(record: loguru.Record) -> dict[str, ty.Any]:
+    settings = get_setting()
+
     record_time_utc = record["time"].astimezone(datetime.UTC)
-    file_path = get_setting().get_modulename(record["file"].path)
+    file_path = settings.get_modulename(record["file"].path)
     custom_record = {
         "level": record["level"].name,
         "msg": record["message"],
@@ -45,13 +48,13 @@ def format_record(record: loguru.Record) -> dict[str, ty.Any]:
     return custom_record
 
 
-def prod_sink(msg: loguru.Message):
-    record = msg.record
-    custom_record = format_record(record)
-    print(json.dumps(custom_record))
+def prod_sink(msg: loguru.Message) -> None:
+    string = orjson.dumps(format_record(msg.record)).decode()
+    sys.stdout.write(string)
+    sys.stdout.flush()
 
 
-def debug_sink(msg: loguru.Message):
+def debug_sink(msg: loguru.Message) -> None:
     record = msg.record
     record_time_utc = (
         record["time"].astimezone(datetime.UTC).strftime("%Y-%m-%d %H:%M:%S")
@@ -81,17 +84,10 @@ def debug_sink(msg: loguru.Message):
         console.print_exception(show_locals=True)
 
 
-def config_logs(settings: Settings | None = None):
-    logger_.remove(0)
-    if not settings:
-        logger_.add(debug_sink, level="INFO")
-        return logger_
-
-    if settings.is_prod_env:
-        logger_.add(prod_sink, level="INFO")
-    else:
-        logger_.add(debug_sink, level="INFO")
-    return logger_
+def update_sink(sink: ty.Callable[[loguru.Message], None]) -> loguru.Logger:
+    logger.remove()
+    logger.add(sink, level="INFO")
+    return logger
 
 
-logger = config_logs()  # get_setting())
+update_sink(debug_sink)

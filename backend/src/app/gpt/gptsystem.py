@@ -85,9 +85,8 @@ class UserActor(GPTBaseActor["SessionActor", model.User]):
 
     @cached_property
     def apipool_key(self) -> cache.KeySpace:
-        global_keyspace = self.system.settings.redis.KEY_SPACE
-        pool_keyspace = global_keyspace / gptclient.APIPool.keyspace
-        return pool_keyspace / self.entity_id
+        keyspace = self.system.settings.redis.keyspaces.API_POOL
+        return keyspace(self.entity_id)
 
     def create_session(self, event: model.SessionCreated) -> "SessionActor":
         session_actor = SessionActor.apply(event)

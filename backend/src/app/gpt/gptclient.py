@@ -140,7 +140,6 @@ class OpenAIClient(AIClient):
 # https://medium.com/@colemanhindes/unofficial-gpt-3-developer-faq-fcb770710f42
 # Only 2 concurrent requests can be made per API key at a time.
 class APIPool:
-    keyspace: ty.ClassVar[cache.KeySpace] = cache.KeySpace("apikeypool")
 
     def __init__(
         self,

@@ -1,9 +1,8 @@
-import contextlib
 import inspect
 import types
 import typing as ty
 from dataclasses import dataclass
-from functools import update_wrapper, wraps
+from functools import wraps
 from time import perf_counter
 
 from src.domain._log import logger
@@ -21,34 +20,25 @@ class FuncInfo:
         return f"<FuncInfo {self.location} {self.name}{str(self.signature)}>"
 
     def __str__(self):
-        return f"{self.location} {self.name}{str(self.signature)}"
+        return f"{self.location} {self.name}"
 
     @classmethod
     def from_func(cls, func: ty.Callable):
-        name = func.__name__
+        name = func.__qualname__
         func_code = func.__code__
         code = inspect.getsource(func)
         sig = inspect.signature(func)
         is_async = inspect.iscoroutinefunction(func)
         location = f"{func_code.co_filename}({func_code.co_firstlineno})"
+
         funcinfo = cls(
-            name=name, code=code, signature=sig, location=location, is_async=is_async
+            name=name,
+            code=code,
+            signature=sig,
+            location=location,
+            is_async=is_async,
         )
         return funcinfo
-
-
-@dataclass(frozen=True, kw_only=True, slots=True, repr=False, unsafe_hash=True)
-class MethodInfo[T](FuncInfo):
-    owner: T
-    onwer_cls: type[T]
-
-    @classmethod
-    def from_func(cls, func: ty.Callable):
-        raise NotImplementedError("use from_method instead")
-
-    @classmethod
-    def from_method(cls, method: ty.Callable):
-        ...
 
 
 @dataclass(frozen=True, kw_only=True, slots=True, unsafe_hash=True)
@@ -73,48 +63,48 @@ class ExecInfo:
         return self.format_repr()
 
 
-# class timeit:
-#     def __init__(self, func):
-#         self._func = func
-#         self.funcinfo = FuncInfo.from_func(func)
+class timeitcls:
+    def __init__(self, func):
+        self._func = func
+        self.funcinfo = FuncInfo.from_func(func)
 
-#     def __set_name__(self, owner_cls, name):
-#         self.name = name
+    def __set_name__(self, owner_cls, name):
+        self.name = name
 
-#     def __get__(self, obj, obj_type):
-#         return types.MethodType(self, obj) if obj else self
+    def __get__(self, obj, obj_type):
+        return types.MethodType(self, obj) if obj else self
 
-#     def __call__(self, *args, **kwargs):
-#         wp = self.atimer if self.funcinfo.is_async else self.timer
-#         return wp(*args, **kwargs)
+    def __call__(self, *args, **kwargs):
+        wp = self.atimer if self.funcinfo.is_async else self.timer
+        return wp(*args, **kwargs)
 
-#     def timer(self, *args, **kwargs):
-#         start = perf_counter()
-#         res = self._func(*args, **kwargs)
-#         end = perf_counter()
-#         exec_info = ExecInfo(
-#             funcinfo=self.funcinfo,
-#             args=args,
-#             kwargs=kwargs,
-#             timecost=end - start,
-#             unit="s",
-#         )
-#         logger.info(exec_info.format_repr())
-#         return res
+    def timer(self, *args, **kwargs):
+        start = perf_counter()
+        res = self._func(*args, **kwargs)
+        end = perf_counter()
+        exec_info = ExecInfo(
+            funcinfo=self.funcinfo,
+            args=args,
+            kwargs=kwargs,
+            timecost=end - start,
+            unit="s",
+        )
+        logger.info(exec_info.format_repr())
+        return res
 
-#     async def atimer(self, *args, **kwargs):
-#         start = perf_counter()
-#         res = await self._func(*args, **kwargs)
-#         end = perf_counter()
-#         exec_info = ExecInfo(
-#             funcinfo=self.funcinfo,
-#             args=args,
-#             kwargs=kwargs,
-#             timecost=end - start,
-#             unit="s",
-#         )
-#         logger.info(exec_info.format_repr())
-#         return res
+    async def atimer(self, *args, **kwargs):
+        start = perf_counter()
+        res = await self._func(*args, **kwargs)
+        end = perf_counter()
+        exec_info = ExecInfo(
+            funcinfo=self.funcinfo,
+            args=args,
+            kwargs=kwargs,
+            timecost=end - start,
+            unit="s",
+        )
+        logger.info(exec_info.format_repr())
+        return res
 
 
 @ty.overload
@@ -134,11 +124,13 @@ def timeit[
 ](
     _func: ty.Optional[ty.Callable[P, R]] = None,
     *,
-    unit: ty.Literal["ns", "ms", "s"] = "s",
+    unit: ty.Literal["ns", "ms", "s"] = "ms",
     precision: int = 2,
-    log_if: ty.Callable[[float], bool] = lambda x: x > 1,
-    with_arguments: bool = False,
+    log_if: ty.Callable[[float], bool] = lambda x: x > 0.1,
+    with_args: bool = False,
 ):
+    log_tmplt = "Executed {function_name} in {time_cost}{unit}"
+
     def decorator(func: ty.Callable[P, R]) -> ty.Callable[P, R]:
         funcinfo = FuncInfo.from_func(func)
 
@@ -148,15 +140,12 @@ def timeit[
             res = func(*args, **kwargs)
             end = perf_counter()
             timecost = round(end - start, precision)
-            exec_info = ExecInfo(
-                funcinfo=funcinfo,
-                args=args,
-                kwargs=kwargs,
-                timecost=timecost,
-                unit=unit,
-            )
+
             if log_if(timecost):
-                logger.info(exec_info.format_repr())
+                log_msg = log_tmplt.format(
+                    function_name=funcinfo.name, time_cost=timecost, unit=unit
+                )
+                logger.info(log_msg)
             return res
 
         @wraps(func)
@@ -165,15 +154,12 @@ def timeit[
             res = await func(*args, **kwargs)  # type: ignore
             end = perf_counter()
             timecost = round(end - start, precision)
-            exec_info = ExecInfo(
-                funcinfo=funcinfo,
-                args=args,
-                kwargs=kwargs,
-                timecost=timecost,
-                unit=unit,
-            )
+
             if log_if(timecost):
-                logger.info(exec_info.format_repr())
+                log_msg = log_tmplt.format(
+                    function_name=funcinfo.name, time_cost=timecost, unit=unit
+                )
+                logger.info(log_msg)
             return res
 
         return awrapper if inspect.iscoroutinefunction(func) else wrapper  # type: ignore
@@ -182,3 +168,11 @@ def timeit[
         return decorator
     else:
         return decorator(_func)
+
+
+"""
+write me a timer decorator that does the following:
+1. log the time cost of a function call
+2. can be applied to both sync and async functions
+3. can be applied to both methods and functions
+"""

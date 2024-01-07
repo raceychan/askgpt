@@ -15,7 +15,7 @@ from pydantic import computed_field as computed_field
 from pydantic import field_serializer as field_serializer
 from pydantic import validator as validator
 from src.domain.model.interface import ICommand, IEvent, utc_datetime
-from src.domain.model.name_tools import str_to_snake
+from src.tools.nameutils import str_to_snake
 
 frozen = dataclass(frozen=True, slots=True, kw_only=True)
 
@@ -24,12 +24,12 @@ def uuid_factory() -> str:
     return str(uuid.uuid4())
 
 
+def request_id_factory() -> bytes:
+    return uuid_factory().encode()
+
+
 def utcts_factory(ts: float | None = None) -> utc_datetime:
-    # NOTE: utcnow will be deprecated in future, but rightnow we still need it
-    # pydantic has poor support to timezone
-    # from pydantic import AwareDatetime
-    # datetime.datetime.utcnow() is not tz aware
-    # and datetime.datetime.now(datetime.timezone.utc) is tz aware
+    # NOTE: utcnow will be deprecated in future
 
     if ts is not None:
         return datetime.datetime.fromtimestamp(ts)

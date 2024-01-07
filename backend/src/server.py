@@ -31,10 +31,9 @@ def add_middlewares(app: FastAPI) -> None:
     """
     app.add_middleware(LoggingMiddleware)
     app.add_middleware(TraceMiddleware)
-    # TODO: add throttling middleware
 
 
-def app_factory(*, lifespan=lifespan, settings=get_setting("settings.toml")) -> FastAPI:
+def app_factory(*, lifespan=lifespan, settings=get_setting()) -> FastAPI:
     app = FastAPI(
         title=settings.PROJECT_NAME,
         description="gpt service at your home",
@@ -76,4 +75,4 @@ def server(settings: Settings) -> None:
 
 
 if __name__ == "__main__":
-    server(get_setting("settings.toml"))
+    server(get_setting())
