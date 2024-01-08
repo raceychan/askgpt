@@ -171,7 +171,7 @@ def timeit[
 
 
 """
-write me a timer decorator that does the following:
+requirements:
 1. log the time cost of a function call
 2. can be applied to both sync and async functions
 3. can be applied to both methods and functions

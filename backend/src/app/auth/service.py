@@ -1,12 +1,13 @@
 from contextlib import asynccontextmanager
 from datetime import datetime, timedelta
 
+from src.adapters import cache, queue
 from src.app.auth import errors, model, repository
 from src.domain._log import logger
 from src.domain.config import Settings
 from src.domain.interface import IEvent
-from src.domain.model.base import str_to_snake, utcts_factory, uuid_factory
-from src.infra import cache, encrypt, mq
+from src.domain.model.base import utcts_factory, uuid_factory
+from src.infra import security
 
 
 class TokenRegistry:
@@ -36,8 +37,8 @@ class AuthService:
         self,
         user_repo: repository.UserRepository,
         token_registry: TokenRegistry,
-        token_encrypt: encrypt.Encrypt,
-        producer: mq.MessageProducer[IEvent],
+        token_encrypt: security.Encrypt,
+        producer: queue.MessageProducer[IEvent],
         security_settings: Settings.Security,
     ):
         self._user_repo = user_repo
@@ -99,7 +100,7 @@ class AuthService:
         if user is not None:
             raise errors.UserAlreadyExistError(f"user {email} already exist")
 
-        hash_password = encrypt.hash_password(password.encode())
+        hash_password = security.hash_password(password.encode())
         user_info = model.UserInfo(
             user_name=user_name, user_email=email, hash_password=hash_password
         )

@@ -3,6 +3,7 @@ import typing as ty
 from contextlib import asynccontextmanager
 from functools import cached_property, singledispatchmethod
 
+from src.adapters import cache
 from src.app.actor import (
     BoxFactory,
     EntityActor,
@@ -18,7 +19,7 @@ from src.domain.config import Settings
 from src.domain.fmtutils import async_receiver
 from src.domain.interface import ActorRef, ICommand
 from src.domain.model.base import Command, Event, Message
-from src.infra import cache, eventstore, factory
+from src.infra import eventstore, factory
 
 
 class SystemStarted(Event):

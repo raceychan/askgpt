@@ -18,8 +18,8 @@ class JWTBase(ValueObject):
     """
     sub: str
     exp: datetime.datetime
-    nbf: datetime.datetime  # = Field(default_factory=utcts_factory)
-    iat: datetime.datetime  # = Field(default_factory=utcts_factory)
+    nbf: datetime.datetime
+    iat: datetime.datetime
     iss: str | None = None
     aud: str | None = None
     jti: str | None = None

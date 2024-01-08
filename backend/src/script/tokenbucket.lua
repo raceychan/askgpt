@@ -23,7 +23,9 @@ local new_tokens = math.min(max_tokens, tokens + elapsed * refill_rate_s)
 if new_tokens >= token_cost then
     local token_left = new_tokens - token_cost
     redis.call('HMSET', bucket_key, 'last_refill_time', current_time, 'tokens', token_left)
-    return true
+    return 0
 else
-    return false
+    local needed = token_cost - new_tokens
+    local wait_time = needed / refill_rate_s
+    return wait_time
 end

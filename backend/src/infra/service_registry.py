@@ -95,6 +95,9 @@ class Dependency[TDep: ServiceLike]:
         service = self.factory(settings)
         return service
 
+    def override_factory(self, factory: ty.Callable[[ty.Any], TDep]) -> None:
+        self.factory = factory
+
 
 class ServiceRegistryBase[TService: ServiceLike]:
     _registry: dict[type[TService], TService] = dict()

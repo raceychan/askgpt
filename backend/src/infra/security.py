@@ -1,9 +1,9 @@
 import typing as ty
+from functools import lru_cache
 
 import bcrypt
 from cryptography.fernet import Fernet
 from jose import jwt
-from src.domain.base import freezelru
 from src.domain.model.token import JWTBase
 
 SALT = bcrypt.gensalt()
@@ -26,7 +26,7 @@ def decode_jwt(token: str, secret_key: str, algorithm: str) -> dict[str, ty.Any]
     return jwt.decode(token, secret_key, algorithms=[algorithm])
 
 
-@freezelru
+@lru_cache(maxsize=1)
 def get_fernet(key: bytes):
     return Fernet(key)
 

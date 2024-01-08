@@ -2,13 +2,13 @@ import pytest
 
 from src.app.gpt import model
 from src.domain.model.test_default import TestDefaults
-from src.infra import encrypt
+from src.infra import security
 
 
 @pytest.fixture(scope="package")
 def user_info(test_defaults: TestDefaults):
     e = test_defaults.USER_INFO
-    assert encrypt.verify_password(
+    assert security.verify_password(
         test_defaults.USER_PASSWORD.encode(), e.hash_password
     )
 

@@ -1,4 +1,4 @@
-from contextlib import AsyncExitStack, asynccontextmanager
+from contextlib import asynccontextmanager
 
 from fastapi import APIRouter, FastAPI
 from src.app.api.error_handlers import HandlerRegistry
@@ -8,8 +8,6 @@ from src.app.bootstrap import bootstrap
 from src.app.factory import ApplicationServices
 from src.domain._log import logger
 from src.domain.config import Settings, get_setting
-
-stack = AsyncExitStack()
 
 
 @asynccontextmanager

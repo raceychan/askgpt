@@ -8,7 +8,7 @@ from src.domain.model.base import (
     ValueObject,
     field_serializer,
 )
-from src.infra import encrypt
+from src.infra import security
 
 
 class UserInfo(ValueObject):
@@ -23,7 +23,7 @@ class UserInfo(ValueObject):
         return hash_password.decode()
 
     def verify_password(self, password: str) -> bool:
-        return encrypt.verify_password(password.encode(), self.hash_password)
+        return security.verify_password(password.encode(), self.hash_password)
 
 
 class CreateUser(Command):

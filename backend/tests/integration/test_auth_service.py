@@ -2,14 +2,14 @@ import typing as ty
 
 import pytest
 from sqlalchemy.ext.asyncio import AsyncEngine
+from src.adapters.cache import MemoryCache
+from src.adapters.queue import MessageProducer
 from src.app.auth.errors import UserAlreadyExistError
 from src.app.auth.repository import UserRepository
 from src.app.auth.service import AuthService, TokenRegistry
 from src.domain.config import Settings
 from src.domain.model.test_default import TestDefaults
-from src.infra.cache import MemoryCache
-from src.infra.encrypt import Encrypt
-from src.infra.mq import MessageProducer
+from src.infra.security import Encrypt
 
 
 @pytest.fixture(scope="module")

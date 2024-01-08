@@ -28,7 +28,6 @@ async def throttle_user_request(
     access_token: ty.Annotated[AccessToken, Depends(parse_access_token)],
 ):
     throttler = app_fatory.get_user_request_throttler(get_setting())
-    if not await throttler.validate_request(access_token.sub):
-        raise QuotaExceededError(
-            f"You have exceeded your quota of {throttler} requests per minute"
-        )
+    wait_time = await throttler.validate_request(access_token.sub)
+    if wait_time:
+        raise QuotaExceededError(throttler.max_tokens, wait_time)

@@ -1,4 +1,4 @@
-from src.infra.tokenbucket import TokenBucketFactory
+from src.adapters.tokenbucket import TokenBucketFactory
 
 
 # TODO: make this an application level dependency

@@ -91,3 +91,10 @@ class ClientSideError(DomainError):
 
 class QuotaExceededError(ClientSideError):
     "Request quota exceeded"
+
+    def __init__(self, quota, wait_time):
+        self.quota = quota
+        self.wait_time = wait_time
+        super().__init__(
+            f"Quota exceeded, next request available in {wait_time} seconds"
+        )

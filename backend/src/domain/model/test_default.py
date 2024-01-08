@@ -1,6 +1,6 @@
 from src.app.auth.model import UserRoles
 from src.domain.model.user import UserInfo
-from src.infra import encrypt
+from src.infra import security
 
 
 class TestDefaults:
@@ -16,5 +16,5 @@ class TestDefaults:
     USER_INFO: UserInfo = UserInfo(
         user_email=USER_EMAIL,
         user_name=USER_NAME,
-        hash_password=encrypt.hash_password(USER_PASSWORD.encode()),
+        hash_password=security.hash_password(USER_PASSWORD.encode()),
     )

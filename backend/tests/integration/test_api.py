@@ -26,8 +26,13 @@ async def test_heal(test_client: AsyncClient):
     assert response.json() == "ok"
 
 
-async def test_gpt(test_client: AsyncClient):
+async def test_find_user(test_client: AsyncClient):
     response = await test_client.get(f"/users/", params={"email": "test"})
     res_json = response.json()
     assert res_json["detail"]["error_code"] == "UserNotFoundError"
     assert response.status_code == 404
+
+
+async def test_gpt_chat(test_client: AsyncClient):
+    response = await test_client.get(f"/gpt", params={"email": "test"})
+    ...

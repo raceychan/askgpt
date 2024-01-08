@@ -8,8 +8,8 @@ import httpx
 import openai
 from openai.types import beta as openai_beta
 from openai.types import chat as openai_chat
+from src.adapters import cache
 from src.app.gpt import model, params
-from src.infra import cache
 
 MAX_RETRIES: int = 3
 
@@ -140,7 +140,6 @@ class OpenAIClient(AIClient):
 # https://medium.com/@colemanhindes/unofficial-gpt-3-developer-faq-fcb770710f42
 # Only 2 concurrent requests can be made per API key at a time.
 class APIPool:
-
     def __init__(
         self,
         pool_key: cache.KeySpace,

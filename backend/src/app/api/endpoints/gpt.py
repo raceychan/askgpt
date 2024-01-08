@@ -72,7 +72,9 @@ async def get_session(
     return session_actor.entity
 
 
-@gpt_router.post("/sessions/{session_id}/messages")
+@gpt_router.post(
+    "/sessions/{session_id}/messages", dependencies=[Depends(throttle_user_request)]
+)
 async def send_message(
     service: ServiceDep,
     session_id: str,

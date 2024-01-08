@@ -4,7 +4,7 @@ import pathlib
 import pytest
 from src.domain.config import Settings
 from src.domain.model.test_default import TestDefaults
-from src.infra import encrypt
+from src.infra import security
 from src.tools.fileutil import FileLoader, FileUtil
 
 
@@ -56,8 +56,8 @@ def test_defaults():
 
 
 @pytest.fixture(scope="module")
-def token_encrypt(settings: Settings) -> encrypt.Encrypt:
-    return encrypt.Encrypt(
+def token_encrypt(settings: Settings) -> security.Encrypt:
+    return security.Encrypt(
         secret_key=settings.security.SECRET_KEY,
         algorithm=settings.security.ALGORITHM,
     )

@@ -3,6 +3,8 @@ import typing as ty
 
 import pytest
 from sqlalchemy.ext import asyncio as sa_aio
+from src.adapters.cache import MemoryCache, RedisCache
+from src.adapters.queue import BaseConsumer, BaseProducer, QueueBroker
 from src.app.actor import MailBox
 from src.app.auth.model import UserAuth
 from src.app.auth.repository import UserAuth
@@ -10,9 +12,7 @@ from src.app.eventrecord import EventRecord
 from src.domain.config import Settings
 from src.domain.model.test_default import TestDefaults
 from src.infra import schema
-from src.infra.cache import MemoryCache, RedisCache
 from src.infra.eventstore import EventStore
-from src.infra.mq import BaseConsumer, BaseProducer, QueueBroker
 
 
 class EchoMailbox(MailBox):

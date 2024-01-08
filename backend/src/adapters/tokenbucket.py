@@ -1,11 +1,9 @@
 import typing as ty
 from functools import cached_property
 
-from src.infra.cache import KeySpace, RedisBool, RedisCache, ScriptFunc
+from src.adapters.cache import KeySpace, RedisBool, RedisCache, ScriptFunc
 
 type TokenBucketScript = ScriptFunc[list[str], list[float | int], RedisBool]
-# -- Keys: [bucket_key]
-# -- Args: [max_tokens, refill_rate_s, token_cost]
 
 
 class Throttler(ty.Protocol):
@@ -65,10 +63,10 @@ class TokenBucket:
         )
         return res == 1
 
-    async def acquire(self, cost: int = 1) -> bool:
+    async def acquire(self, cost: int = 1) -> ty.Literal[0] | float:
         args = [self._max_tokens, self._refill_rate_s, cost]
-        res = await self._bucketscript(keys=[self._bucket_key.key], args=args)
-        return res == 1
+        wait_time = await self._bucketscript(keys=[self._bucket_key.key], args=args)
+        return wait_time
 
     async def reserve_token(self, token_cost: int = 1) -> None:
         raise NotImplementedError

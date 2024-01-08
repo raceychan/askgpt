@@ -1,9 +1,9 @@
 import asyncio
 
 import pytest
+from src.adapters.cache import RedisBool, RedisCache, ScriptFunc
+from src.adapters.tokenbucket import TokenBucket
 from src.domain.config import Settings
-from src.infra.cache import RedisBool, RedisCache, ScriptFunc
-from src.infra.tokenbucket import TokenBucket
 from src.tools.fileutil import FileUtil
 
 
@@ -25,7 +25,7 @@ async def token_bucket(
         bucket_script=tokenbucket_script,  # type: ignore
         bucket_key=bucket_key,
         max_tokens=2,
-        refill_rate_s=0,
+        refill_rate_s=0.1,
     )
     yield bucket
     await redis_cache.remove(bucket_key.key)
@@ -37,5 +37,6 @@ async def test_token_bucket_reach_limit(token_bucket: TokenBucket):
     tasks = [asyncio.create_task(token_bucket.acquire(1)) for _ in range(sem)]
     results = await asyncio.gather(*tasks)
 
-    trues = sum(results)
-    assert trues == 2 and (sem - trues) == 8
+    passes = sum([res == 0 for res in results])
+
+    assert passes == 2 and (sem - passes) == 8

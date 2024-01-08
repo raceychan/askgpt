@@ -1,10 +1,10 @@
 import pytest
+from src.adapters.cache import MemoryCache
 from src.app.actor import MailBox, QueueBox
 from src.app.factory import get_gpt_service
 from src.app.gpt import errors, gptsystem, model, service
 from src.domain import config
 from src.domain.model.test_default import TestDefaults
-from src.infra.cache import MemoryCache
 from src.infra.eventstore import EventStore
 
 

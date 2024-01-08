@@ -1,23 +1,22 @@
 import datetime
 
 import pytest
-
 from src.app.auth.model import AccessToken
 from src.domain.config import Settings
 from src.domain.model.base import utcts_factory
 from src.domain.model.test_default import TestDefaults
-from src.infra import encrypt
+from src.infra import security
 
 
 @pytest.fixture(scope="module")
-def token_encrypt(settings: Settings) -> encrypt.Encrypt:
-    return encrypt.Encrypt(
+def token_encrypt(settings: Settings) -> security.Encrypt:
+    return security.Encrypt(
         secret_key=settings.security.SECRET_KEY, algorithm=settings.security.ALGORITHM
     )
 
 
 def test_encryp_access_token(
-    test_defaults: TestDefaults, token_encrypt: encrypt.Encrypt, settings: Settings
+    test_defaults: TestDefaults, token_encrypt: security.Encrypt, settings: Settings
 ):
     now_ = utcts_factory()
     token = AccessToken(

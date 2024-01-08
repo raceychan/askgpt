@@ -1,10 +1,11 @@
 import pytest
+from src.adapters import cache
 from src.app.actor import QueueBox
 from src.app.gpt import gptclient, model, service
 from src.app.gpt.params import ChatResponse
 from src.domain import config
 from src.domain.model.test_default import TestDefaults
-from src.infra import cache, factory
+from src.infra import factory
 
 # from src.infra.cache import Cache, MemoryCache, RedisCache
 

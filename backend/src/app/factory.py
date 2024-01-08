@@ -74,6 +74,7 @@ def get_user_request_throttler(settings: Settings):
 
 
 class ApplicationServices(ServiceRegistryBase):
+    # TODO: provide override mechanism
     auth_service = Dependency(AuthService, get_auth_service)
     gpt_service = Dependency(GPTService, get_gpt_service)
     eventrecord = Dependency(EventRecord, get_eventrecord)

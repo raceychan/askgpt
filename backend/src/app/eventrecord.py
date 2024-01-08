@@ -2,10 +2,10 @@ import asyncio
 import typing as ty
 from contextlib import asynccontextmanager
 
+from src.adapters.queue import BaseConsumer
 from src.domain._log import logger
 from src.domain.interface import IEvent
 from src.infra.eventstore import EventStore
-from src.infra.mq import BaseConsumer
 
 
 async def grease(gap: float = 0.1):
