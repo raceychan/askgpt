@@ -8,10 +8,10 @@ from src.adapters.queue import BaseConsumer, BaseProducer, QueueBroker
 from src.app.actor import MailBox
 from src.app.auth.model import UserAuth
 from src.app.auth.repository import UserAuth
-from src.app.eventrecord import EventRecord
 from src.domain.config import Settings
 from src.domain.model.test_default import TestDefaults
 from src.infra import schema
+from src.infra.eventrecord import EventRecord
 from src.infra.eventstore import EventStore
 
 

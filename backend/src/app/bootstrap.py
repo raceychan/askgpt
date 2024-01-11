@@ -4,12 +4,10 @@ from src.infra import factory, schema
 
 
 async def bootstrap(settings: Settings):
-    # todo: test connection of components
-    aioengine = factory.get_async_engine(settings)
-
     if settings.is_prod_env:
         update_sink(prod_sink)
         return
 
+    aioengine = factory.get_async_engine(settings)
     await schema.create_tables(aioengine)
     logger.success("database is ready")

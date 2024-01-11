@@ -8,7 +8,7 @@ from contextlib import asynccontextmanager
 from typing import Any
 
 from redis import asyncio as aioredis
-from src.tools.nameutils import str_to_snake
+from src.toolkit.nameutils import str_to_snake
 
 type RedisBool = ty.Literal[0, 1]
 
@@ -37,7 +37,7 @@ class KeySpace(ty.NamedTuple):  # use namedtuple for memory efficiency
             return KeySpace(next_part)
         return KeySpace(f"{self.key}:{next_part}")
 
-    def __truediv__(self, other: ty.Union[str, "KeySpace"]) -> "KeySpace":
+    def __truediv__(self, other: "str | KeySpace") -> "KeySpace":
         if isinstance(other, self.__class__):
             return KeySpace(self.key + ":" + other.key)
 

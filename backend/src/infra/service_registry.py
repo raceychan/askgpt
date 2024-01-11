@@ -1,4 +1,3 @@
-import asyncio
 import typing as ty
 from contextlib import (
     AbstractAsyncContextManager,
@@ -10,6 +9,24 @@ from src.domain.config import Settings, SettingsFactory
 from src.domain.interface import LiveService
 
 type ServiceLike = ty.AsyncContextManager | ty.ContextManager | LiveService
+
+
+def solve_dependency(service: type):
+    import inspect
+    import types
+
+    sub_deps = inspect.get_annotations(service.__init__)
+    for dep_name, dep_annt in sub_deps.items():
+        if not isinstance(dep_annt, types.GenericAlias):
+            continue
+        if not isinstance(dep_annt.__value__, ty._AnnotatedAlias):  # type: ignore
+            continue
+
+        annt_metas = dep_annt.__value__.__metadata__
+        assert Dependency in annt_metas
+
+        dep, faq = dep_annt.__args__
+        return Dependency(dep, faq)
 
 
 def categorize_service(service: type[ServiceLike]):
@@ -99,12 +116,17 @@ class Dependency[TDep: ServiceLike]:
         self.factory = factory
 
 
-class ServiceRegistryBase[TService: ServiceLike]:
-    _registry: dict[type[TService], TService] = dict()
-    _dependencies: dict[type[TService], Dependency[TService]] = dict()
+type Dep[TService: ServiceLike, TFactory: ty.Callable] = ty.Annotated[
+    TService, Dependency[TService]
+]
 
-    _exit_stack: ty.ClassVar[AsyncExitStack] = AsyncExitStack()
-    _singleton: ty.ClassVar[ty.Optional["ServiceRegistryBase"]] = None
+
+class AbstractRegistryBase[Registee: ty.Any]:
+    _registry: dict[type[Registee], Registee]
+    _dependencies: dict[type[Registee], Dependency[Registee]]
+
+    _exit_stack: ty.ClassVar[AsyncExitStack]
+    _singleton: ty.ClassVar[["ServiceRegistryBase | None"]] = None
 
     def __new__(cls, settings: Settings):
         if cls._singleton is None:
@@ -117,7 +139,7 @@ class ServiceRegistryBase[TService: ServiceLike]:
 
     def __init__(self, settings: Settings):
         self._settings = settings
-        self.__lock = asyncio.Lock()
+        # self.__lock = asyncio.Lock()
 
     def __init_subclass__(cls) -> None:
         for name, dep in cls.__dict__.items():
@@ -145,7 +167,7 @@ class ServiceRegistryBase[TService: ServiceLike]:
         await self._exit_stack.__aexit__(exc_type, exc_val, exc_tb)
         self._registry.clear()
 
-    def register_service(self, service: TService):
+    def register_service(self, service: Registee):
         self._registry[service.__class__] = service
 
         if isinstance(service, AbstractAsyncContextManager):
@@ -154,24 +176,13 @@ class ServiceRegistryBase[TService: ServiceLike]:
             self._exit_stack.push(service)
 
 
-type Dep[TService: ServiceLike, TFactory: ty.Callable] = ty.Annotated[
-    TService, Dependency[TService]
-]
+class ServiceRegistryBase[TService: ServiceLike](AbstractRegistryBase[TService]):
+    _registry: dict[type[TService], TService] = dict()
+    _dependencies: dict[type[TService], Dependency[TService]] = dict()
+    _exit_stack: ty.ClassVar[AsyncExitStack] = AsyncExitStack()
 
 
-def solve_dependency(service: type):
-    import inspect
-    import types
-
-    sub_deps = inspect.get_annotations(service.__init__)
-    for dep_name, dep_annt in sub_deps.items():
-        if not isinstance(dep_annt, types.GenericAlias):
-            continue
-        if not isinstance(dep_annt.__value__, ty._AnnotatedAlias):  # type: ignore
-            continue
-
-        annt_metas = dep_annt.__value__.__metadata__
-        assert Dependency in annt_metas
-
-        dep, faq = dep_annt.__args__
-        return Dependency(dep, faq)
+class InfraRegistryBase[TService: ServiceLike](AbstractRegistryBase[TService]):
+    _registry: dict[type[TService], TService] = dict()
+    _dependencies: dict[type[TService], Dependency[TService]] = dict()
+    _exit_stack: ty.ClassVar[AsyncExitStack] = AsyncExitStack()

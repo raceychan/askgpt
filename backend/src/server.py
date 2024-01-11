@@ -1,11 +1,11 @@
 from contextlib import asynccontextmanager
 
 from fastapi import APIRouter, FastAPI
+from src.adapters.factory import AdapterRegistry
 from src.app.api.error_handlers import HandlerRegistry
 from src.app.api.middleware import LoggingMiddleware, TraceMiddleware
 from src.app.api.router import api_router
 from src.app.bootstrap import bootstrap
-from src.app.factory import ApplicationServices
 from src.domain._log import logger
 from src.domain.config import Settings, get_setting
 
@@ -13,7 +13,7 @@ from src.domain.config import Settings, get_setting
 @asynccontextmanager
 async def lifespan(app: FastAPI, settings: Settings = get_setting()):
     await bootstrap(settings)
-    async with ApplicationServices(settings):
+    async with AdapterRegistry(settings):
         yield
 
 

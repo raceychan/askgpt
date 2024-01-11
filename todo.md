@@ -4,10 +4,13 @@
 
 ### P1
 
-- [ ] README.md
-- [ ] deprive the AI agents part and make it a standalone project
+- [ ] call AI agents from APIs
 
 ## Done
+
+- [x] README.md
+
+- [x] deprive the AI agents part and make it a standalone project
 
 - [x] Required OPENAI_API_KEY for user to use this system
 

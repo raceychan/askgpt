@@ -36,18 +36,6 @@ class MessageBroker[TMessage](abc.ABC):
         raise NotImplementedError
 
 
-class MessageProducer[TMessage](abc.ABC):
-    @abc.abstractmethod
-    async def publish(self, message: TMessage) -> None:
-        raise NotImplementedError
-
-
-class MessageConsumer[TMessage](abc.ABC):
-    @abc.abstractmethod
-    async def get(self) -> TMessage | None:
-        raise NotImplementedError
-
-
 class DeliveryBroker[TMessages](abc.ABC):
     "Push-based MQ"
 
@@ -89,6 +77,22 @@ class DeliveryQueue[TMessage](DeliveryBroker[TMessage]):
         self._subscribers.add(subscriber)
 
 
+class MessageProducer[TMessage](abc.ABC):
+    broker: MessageBroker[TMessage]
+
+    @abc.abstractmethod
+    async def publish(self, message: TMessage) -> None:
+        raise NotImplementedError
+
+
+class MessageConsumer[TMessage](abc.ABC):
+    broker: MessageBroker[TMessage]
+
+    @abc.abstractmethod
+    async def get(self) -> TMessage | None:
+        raise NotImplementedError
+
+
 class QueueBroker[TMessage](MessageBroker[TMessage]):
     def __init__(self, maxsize: int = 1):
         self._queue: deque[TMessage] = deque(maxlen=maxsize or None)
@@ -126,6 +130,16 @@ class BaseConsumer[TMessage](MessageConsumer[TMessage]):
 
     async def get(self) -> TMessage | None:
         return await self._broker.get()
+
+
+"""
+TODO: implement PulsarBroker, PulsarProducer, PulsarConsumer
+(bridge pattern)
+"""
+
+
+class PulsarBroker[IMessage: ty.Any](MessageBroker[IMessage]):
+    ...
 
 
 class PulsarClient:
@@ -199,10 +213,10 @@ class PulsarClient:
 class PulsarProducer[IMessage: ty.Any](MessageProducer[IMessage]):
     def __init__(self, producer: pulsar.Producer):
         self._producer = producer
-        self._messages: deque[IMessage] = deque()
+        # self._messages: deque[IMessage] = deque()
 
     async def _publish_confirmation(self, res, msg_id) -> None:
-        ...
+        assert res
 
     async def publish(self, message: IMessage) -> None:
-        return self._producer.send_async(message, self._publish_confirmation)
+        self._producer.send_async(message, self._publish_confirmation)

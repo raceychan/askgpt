@@ -1,6 +1,6 @@
 import pathlib
 
-from src.tools.fileutil import FileUtil
+from src.toolkit.fileutil import FileUtil
 
 
 def test_read_config(fileutil: FileUtil, tmp_path: pathlib.Path):

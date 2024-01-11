@@ -8,11 +8,19 @@ from src.app.api.model import RequestBody
 from src.app.api.response import RedirectResponse, redirect
 from src.app.auth.errors import InvalidCredentialError, UserNotFoundError
 from src.app.auth.model import UserAuth
-from src.app.factory import ApplicationServices, AuthService
+from src.app.factory import AuthService
+from src.app.factory import get_auth_service as get_service
 from src.domain.base import EMPTY_STR
 
 auth_router = APIRouter(prefix="/auth")
 user_router = APIRouter(prefix="/users")
+
+
+def get_auth_service():
+    return get_service
+
+
+ServiceDep = ty.Annotated[AuthService, Depends(get_auth_service)]
 
 
 class TokenResponse(ty.TypedDict):
@@ -35,13 +43,6 @@ class CreateUserRequest(RequestBody):
 class UserAddAPIRequest(RequestBody):
     api_key: str
     api_type: ty.Literal["openai"] = "openai"
-
-
-def get_auth_service():
-    return ApplicationServices.auth_service
-
-
-ServiceDep = ty.Annotated[AuthService, Depends(get_auth_service)]
 
 
 @auth_router.post("/login")

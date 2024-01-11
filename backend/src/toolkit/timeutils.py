@@ -1,4 +1,5 @@
 import inspect
+import signal
 import types
 import typing as ty
 from dataclasses import dataclass
@@ -122,7 +123,7 @@ def timeit[
 def timeit[
     R, **P
 ](
-    _func: ty.Optional[ty.Callable[P, R]] = None,
+    _func: ty.Callable[P, R] | None = None,
     *,
     unit: ty.Literal["ns", "ms", "s"] = "ms",
     precision: int = 2,
@@ -168,6 +169,31 @@ def timeit[
         return decorator
     else:
         return decorator(_func)
+
+
+class TimeoutException(Exception):
+    pass
+
+
+class Timeout:
+    def __init__(self, seconds, error_msg: str = ""):
+        self.seconds = seconds
+        self.error_msg = error_msg or f"Timed out after {seconds} seconds"
+
+    def handle_timeout(self, signume: int, frame):
+        raise TimeoutException(self.error_msg)
+
+    def __enter__(self):
+        signal.signal(signal.SIGALRM, self.handle_timeout)
+        signal.alarm(self.seconds)
+
+    def __exit__(
+        self,
+        exc_type: ty.Type[BaseException] | None,
+        exc_val: BaseException | None,
+        exc_tb: types.TracebackType | None,
+    ):
+        signal.alarm(0)
 
 
 """

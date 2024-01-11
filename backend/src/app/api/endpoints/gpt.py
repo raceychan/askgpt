@@ -9,7 +9,7 @@ from src.app.api.dependencies import (
 )
 from src.app.api.model import RequestBody
 from src.app.api.response import RedirectResponse
-from src.app.factory import ApplicationServices
+from src.app.factory import get_gpt_service as get_service
 from src.app.gpt.params import ChatGPTRoles, CompletionModels
 from src.app.gpt.service import GPTService
 from starlette import status
@@ -18,7 +18,7 @@ gpt_router = APIRouter(prefix="/gpt")
 
 
 def get_gpt_service() -> GPTService:
-    return ApplicationServices.gpt_service
+    return get_service()
 
 
 ServiceDep = ty.Annotated[GPTService, Depends(get_gpt_service)]

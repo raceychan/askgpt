@@ -4,7 +4,6 @@ from datetime import datetime
 from functools import singledispatchmethod
 
 from pydantic import field_serializer
-
 from src.domain.interface import IRepository
 from src.domain.model.base import (
     Command,
@@ -120,3 +119,5 @@ class AccessPayload(ValueObject):
 
 class AccessToken(JWTBase, AccessPayload):
     ...
+
+

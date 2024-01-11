@@ -1,5 +1,4 @@
 import abc
-import functools
 import pathlib
 import typing as ty
 
@@ -36,7 +35,7 @@ class FileLoader(LoaderNode):
     supported_formats: ty.ClassVar[set[str] | str]
 
     def __init__(self) -> None:
-        self._next: ty.Optional["ty.Self"] = None
+        self._next: "FileLoader | None" = None
 
     def __init_subclass__(cls: type["FileLoader"]) -> None:
         cls._handle_chain.append(cls)
@@ -48,11 +47,11 @@ class FileLoader(LoaderNode):
         return self.__str__()
 
     @property
-    def next(self) -> ty.Optional[ty.Self]:
+    def next(self) -> "FileLoader | None":
         return self._next
 
     @next.setter
-    def next(self, handler: ty.Self | None) -> None:
+    def next(self, handler: "FileLoader | None") -> None:
         self._next = handler
 
     def validate(self, file: pathlib.Path) -> bool:
@@ -75,7 +74,7 @@ class FileLoader(LoaderNode):
 
         return self._next.handle(file)
 
-    def chain(self, handler: "FileLoader") -> ty.Self | None:
+    def chain(self, handler: "FileLoader") -> "FileLoader | None":
         if self._next is None:
             self._next = handler
             return self._next
@@ -103,7 +102,7 @@ class FileLoader(LoaderNode):
         cls._handle_chain.append(loader)
 
     @classmethod
-    def from_chain(cls, reverse: bool = True) -> ty.Self:
+    def from_chain(cls, reverse: bool = True) -> "FileLoader":
         loaders = [loader_cls() for loader_cls in cls._handle_chain]
 
         if reverse:

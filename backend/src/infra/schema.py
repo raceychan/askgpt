@@ -2,7 +2,7 @@ import sqlalchemy as sa
 from sqlalchemy import orm as sa_orm
 from sqlalchemy.ext import asyncio as sa_aio
 from sqlalchemy.sql import func
-from src.tools.nameutils import str_to_snake
+from src.toolkit.nameutils import str_to_snake
 
 
 # Reference: https://docs.sqlalchemy.org/en/14/orm/declarative_mixins.html

@@ -27,7 +27,12 @@ def parse_access_token(token: str = Depends(oauth2_scheme)) -> AccessToken:
 async def throttle_user_request(
     access_token: ty.Annotated[AccessToken, Depends(parse_access_token)],
 ):
-    throttler = app_fatory.get_user_request_throttler(get_setting())
-    wait_time = await throttler.validate_request(access_token.sub)
+    """
+    throttler = get_user_request_throttler(settings)
+    wait_time = await throttler(user_id)
+    """
+    settings = get_setting()
+    throttler = app_fatory.get_user_request_throttler(settings)
+    wait_time = await throttler.validate(access_token.sub)
     if wait_time:
         raise QuotaExceededError(throttler.max_tokens, wait_time)

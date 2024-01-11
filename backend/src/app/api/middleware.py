@@ -62,12 +62,3 @@ class LoggingMiddleware(BaseHTTPMiddleware):
             response.headers[XHeaders.REQUEST_ID.value] = request_id
             response.headers[XHeaders.PROCESS_TIME.value] = str(duration)
             return response
-
-
-# class ThrottlingMiddleware(BaseHTTPMiddleware):
-#     def __init__(self, app: ASGIApp, throttler):
-#         super().__init__(app)
-#         self._throttler = throttler
-
-#     async def dispatch(self, request: Request, call_next: RequestResponseEndpoint):
-#         return await call_next(request)

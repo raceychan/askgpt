@@ -1,6 +1,6 @@
 import time
 
-from src.infra.timer import FuncInfo, timeit
+from src.toolkit.timeutils import FuncInfo, timeit
 
 
 @timeit
