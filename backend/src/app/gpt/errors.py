@@ -1,4 +1,4 @@
-from src.app.api.errors import ClientSideError
+from src.app.api.errors import ClientSideError, ThrottlingError
 from src.app.auth.errors import AuthenticationError
 
 
@@ -23,6 +23,18 @@ class OrphanSessionError(AuthenticationError):
 
 
 class APIKeyNotProvidedError(AuthenticationError):
-    def __init__(self, user_id: str):
-        msg = f"User {user_id} do not have any API-key"
+    def __init__(self, user_id: str, api_type: str):
+        msg = f"User {user_id} do not have any API-key for {api_type}"
+        super().__init__(msg)
+
+
+class ClientNotRegisteredError(Exception):
+    def __init__(self, name: str):
+        msg = f"Client {name} not registered"
+        super().__init__(msg)
+
+
+class APIKeyNotAvailableError(ThrottlingError):
+    def __init__(self, api_type: str):
+        msg = f"No API keys available for {api_type=}"
         super().__init__(msg)

@@ -2,6 +2,8 @@ import typing as ty
 
 from fastapi import APIRouter, Depends
 from fastapi.responses import StreamingResponse
+from starlette import status
+
 from src.app.api.dependencies import (
     AccessToken,
     parse_access_token,
@@ -9,23 +11,16 @@ from src.app.api.dependencies import (
 )
 from src.app.api.model import RequestBody
 from src.app.api.response import RedirectResponse
-from src.app.factory import get_gpt_service as get_service
+from src.app.factory import ApplicationServices
 from src.app.gpt.params import ChatGPTRoles, CompletionModels
-from src.app.gpt.service import GPTService
-from starlette import status
 
 gpt_router = APIRouter(prefix="/gpt")
+llm_router = APIRouter(prefix="/llm")
+
+openai = APIRouter(prefix="/openai")
 
 
-def get_gpt_service() -> GPTService:
-    return get_service()
-
-
-ServiceDep = ty.Annotated[GPTService, Depends(get_gpt_service)]
-
-
-class SendMessageRequest(RequestBody):
-    client_type: str = "openai"
+class ChatCompletionRequest(RequestBody):
     question: str
     role: ChatGPTRoles
     model: CompletionModels = "gpt-3.5-turbo"
@@ -39,74 +34,56 @@ class SendMessageRequest(RequestBody):
     response_format: ty.Any = None
     seed: int | None = None
     stop: str | None | list[str] = None
-    stream: bool
+    stream: bool | None = None
     temperature: float | None = None
     tool_choice: ty.Any = None
     tools: list[ty.Any] | None = None
     top_p: float | None = None
     user: str | None = None
-    extra_headers: ty.Mapping[str, str | ty.Literal[False]] | None
-    extra_query: ty.Mapping[str, object] | None
+    extra_headers: ty.Mapping[str, str | ty.Literal[False]] | None = None
+    extra_query: ty.Mapping[str, object] | None = None
     extra_body: object | None = None
     timeout: float | None = None
 
 
-@gpt_router.post("/sessions")
+@openai.post("/sessions")
 async def create_session(
-    service: ServiceDep,
     token: AccessToken = Depends(parse_access_token),
 ):
-    session_id = await service.create_session(user_id=token.sub)
+    session_id = await ApplicationServices.gpt_service.create_session(user_id=token.sub)
+
     return RedirectResponse(
-        f"/v1/gpt/sessions/{session_id}", status_code=status.HTTP_303_SEE_OTHER
+        f"/v1/gpt/openai/sessions/{session_id}", status_code=status.HTTP_303_SEE_OTHER
     )
 
 
-@gpt_router.get("/sessions/{session_id}")
+@openai.get("/sessions/{session_id}")
 async def get_session(
-    service: ServiceDep,
     session_id: str,
     token: AccessToken = Depends(parse_access_token),
 ):
-    session_actor = await service.get_session(user_id=token.sub, session_id=session_id)
+    session_actor = await ApplicationServices.gpt_service.get_session(
+        user_id=token.sub, session_id=session_id
+    )
     return session_actor.entity
 
 
-@gpt_router.post(
-    "/sessions/{session_id}/messages", dependencies=[Depends(throttle_user_request)]
-)
-async def send_message(
-    service: ServiceDep,
+@openai.post("/chat/{session_id}", dependencies=[Depends(throttle_user_request)])
+async def chat(
     session_id: str,
-    req: SendMessageRequest,
+    req: ChatCompletionRequest,
     access_token: AccessToken = Depends(parse_access_token),
 ):
-    stream_ans = await service.stream_chat(
+    options = req.model_dump(exclude_unset=True)
+    await ApplicationServices.gpt_service.check_corresponding_api_provided(
+        user_id=access_token.sub, api_type="openai"
+    )
+    stream_ans = ApplicationServices.gpt_service.stream_chat(
         user_id=access_token.sub,
         session_id=session_id,
-        model_type=req.client_type,
-        question=req.question,
+        gpt_type="openai",
         role=req.role,
-        completion_model=req.model,
-        frequency_penalty=req.frequency_penalty,
-        function_call=req.function_call,
-        functions=req.functions,  # type: ignore
-        logit_bias=req.logit_bias,
-        max_tokens=req.max_tokens,
-        n=req.n,
-        presence_penalty=req.presence_penalty,
-        response_format=req.response_format,
-        seed=req.seed,
-        stop=req.stop,
-        stream=req.stream,
-        temperature=req.temperature,
-        tool_choice=req.tool_choice,
-        tools=req.tools,  # type: ignore
-        top_p=req.top_p,
-        user=req.user,  # type: ignore
-        extra_headers=req.extra_headers,  # type: ignore
-        extra_query=req.extra_query,
-        extra_body=req.extra_body,
-        timeout=req.timeout,
+        question=req.question,
+        options=options,
     )
     return StreamingResponse(stream_ans)  # type: ignore

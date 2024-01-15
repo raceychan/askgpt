@@ -2,8 +2,9 @@ import typing as ty
 from contextlib import asynccontextmanager
 
 from src.app.actor import QueueBox as QueueBox
-from src.app.gpt import model, params, repository
+from src.app.gpt import errors, model, params, repository
 from src.app.gpt.gptsystem import GPTSystem, SessionActor, SystemState, UserActor
+from src.domain._log import logger
 from src.infra.eventstore import EventStore
 
 
@@ -51,23 +52,32 @@ class GPTService:
 
         await session_actor.receive(command)
 
+    async def check_corresponding_api_provided(
+        self, user_id: str, api_type: str
+    ) -> None:
+        user = await self.get_user(user_id=user_id)
+        keys = user.entity.get_keys_of_type(api_type)
+        if not keys:
+            raise errors.APIKeyNotProvidedError(user_id=user_id, api_type=api_type)
+
     async def stream_chat(
         self,
         user_id: str,
         session_id: str,
+        gpt_type: str,
+        role: params.ChatGPTRoles,
         question: str,
-        model_type: str,
-        role: model.ChatGPTRoles,
-        completion_model: model.CompletionModels,
-        **options: ty.Unpack[params.CompletionOptions],
+        options: dict[str, ty.Any],
     ) -> ty.AsyncGenerator[str | None, None]:
         session_actor = await self.get_session(user_id=user_id, session_id=session_id)
-        return session_actor.send_chatmessage(
+        completion_model = options.pop("model")
+        ans_gen = session_actor.send_chatmessage(
             message=model.ChatMessage(role=role, content=question),
-            model_type=model_type,
+            model_type=gpt_type,
             completion_model=completion_model,
             options=options,
         )
+        return ans_gen
 
     async def interactive(
         self, user_id: str, session_id: str, completion_model: model.CompletionModels
@@ -114,13 +124,13 @@ class GPTService:
             return
 
         await self.system.start(
-            eventstore=EventStore(aioengine=self._session_repo.aioengine),
+            eventstore=EventStore(aiodb=self._session_repo.aiodb),
         )
         self.state = self.state.start()
+        logger.success("gpt service started")
 
     async def stop(self):
         await self.system.stop()
-        await self._session_repo._aioengine.dispose()
         self.state = self.state.stop()
 
     @asynccontextmanager

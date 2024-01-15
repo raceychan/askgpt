@@ -1,20 +1,34 @@
 from contextlib import asynccontextmanager
+from functools import partial
 
 from fastapi import APIRouter, FastAPI
+
 from src.adapters.factory import AdapterRegistry
+from src.app.api.endpoints import api_router
 from src.app.api.error_handlers import HandlerRegistry
 from src.app.api.middleware import LoggingMiddleware, TraceMiddleware
-from src.app.api.router import api_router
 from src.app.bootstrap import bootstrap
+from src.app.factory import ApplicationServices
 from src.domain._log import logger
 from src.domain.config import Settings, get_setting
+from src.infra.factory import get_eventrecord
 
 
 @asynccontextmanager
-async def lifespan(app: FastAPI, settings: Settings = get_setting()):
+async def lifespan(app: FastAPI | None = None, *, settings: Settings):
     await bootstrap(settings)
-    async with AdapterRegistry(settings):
+    event_record = get_eventrecord(settings)
+
+    adapters = AdapterRegistry(settings)
+    app_services = ApplicationServices(settings)
+    adapters.register(event_record)  # type: ignore
+
+    await app_services.gpt_service.start()
+
+    async with adapters:
         yield
+
+    await app_services.gpt_service.stop()
 
 
 def add_exception_handlers(app: FastAPI) -> None:
@@ -31,7 +45,9 @@ def add_middlewares(app: FastAPI) -> None:
     app.add_middleware(TraceMiddleware)
 
 
-def app_factory(*, lifespan=lifespan, settings=get_setting()) -> FastAPI:
+def app_factory(
+    lifespan=lifespan, *, settings: Settings = get_setting("settings.toml")  # type: ignore
+) -> FastAPI:
     app = FastAPI(
         title=settings.PROJECT_NAME,
         description="gpt service at your home",
@@ -39,7 +55,7 @@ def app_factory(*, lifespan=lifespan, settings=get_setting()) -> FastAPI:
         openapi_url=settings.api.OPEN_API,
         docs_url=settings.api.DOCS,
         redoc_url=settings.api.REDOC,
-        lifespan=lifespan,
+        lifespan=partial(lifespan, settings=settings),  # type: ignore
     )
 
     root_router = APIRouter()
@@ -73,4 +89,4 @@ def server(settings: Settings) -> None:
 
 
 if __name__ == "__main__":
-    server(get_setting())
+    server(get_setting("settings.toml"))

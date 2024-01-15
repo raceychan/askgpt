@@ -1,5 +1,4 @@
 import abc
-import functools
 import typing as ty
 from collections import deque
 from contextlib import asynccontextmanager
@@ -8,26 +7,15 @@ import httpx
 import openai
 from openai.types import beta as openai_beta
 from openai.types import chat as openai_chat
+
 from src.adapters import cache
-from src.app.gpt import model, params
+from src.app.gpt import errors, model, params
 
 MAX_RETRIES: int = 3
 
 
-class ClientNotRegisteredError(Exception):
-    def __init__(self, name: str):
-        msg = f"Client {name} not registered"
-        super().__init__(msg)
-
-
-class APIKeyNotAvailableError(Exception):
-    def __init__(self, api_type: str):
-        msg = f"No API keys available for {api_type=}"
-        super().__init__(msg)
-
-
 class ClientRegistry:
-    _registry: ty.ClassVar[dict[str, type["AIClient"]]] = {}
+    _registry: ty.ClassVar[dict[str, type["AIClient"]]] = dict()
 
     @classmethod
     def register(cls, name: str):
@@ -47,8 +35,8 @@ class AIClient(abc.ABC):
         messages: list[model.ChatMessage],
         model: model.CompletionModels,
         user: str,
-        stream: bool = True,
-        **options: ty.Unpack[params.CompletionOptions],  # type: ignore
+        stream: bool,
+        options: params.CompletionOptions,  # type: ignore
     ) -> ty.AsyncIterable[openai_chat.ChatCompletionChunk]:
         ...
 
@@ -85,8 +73,8 @@ class OpenAIClient(AIClient):
         messages: list[model.ChatMessage],
         model: model.CompletionModels,
         user: str,
-        stream: bool = True,
-        **options: ty.Unpack[params.CompletionOptions],  # type: ignore
+        stream: bool,
+        options: params.CompletionOptions,  # type: ignore
     ) -> ty.AsyncIterable[openai_chat.ChatCompletionChunk]:
         msgs = self.message_adapter(messages)
         resp = await self._client.chat.completions.create(
@@ -96,7 +84,6 @@ class OpenAIClient(AIClient):
             user=user,
             **options,
         )
-
         return resp
 
     def message_adapter(
@@ -105,7 +92,6 @@ class OpenAIClient(AIClient):
         return [message.asdict(exclude={"user_id"}) for message in messages]
 
     @classmethod
-    @functools.cache
     def from_apikey(cls, api_key: str) -> ty.Self:
         client = openai.AsyncOpenAI(api_key=api_key)
         return cls(client=client)
@@ -142,13 +128,14 @@ class OpenAIClient(AIClient):
 class APIPool:
     def __init__(
         self,
-        pool_key: cache.KeySpace,
+        *,
+        pool_keyspace: cache.KeySpace,
         api_type: str,
         api_keys: ty.Sequence[str],
         cache: cache.Cache[str, str],
         client_registry: ClientRegistry = ClientRegistry(),
     ):
-        self.pool_key = pool_key
+        self.pool_key = pool_keyspace
         self.api_type = api_type
         self.api_keys = deque(api_keys)
         self._cache = cache
@@ -186,7 +173,7 @@ class APIPool:
         await self._cache.rpush(self.pool_key.key, *self.api_keys)
         self.__started = True
 
-    async def close(self):
+    async def close(self) -> None:
         # remove api keys from redis, clear client cache
         await self._cache.remove(self.pool_key.key)
         self.__started = False

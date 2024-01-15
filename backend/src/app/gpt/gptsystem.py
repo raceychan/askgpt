@@ -13,13 +13,12 @@ from src.app.actor import (
     System,
 )
 from src.app.auth import model as auth_model
-from src.app.gpt import errors, gptclient, model, params
-from src.domain._log import logger
+from src.app.gpt import errors, gptclient, model
 from src.domain.config import Settings
-from src.domain.fmtutils import async_receiver
 from src.domain.interface import ActorRef, ICommand
 from src.domain.model.base import Command, Event, Message
-from src.infra import eventstore, factory
+from src.infra import eventstore, factory, security
+from src.toolkit.fmtutils import async_receiver
 
 
 class SystemStarted(Event):
@@ -63,7 +62,7 @@ class SystemState(enum.Enum):
 class GPTBaseActor[TChild: ty.Any, TEntity: ty.Any](
     EntityActor[TChild, TEntity], StatefulActor[TChild, TEntity]
 ):
-    system: "GPTSystem"
+    system: "GPTSystem"  # type: ignore
 
 
 class UserActor(GPTBaseActor["SessionActor", model.User]):
@@ -71,23 +70,46 @@ class UserActor(GPTBaseActor["SessionActor", model.User]):
         super().__init__(boxfactory=QueueBox, entity=user)
         self.user_api_pool = None
 
+    @property
+    def session_count(self):
+        return len(self.entity.session_ids)
+
+    @cached_property
+    def apipool_keyspace(self) -> cache.KeySpace:
+        keyspace = self.system.settings.redis.keyspaces.API_POOL
+        return keyspace(self.entity_id)
+
+    def decrypt_api_keys(
+        self, api_type: str, encryptor: security.Encrypt | None = None
+    ) -> tuple[str, ...]:
+        keys = self.entity.get_keys_of_type(api_type)
+        if not keys:
+            return tuple()
+
+        encryptor = encryptor or factory.get_encrypt(self.system.settings)
+
+        return tuple(encryptor.decrypt_string(key.encode()) for key in keys)
+
+    def decrypt_all_keys(self) -> dict[str, tuple[str, ...]]:
+        encryptor = factory.get_encrypt(self.system.settings)
+        decrypted = {
+            api_type: self.decrypt_api_keys(api_type, encryptor)
+            for api_type in self.entity.api_keys
+        }
+        return decrypted
+
     def get_user_api_pool(self, api_type: str):
         if self.user_api_pool is not None:
             return self.user_api_pool
 
         user_api_pool = gptclient.APIPool(
-            pool_key=self.apipool_key,
+            pool_keyspace=self.apipool_keyspace,
             api_type=api_type,
             api_keys=self.decrypt_api_keys(api_type),
             cache=self.system.cache,
         )
         self.user_api_pool = user_api_pool
         return self.user_api_pool
-
-    @cached_property
-    def apipool_key(self) -> cache.KeySpace:
-        keyspace = self.system.settings.redis.keyspaces.API_POOL
-        return keyspace(self.entity_id)
 
     def create_session(self, event: model.SessionCreated) -> "SessionActor":
         session_actor = SessionActor.apply(event)
@@ -112,26 +134,6 @@ class UserActor(GPTBaseActor["SessionActor", model.User]):
             session_actor.rebuild(events)
             self.childs[session_actor.entity_id] = session_actor
         return session_actor
-
-    def decrypt_api_keys(self, api_type: str, encryptor=None) -> tuple[str, ...]:
-        keys = self.entity.api_keys.get(api_type)
-        if not keys:
-            return tuple()
-
-        encryptor = encryptor or factory.get_encrypt(self.system.settings)
-
-        return tuple(encryptor.decrypt_string(key.encode()) for key in keys)
-
-    def decrypt_all_keys(self) -> dict[str, tuple[str, ...]]:
-        if not self.entity.api_keys:
-            raise errors.APIKeyNotProvidedError(self.entity_id)
-
-        encryptor = factory.get_encrypt(self.system.settings)
-        decrypted = {
-            api_type: self.decrypt_api_keys(api_type, encryptor)
-            for api_type in self.entity.api_keys
-        }
-        return decrypted
 
     @singledispatchmethod
     async def handle(self, command: Command) -> None:
@@ -165,10 +167,6 @@ class UserActor(GPTBaseActor["SessionActor", model.User]):
         self.entity.apply(event)
         return self
 
-    @property
-    def session_count(self):
-        return len(self.entity.session_ids)
-
 
 class SessionActor(GPTBaseActor["SessionActor", model.ChatSession]):
     def __init__(self, chat_session: model.ChatSession):
@@ -179,13 +177,7 @@ class SessionActor(GPTBaseActor["SessionActor", model.ChatSession]):
         return self.entity.messages
 
     @asynccontextmanager
-    async def get_client(self, client_type: str = "openai"):
-        user = self.system.get_child(self.entity.user_id)
-        if not user:
-            user = await self.system.rebuild_user(self.entity.user_id)
-
-        # TODO: use asyncexitstack
-        api_pool = user.get_user_api_pool(api_type=client_type)
+    async def get_client(self, api_pool: gptclient.APIPool):
         async with api_pool.lifespan():
             async with api_pool.reserve_client() as client:
                 yield client
@@ -195,16 +187,25 @@ class SessionActor(GPTBaseActor["SessionActor", model.ChatSession]):
         model_type: str,
         message: model.ChatMessage,
         model: model.CompletionModels,
+        options: dict[str, ty.Any],
         stream: bool = True,
-        **options: params.CompletionOptions,
     ) -> ty.AsyncGenerator[str, None]:
-        async with self.get_client(client_type=model_type) as client:
+        user = self.system.get_child(self.entity.user_id)
+        if not user:
+            user = await self.system.rebuild_user(self.entity.user_id)
+
+        api_pool = user.get_user_api_pool(api_type=model_type)
+
+        async with self.get_client(api_pool=api_pool) as client:
+            options.update(
+                user=self.entity.user_id,
+            )
             chunks = await client.complete(
                 messages=self.chat_context + [message],
                 model=model,
                 user=self.entity.user_id,
                 stream=stream,
-                **options,
+                options=options,
             )
 
         async for resp in chunks:
@@ -219,11 +220,14 @@ class SessionActor(GPTBaseActor["SessionActor", model.ChatSession]):
         message: model.ChatMessage,
         model_type: str,
         completion_model: model.CompletionModels,
-        **options: params.CompletionOptions,
+        options: dict[str, ty.Any],
     ) -> ty.AsyncGenerator[str, None]:
         "send messages and publish events"
         chunks = self._send_chatmessage(
-            message=message, model=completion_model, model_type=model_type, **options
+            message=message,
+            model=completion_model,
+            model_type=model_type,
+            options=options,
         )
         answer = ""
         async for chunk in chunks:
@@ -267,6 +271,7 @@ class SessionActor(GPTBaseActor["SessionActor", model.ChatSession]):
             message=command.chat_message,
             model=command.model,
             model_type=command.client_type,
+            options=dict(),
         )
 
         answer = await async_receiver(chunks)

@@ -22,7 +22,7 @@ async def add_three(a: int, b: int, c: int) -> int:
 class B:
     @timeit
     def slow_func(self):
-        time.sleep(0.3)
+        time.sleep(0.01)
 
 
 fi = FuncInfo.from_func(add_two)

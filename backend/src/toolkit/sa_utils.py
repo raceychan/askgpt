@@ -1,3 +1,4 @@
+# type: ignore
 import typing as ty
 from contextlib import contextmanager
 

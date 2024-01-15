@@ -180,6 +180,9 @@ class User(Entity):
         evt = UserCreated(user_id=command.entity_id)
         return cls.apply(evt)
 
+    def get_keys_of_type(self, api_type: str) -> list[str]:
+        return self.api_keys.get(api_type, [])
+
 
 class ISessionRepository(IRepository[ChatSession]):
     async def add(self, entity: ChatSession) -> None:

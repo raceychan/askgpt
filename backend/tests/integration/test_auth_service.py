@@ -1,8 +1,8 @@
 import typing as ty
 
 import pytest
-from sqlalchemy.ext.asyncio import AsyncEngine
 from src.adapters.cache import MemoryCache
+from src.adapters.database import AsyncDatabase
 from src.adapters.queue import MessageProducer
 from src.app.auth.errors import UserAlreadyExistError
 from src.app.auth.repository import UserRepository
@@ -14,7 +14,7 @@ from src.infra.security import Encrypt
 
 @pytest.fixture(scope="module")
 async def auth_service(
-    async_engine: AsyncEngine,
+    aiodb: AsyncDatabase,
     local_cache: MemoryCache[str, str],
     settings: Settings,
     token_encrypt: Encrypt,
@@ -23,7 +23,7 @@ async def auth_service(
     keyspace = settings.redis.keyspaces.APP.generate_for_cls(TokenRegistry)
 
     return AuthService(
-        user_repo=UserRepository(async_engine),
+        user_repo=UserRepository(aiodb),
         token_encrypt=token_encrypt,
         token_registry=TokenRegistry(
             token_cache=local_cache,

@@ -5,7 +5,7 @@ from sys import stdout
 def fprint(string: str) -> None:
     """
     fast alternative to print(string, end="", flush=True)
-    (tested for > 1000 iteration)
+    (tested for > 1000 iteration), ~30%
     """
 
     stdout.write(string)
@@ -13,6 +13,7 @@ def fprint(string: str) -> None:
 
 
 async def async_receiver(answer: ty.AsyncGenerator[str | None, None]) -> str:
+    # TODO: either print or return value at the same time, not both
     str_container = ""
     async for chunk in answer:
         if chunk is None:

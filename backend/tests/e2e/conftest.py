@@ -39,7 +39,11 @@ def settings() -> TestSettings:
         api=TestSettings.API(HOST="localhost", PORT=8000, API_VERSION="0.1.0"),
         security=TestSettings.Security(SECRET_KEY="test", ALGORITHM="HS256"),
         redis=TestSettings.Redis(
-            HOST="localhost", PORT=6379, DB=1, KEY_SPACE="test", SOCKET_TIMEOUT=2
+            HOST="localhost",
+            PORT=6379,
+            DB=1,
+            SOCKET_TIMEOUT=2,
+            keyspaces=TestSettings.Redis.KeySpaces(APP="test"),
         ),
         event_record=TestSettings.EventRecord(),
     )

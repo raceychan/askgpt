@@ -109,7 +109,7 @@ async def app(gpt: service.GPTService, options: CLIOptions) -> None:
 
 def main():
     options = CLIOptions.parse()
-    settings = get_setting()
+    settings = get_setting("settings.toml")
     gpt = get_gpt_service(settings)
     auth = get_auth_service(settings)
 

@@ -1,3 +1,4 @@
+# type: ignore
 import inspect
 import signal
 import types
@@ -7,6 +8,7 @@ from functools import wraps
 from time import perf_counter
 
 from src.domain._log import logger
+from src.toolkit.extratypes import AnyCallable
 
 
 @dataclass(frozen=True, kw_only=True, slots=True, repr=False, unsafe_hash=True)
@@ -24,7 +26,7 @@ class FuncInfo:
         return f"{self.location} {self.name}"
 
     @classmethod
-    def from_func(cls, func: ty.Callable):
+    def from_func(cls, func: AnyCallable):
         name = func.__qualname__
         func_code = func.__code__
         code = inspect.getsource(func)
@@ -64,48 +66,14 @@ class ExecInfo:
         return self.format_repr()
 
 
-class timeitcls:
-    def __init__(self, func):
-        self._func = func
-        self.funcinfo = FuncInfo.from_func(func)
+# TODO: rewrite overloads
 
-    def __set_name__(self, owner_cls, name):
-        self.name = name
 
-    def __get__(self, obj, obj_type):
-        return types.MethodType(self, obj) if obj else self
+class Sentinel_:
+    ...
 
-    def __call__(self, *args, **kwargs):
-        wp = self.atimer if self.funcinfo.is_async else self.timer
-        return wp(*args, **kwargs)
 
-    def timer(self, *args, **kwargs):
-        start = perf_counter()
-        res = self._func(*args, **kwargs)
-        end = perf_counter()
-        exec_info = ExecInfo(
-            funcinfo=self.funcinfo,
-            args=args,
-            kwargs=kwargs,
-            timecost=end - start,
-            unit="s",
-        )
-        logger.info(exec_info.format_repr())
-        return res
-
-    async def atimer(self, *args, **kwargs):
-        start = perf_counter()
-        res = await self._func(*args, **kwargs)
-        end = perf_counter()
-        exec_info = ExecInfo(
-            funcinfo=self.funcinfo,
-            args=args,
-            kwargs=kwargs,
-            timecost=end - start,
-            unit="s",
-        )
-        logger.info(exec_info.format_repr())
-        return res
+SENTINEL = Sentinel_()
 
 
 @ty.overload
@@ -123,7 +91,7 @@ def timeit[
 def timeit[
     R, **P
 ](
-    _func: ty.Callable[P, R] | None = None,
+    _func: AnyCallable | None = None,
     *,
     unit: ty.Literal["ns", "ms", "s"] = "ms",
     precision: int = 2,
@@ -150,9 +118,9 @@ def timeit[
             return res
 
         @wraps(func)
-        async def awrapper(*args: P.args, **kwargs: P.kwargs):
+        async def awrapper(*args: P.args, **kwargs: P.kwargs) -> R:
             start = perf_counter()
-            res = await func(*args, **kwargs)  # type: ignore
+            res = await func(*args, **kwargs)
             end = perf_counter()
             timecost = round(end - start, precision)
 
@@ -176,11 +144,11 @@ class TimeoutException(Exception):
 
 
 class Timeout:
-    def __init__(self, seconds, error_msg: str = ""):
+    def __init__(self, seconds: int, error_msg: str = ""):
         self.seconds = seconds
         self.error_msg = error_msg or f"Timed out after {seconds} seconds"
 
-    def handle_timeout(self, signume: int, frame):
+    def handle_timeout(self, signume: int, frame: ty.Any):
         raise TimeoutException(self.error_msg)
 
     def __enter__(self):

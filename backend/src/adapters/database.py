@@ -1,8 +1,12 @@
+import types
 import typing as ty
 from contextlib import asynccontextmanager
 
-from sqlalchemy.ext.asyncio import AsyncConnection, AsyncEngine, AsyncTransaction
+from sqlalchemy.ext.asyncio import AsyncConnection, AsyncEngine
 from sqlalchemy.sql import Executable, text
+
+from src.toolkit.extratypes import StrDict
+from src.toolkit.timeutils import timeit
 
 
 class AsyncDatabase:
@@ -13,39 +17,42 @@ class AsyncDatabase:
     def url(self):
         return self._aioengine.url
 
+    @timeit
     async def execute(
         self,
         query: str | Executable,
-        parameters: dict | None = None,
-        execution_options: dict | None = None,
+        parameters: StrDict | None = None,
+        execution_options: StrDict | None = None,
     ) -> ty.Any:
         # TODO: log slow queries
         if isinstance(query, str):
             query = text(query)
 
-        async with self._aioengine.connect() as connection:
+        async with self._aioengine.begin() as connection:
             result = await connection.execute(
                 query, parameters, execution_options=execution_options
             )
             return result
 
     @asynccontextmanager
-    async def begin(self) -> ty.AsyncGenerator[AsyncTransaction, None]:
+    async def begin(self) -> ty.AsyncGenerator[AsyncConnection, None]:
         async with self.connect() as conn:
-            async with conn.begin() as transaction:
-                yield transaction
+            async with conn.begin():
+                yield conn
 
-    @asynccontextmanager
-    async def connect(self) -> ty.AsyncGenerator[AsyncConnection, None]:
-        async with self._aioengine.connect() as conn:
-            yield conn
+    def connect(self) -> AsyncConnection:
+        return self._aioengine.connect()
 
-    async def close(self):
+    async def close(self) -> None:
         await self._aioengine.dispose()
 
     async def __aenter__(self):
-        await self.execute("select 1")
         return self
 
-    async def __aexit__(self, exc_type, exc_val, exc_tb):
+    async def __aexit__(
+        self,
+        exc_type: type[BaseException] | None,
+        exc_val: BaseException | None,
+        exc_tb: types.TracebackType | None,
+    ):
         await self.close()

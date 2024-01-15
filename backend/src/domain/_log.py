@@ -9,7 +9,9 @@ import loguru
 import orjson
 from loguru import logger
 from rich.console import Console
-from src.domain.config import get_setting
+
+from src.domain.config import Settings
+from src.domain.interface import Closable
 
 __all__ = ["logger"]
 
@@ -27,9 +29,7 @@ COLOR_MAPPER = dict(
 )
 
 
-def format_record(record: loguru.Record) -> dict[str, ty.Any]:
-    settings = get_setting()
-
+def format_record(record: loguru.Record, *, settings: Settings) -> dict[str, ty.Any]:
     record_time_utc = record["time"].astimezone(datetime.UTC)
     file_path = settings.get_modulename(record["file"].path)
     custom_record = {
@@ -48,8 +48,8 @@ def format_record(record: loguru.Record) -> dict[str, ty.Any]:
     return custom_record
 
 
-def prod_sink(msg: loguru.Message) -> None:
-    string = orjson.dumps(format_record(msg.record)).decode()
+def prod_sink(msg: loguru.Message, *, settings: Settings) -> None:
+    string = orjson.dumps(format_record(msg.record, settings=settings)).decode()
     sys.stdout.write(string)
     sys.stdout.flush()
 
@@ -91,3 +91,4 @@ def update_sink(sink: ty.Callable[[loguru.Message], None]) -> loguru.Logger:
 
 
 update_sink(debug_sink)
+

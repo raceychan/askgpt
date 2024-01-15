@@ -2,6 +2,8 @@ import sqlalchemy as sa
 from sqlalchemy import orm as sa_orm
 from sqlalchemy.ext import asyncio as sa_aio
 from sqlalchemy.sql import func
+
+from src.adapters.database import AsyncDatabase
 from src.toolkit.nameutils import str_to_snake
 
 
@@ -93,8 +95,8 @@ class UserAPIKeySchema(TableBase):
     is_active = sa.Column("is_active", sa.Boolean, default=True)
 
 
-async def create_tables(engine: sa_aio.AsyncEngine):
+async def create_tables(aiodb: AsyncDatabase):
     # tables = TableBase.metadata.tables.keys()
 
-    async with engine.begin() as conn:
-        await conn.run_sync(TableBase.metadata.create_all)
+    async with aiodb.begin() as conn:
+        await conn.run_sync(TableBase.metadata.create_all)  # type: ignore

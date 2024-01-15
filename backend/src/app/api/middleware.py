@@ -2,12 +2,13 @@ from time import perf_counter
 from urllib.parse import quote
 
 from fastapi import Request
+from starlette.middleware.base import BaseHTTPMiddleware, RequestResponseEndpoint
+from starlette.types import ASGIApp, Receive, Scope, Send
+
 from src.app.api.xheaders import XHeaders
 from src.domain._log import logger
 from src.domain.config import TIME_EPSILON_S, UnknownAddress
 from src.domain.model.base import request_id_factory
-from starlette.middleware.base import BaseHTTPMiddleware, RequestResponseEndpoint
-from starlette.types import ASGIApp, Receive, Scope, Send
 
 
 class TraceMiddleware:
@@ -48,6 +49,11 @@ class LoggingMiddleware(BaseHTTPMiddleware):
             try:
                 response = await call_next(request)
                 status_code = response.status_code
+                if status_code >= 400:
+                    logger.error(
+                        f'{client_host}:{client_port} - "{request.method} {path_query} HTTP/{request.scope["http_version"]}" {status_code}',
+                        duration=TIME_EPSILON_S,
+                    )
             except Exception as e:
                 logger.exception("Internal exception occurred")
                 raise e

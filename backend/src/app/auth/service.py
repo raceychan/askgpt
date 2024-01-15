@@ -1,4 +1,3 @@
-from contextlib import asynccontextmanager
 from datetime import datetime, timedelta
 
 from src.adapters import cache, queue
@@ -15,7 +14,7 @@ class TokenRegistry:
     a registry for refresh-token, validated by redis
     """
 
-    def __init__(self, token_cache: cache.Cache, keyspace: cache.KeySpace):
+    def __init__(self, token_cache: cache.Cache[str, str], keyspace: cache.KeySpace):
         self._cache = token_cache
         self._keyspace = keyspace
 
@@ -46,14 +45,6 @@ class AuthService:
         self._token_encrypt = token_encrypt
         self._producer = producer
         self._security_settings = security_settings
-
-    @asynccontextmanager
-    async def lifespan(self):
-        try:
-            yield self
-        finally:
-            await self._user_repo._aioengine.dispose()
-            await self._token_registry._cache.close()
 
     @property
     def user_repo(self):

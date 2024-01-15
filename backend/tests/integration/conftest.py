@@ -4,6 +4,7 @@ import typing as ty
 import pytest
 from sqlalchemy.ext import asyncio as sa_aio
 from src.adapters.cache import MemoryCache, RedisCache
+from src.adapters.database import AsyncDatabase
 from src.adapters.queue import BaseConsumer, BaseProducer, QueueBroker
 from src.app.actor import MailBox
 from src.app.auth.model import UserAuth
@@ -21,14 +22,15 @@ class EchoMailbox(MailBox):
 
 
 @pytest.fixture(scope="module")
-def async_engine(settings: Settings):
+def aiodb(settings: Settings):
     engine = sa_aio.create_async_engine(
         settings.db.DB_URL,
         echo=settings.db.ENGINE_ECHO,
         isolation_level=settings.db.ISOLATION_LEVEL,
         pool_pre_ping=True,
     )
-    return engine
+    db = AsyncDatabase(engine)
+    return db
 
 
 @pytest.fixture(scope="module")
@@ -37,13 +39,13 @@ def local_cache():
 
 
 @pytest.fixture(scope="module", autouse=True)
-async def tables(async_engine: sa_aio.AsyncEngine):
-    await schema.create_tables(async_engine)
+async def tables(aiodb: AsyncDatabase):
+    await schema.create_tables(aiodb)
 
 
 @pytest.fixture(scope="module")
-async def eventstore(async_engine: sa_aio.AsyncEngine) -> EventStore:
-    es = EventStore(async_engine)
+async def eventstore(aiodb: AsyncDatabase) -> EventStore:
+    es = EventStore(aiodb)
     return es
 
 

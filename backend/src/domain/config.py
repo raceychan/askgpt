@@ -2,9 +2,12 @@ import pathlib
 import typing as ty
 
 from pydantic import BaseModel, ConfigDict, computed_field, field_validator
-from src.domain.base import KeySpace, TimeScale, freeze, freezelru
+
+from src.domain.base import TimeScale
 from src.domain.interface import SQL_ISOLATIONLEVEL, EventLogRef, JournalRef, SystemRef
 from src.toolkit.fileutil import FileUtil
+from src.toolkit.funcutils import freeze, simplecache
+from src.toolkit.nameutils import KeySpace
 
 UNIT = MINUTE = 1
 HOUR = 60 * MINUTE
@@ -21,7 +24,7 @@ class UnknownAddress(ty.NamedTuple):
 
 
 class SettingsFactory[T](ty.Protocol):
-    def __call__(self, settings: "Settings") -> T:  # | ty.AsyncGenerator[T, None]:
+    def __call__(self, settings: "Settings") -> T:
         ...
 
 
@@ -32,7 +35,7 @@ class PureFacotry[T](ty.Protocol):
 
 def settingfactory[T: ty.Any](factory: SettingsFactory[T]) -> SettingsFactory[T]:
     "Cached factory that returns a cached instance for each settings instance"
-    return freezelru(factory)
+    return simplecache(max_size=1, strict=True)(factory)  # type: ignore
 
 
 class SettingsBase(BaseModel):
@@ -98,13 +101,13 @@ class Settings(SettingsBase):
 
             server_settings: dict[str, ty.Any] | None = None
 
-        connect_args: dict  # CONNECT_ARGS
+        connect_args: CONNECT_ARGS | None = None
 
         class ExeuctionOptions(SettingsBase):
             "Sqlalchemy engine-specific options"
             ...
 
-        execution_options: ExeuctionOptions
+        execution_options: ExeuctionOptions | None = None
 
     db: DB
 
@@ -196,7 +199,7 @@ class Settings(SettingsBase):
     event_record: EventRecord
 
     @classmethod
-    @freezelru
+    @simplecache
     def from_file(cls, filename: str) -> ty.Self:
         fileutil = FileUtil.from_cwd()
         config_data = fileutil.read_file(filename)
@@ -210,8 +213,8 @@ class Settings(SettingsBase):
         return str(file_path).replace("/", ".")[:-3]
 
 
-@freezelru
-def get_setting(filename: str = "settings.toml") -> Settings:
+@simplecache
+def get_setting(filename: str) -> Settings:
     """
     offcial factory of settings with default filename
     """

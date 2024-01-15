@@ -1,7 +1,8 @@
 import typing as ty
 
 import sqlalchemy as sa
-from sqlalchemy.ext import asyncio as sa_aio
+# from sqlalchemy.ext import asyncio as sa_aio
+from src.adapters.database import AsyncDatabase
 from src.app.auth.model import IUserRepository, UserAuth, UserInfo
 
 USER_TABLE: ty.Final[sa.TableClause] = sa.table(
@@ -57,19 +58,19 @@ def load_userauth(user_data: dict[str, ty.Any]) -> UserAuth:
 
 
 class UserRepository(IUserRepository):
-    def __init__(self, aioengine: sa_aio.AsyncEngine):
-        self._aioengine = aioengine
+    def __init__(self, aiodb: AsyncDatabase):
+        self._aiodb = aiodb
 
     async def add(self, entity: UserAuth) -> None:
         data = dump_userauth(entity)
         stmt = sa.insert(USER_TABLE).values(data)
 
-        async with self._aioengine.begin() as cursor:
+        async with self._aiodb.begin() as cursor:
             await cursor.execute(stmt)
 
     async def get(self, entity_id: str) -> UserAuth | None:
         stmt = sa.select(USER_TABLE).where(USER_TABLE.c.id == entity_id)
-        async with self._aioengine.begin() as cursor:
+        async with self._aiodb.begin() as cursor:
             res = await cursor.execute(stmt)
             row = res.one_or_none()
             if not row:
@@ -79,7 +80,7 @@ class UserRepository(IUserRepository):
     async def search_user_by_email(self, useremail: str) -> UserAuth | None:
         stmt = sa.select(USER_TABLE).where(USER_TABLE.c.email == useremail)
 
-        async with self._aioengine.begin() as conn:
+        async with self._aiodb.begin() as conn:
             cursor = await conn.execute(stmt)
             res = cursor.one_or_none()
 
@@ -96,7 +97,7 @@ class UserRepository(IUserRepository):
             user_id=user_id, api_key=encrypted_api_key, api_type=api_type
         )
 
-        async with self._aioengine.begin() as conn:
+        async with self._aiodb.begin() as conn:
             await conn.execute(stmt)
 
     async def get_api_keys_for_user(self, user_id: str) -> list[bytes]:
@@ -104,7 +105,7 @@ class UserRepository(IUserRepository):
             USER_OPENAI_KEYS_TABLE.c.user_id == user_id
         )
 
-        async with self._aioengine.begin() as conn:
+        async with self._aiodb.begin() as conn:
             cursor = await conn.execute(stmt)
             res = cursor.fetchall()
 

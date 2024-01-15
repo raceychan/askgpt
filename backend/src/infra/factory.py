@@ -17,7 +17,6 @@ def get_encrypt(settings: Settings) -> security.Encrypt:
 @settingfactory
 def get_user_repo(settings: Settings):
     database = adapter_factory.get_database(settings)
-    # aioengine = adapter_factory.get_async_engine(settings)
     user_repo = UserRepository(database)
     return user_repo
 
@@ -25,7 +24,6 @@ def get_user_repo(settings: Settings):
 @settingfactory
 def get_session_repo(settings: Settings):
     database = adapter_factory.get_database(settings)
-    # aioengine = adapter_factory.get_async_engine(settings)
     session_repo = SessionRepository(database)
     return session_repo
 
@@ -45,3 +43,42 @@ def get_token_registry(settings: Settings):
         token_cache=adapter_factory.get_cache(settings),
         keyspace=settings.redis.keyspaces.APP.generate_for_cls(TokenRegistry),
     )
+
+
+# ===== Experimental =====
+def user_repo_factory():
+    aiodb = adapter_factory.AdapterRegistry.aiodb
+    user_repo = UserRepository(aiodb)
+    return user_repo
+
+
+def session_repo_factory():
+    aiodb = adapter_factory.AdapterRegistry.aiodb
+    session_repo = SessionRepository(aiodb)
+    return session_repo
+
+
+def token_registry_factory():
+    token_registry = TokenRegistry(
+        token_cache=adapter_factory.AdapterRegistry.redis_cache,
+        keyspace=adapter_factory.AdapterRegistry.redis_cache.keyspace.generate_for_cls(
+            TokenRegistry
+        ),
+    )
+    return token_registry
+
+
+def encrypt_facotry():
+    encrypt = security.Encrypt(
+        secret_key=adapter_factory.AdapterRegistry.settings.security.SECRET_KEY,
+        algorithm=adapter_factory.AdapterRegistry.settings.security.ALGORITHM,
+    )
+    return encrypt
+
+
+def producer_factory():
+    return adapter_factory.AdapterRegistry.producer
+
+
+def cache_factory():
+    return adapter_factory.AdapterRegistry.redis_cache

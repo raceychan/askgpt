@@ -1,6 +1,5 @@
 import pytest
-from sqlalchemy.ext.asyncio import AsyncEngine
-
+from src.adapters.database import AsyncDatabase
 from src.app.auth.repository import (
     UserAuth,
     UserRepository,
@@ -10,8 +9,8 @@ from src.app.auth.repository import (
 
 
 @pytest.fixture(scope="module")
-def user_repo(async_engine: AsyncEngine):
-    return UserRepository(async_engine)
+def user_repo(aiodb: AsyncDatabase):
+    return UserRepository(aiodb)
 
 
 def test_deserialzie(user_auth: UserAuth):

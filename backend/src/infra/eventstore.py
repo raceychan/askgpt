@@ -2,7 +2,7 @@ import json
 import typing as ty
 
 import sqlalchemy as sa
-from sqlalchemy.ext import asyncio as sa_aio
+from src.adapters.database import AsyncDatabase
 from src.domain.interface import IEvent, IEventStore
 from src.domain.model.base import Event
 
@@ -48,17 +48,15 @@ def load_event(row_mapping: sa.RowMapping | dict[str, ty.Any]) -> IEvent:
 
 
 class EventStore(IEventStore):
-    def __init__(
-        self, aioengine: sa_aio.AsyncEngine, table: sa.TableClause = EVENT_TABLE
-    ):
-        self._aioengine = aioengine
+    def __init__(self, aiodb: AsyncDatabase, table: sa.TableClause = EVENT_TABLE):
+        self._aiodb = aiodb
         self.table = table
 
     async def add(self, event: IEvent) -> None:
         value = dump_event(event)
         stmt = sa.insert(self.table).values(value)
 
-        async with self._aioengine.begin() as conn:
+        async with self._aiodb.begin() as conn:
             await conn.execute(stmt)
 
     async def add_all(self, events: list[IEvent]) -> None:
@@ -67,7 +65,7 @@ class EventStore(IEventStore):
 
     async def get(self, entity_id: str) -> list[IEvent]:
         stmt = sa.select(self.table).where(self.table.c.entity_id == entity_id)
-        async with self._aioengine.begin() as cursor:
+        async with self._aiodb.begin() as cursor:
             result = await cursor.execute(stmt)
             rows = result.fetchall()
             events = [load_event(row._mapping) for row in rows]  # type: ignore
@@ -75,7 +73,7 @@ class EventStore(IEventStore):
 
     async def list_all(self) -> list[IEvent]:
         stmt = sa.select(self.table)
-        async with self._aioengine.begin() as cursor:
+        async with self._aiodb.begin() as cursor:
             result = await cursor.execute(stmt)
             rows = result.fetchall()
             events = [load_event(row._mapping) for row in rows]  # type: ignore

@@ -1,6 +1,5 @@
 import httpx
 import pytest
-from src.app.api.endpoints.gpt import SendMessageRequest
 
 
 @pytest.mark.skip("io")

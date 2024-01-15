@@ -15,6 +15,7 @@ WORKDIR /app
 # Copy the pixi files
 COPY pixi.lock pixi.toml ./
 
+
 # # Install dependencies using Pixi
 RUN pixi install
 

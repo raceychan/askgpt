@@ -8,59 +8,10 @@ from contextlib import asynccontextmanager
 from typing import Any
 
 from redis import asyncio as aioredis
-from src.toolkit.nameutils import str_to_snake
+
+from src.toolkit.nameutils import KeySpace
 
 type RedisBool = ty.Literal[0, 1]
-
-
-class KeySpace(ty.NamedTuple):  # use namedtuple for memory efficiency
-    """Organize key to create redis key namespace
-    >>> KeySpace("base")("new").key
-    'base:new'
-    """
-
-    key: str = ""
-
-    def __iter__(self):
-        # fun fact: this is slower than str.split
-        left, right, end = 0, 1, len(self.key)
-
-        while right < end:
-            if self.key[right] == ":":
-                yield self.key[left:right]
-                left = right + 1
-            right += 1
-        yield self.key[left:right]
-
-    def __call__(self, next_part: str) -> "KeySpace":
-        if not self.key:
-            return KeySpace(next_part)
-        return KeySpace(f"{self.key}:{next_part}")
-
-    def __truediv__(self, other: "str | KeySpace") -> "KeySpace":
-        if isinstance(other, self.__class__):
-            return KeySpace(self.key + ":" + other.key)
-
-        if isinstance(other, str):
-            return KeySpace(self.key + ":" + other)
-
-        raise TypeError
-
-    @property
-    def parent(self):
-        return KeySpace(self.key[: self.key.rfind(":")])
-
-    @property
-    def base(self):
-        return KeySpace(self.key[: self.key.find(":")])
-
-    def generate_for_cls(self, cls: type, with_module: bool = True) -> "KeySpace":
-        "generate key space for class, under current keyspace"
-        if with_module:
-            key = f"{cls.__module__}:{str_to_snake(cls.__name__)}"
-        else:
-            key = str_to_snake(cls.__name__)
-        return self(key)
 
 
 class ScriptFunc[
@@ -73,9 +24,9 @@ class ScriptFunc[
 
 
 class CacheList[TKey, TValue]:
-    def __init__(self, base: "Cache"):
+    def __init__(self, base: "Cache[TKey, TValue]"):
         self._base = base
-        self._cache_lists = defaultdict(list)
+        self._cache_lists: dict[TKey, list[TValue]] = defaultdict(list)
 
     async def lpop(self, key: TKey) -> TValue | None:
         try:
@@ -89,11 +40,11 @@ class CacheList[TKey, TValue]:
         except IndexError:
             return None
 
-    async def lpush(self, key: TKey, *values: tuple[TValue, ...]) -> bool:
+    async def lpush(self, key: TKey, *values: TValue) -> bool:
         self._cache_lists[key].insert(0, *values)
         return True
 
-    async def rpush(self, key: TKey, *values: tuple[TValue, ...]) -> bool:
+    async def rpush(self, key: TKey, *values: TValue) -> bool:
         self._cache_lists[key].extend(values)
         return True
 
@@ -126,7 +77,7 @@ class Cache[TKey: ty.Hashable, TValue: ty.Any](abc.ABC):
         raise NotImplementedError
 
     @abc.abstractmethod
-    async def close(self):
+    async def close(self) -> None:
         raise NotImplementedError
 
     @abc.abstractmethod
@@ -145,7 +96,7 @@ class Cache[TKey: ty.Hashable, TValue: ty.Any](abc.ABC):
 class MemoryCache[TKey: str, TVal: ty.Any](Cache[TKey, TVal]):
     def __init__(self):
         self._cache: dict[TKey, TVal] = {}
-        self._set = set()
+        self._set: set[TVal] = set()
 
     @functools.cached_property
     def list(self) -> CacheList[TKey, TVal]:
@@ -165,7 +116,7 @@ class MemoryCache[TKey: str, TVal: ty.Any](Cache[TKey, TVal]):
         self._cache.pop(key, None)
 
     async def rpush(self, key: TKey, *values: TVal) -> bool:
-        await self.list.rpush(key, values)
+        await self.list.rpush(key, *values)
         return True
 
     async def rpop(self, key: TKey) -> TVal | None:
@@ -178,7 +129,7 @@ class MemoryCache[TKey: str, TVal: ty.Any](Cache[TKey, TVal]):
         return member in self._set
 
     async def sadd(self, key: TKey, *values: Any) -> bool:
-        self._set.add(values)
+        self._set.add(*values)
         return True
 
     async def close(self):
@@ -204,7 +155,7 @@ class RedisCache[TKey: str | memoryview | bytes](Cache[TKey, ty.Any]):
         return self._redis
 
     async def get(self, key: TKey) -> ty.Any | None:
-        return await self._redis.get(key)
+        return await self._redis.get(key)  # type: ignore
 
     async def set(
         self,
@@ -217,12 +168,12 @@ class RedisCache[TKey: str | memoryview | bytes](Cache[TKey, ty.Any]):
         keepttl: bool = False,
         get: bool = False,
     ) -> ty.Any | None:
-        return await self._redis.set(
+        return await self._redis.set(  # type: ignore
             key, value, ex=ex, px=px, nx=nx, xx=xx, keepttl=keepttl, get=get
         )
 
     async def remove(self, key: TKey) -> None:
-        await self._redis.delete(key)
+        await self._redis.delete(key)  # type: ignore
 
     def load_script(
         self, script: str | pathlib.Path
@@ -260,7 +211,7 @@ class RedisCache[TKey: str | memoryview | bytes](Cache[TKey, ty.Any]):
 
     @asynccontextmanager
     async def lifespan(self):
-        self._redis.ping()
+        await self._redis.ping()  # type: ignore
         try:
             yield self
         finally:

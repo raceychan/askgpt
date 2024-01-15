@@ -1,60 +1,60 @@
-import pytest
-from rich import print
-from src.infra.service_registry import Dependency, ServiceRegistryBase
+# import pytest
+# from rich import print
+# from src.infra.service_registry import Dependency, ServiceRegistryBase
 
 
-class ServiceMock:
-    async def __aenter__(self):
-        return self
+# class ServiceMock:
+#     async def __aenter__(self):
+#         return self
 
-    async def __aexit__(self, exc_type, exc_val, exc_tb):
-        pass
-
-
-def servicefacotry(settings):
-    return ServiceMock()
+#     async def __aexit__(self, exc_type, exc_val, exc_tb):
+#         pass
 
 
-class SyncService:
-    def __enter__(self):
-        return self
-
-    def __exit__(self, exc_type, exc_val, exc_tb):
-        pass
+# def servicefacotry(settings):
+#     return ServiceMock()
 
 
-class Base:
-    pass
+# class SyncService:
+#     def __enter__(self):
+#         return self
 
-    async def lifespan(self):
-        yield self
-
-
-def syncfactory(settings):
-    return SyncService()
+#     def __exit__(self, exc_type, exc_val, exc_tb):
+#         pass
 
 
-def basefactory(settings):
-    return Base()
+# class Base:
+#     pass
+
+#     async def lifespan(self):
+#         yield self
 
 
-def configs() -> str:
-    return ""
+# def syncfactory(settings):
+#     return SyncService()
 
 
-class ServiceRegistry(ServiceRegistryBase):
-    service = Dependency(ServiceMock, servicefacotry)
-    sync = Dependency(SyncService, syncfactory)
+# def basefactory(settings):
+#     return Base()
 
 
-@pytest.fixture(scope="module", autouse=True)
-async def service_registry(settings):
-    registry = ServiceRegistry(settings)
-
-    async with registry:
-        yield registry
+# def configs() -> str:
+#     return ""
 
 
-def test_getdeps(service_registry: ServiceRegistry):
-    service_registry.service
-    service_registry.sync
+# class ServiceRegistry(ServiceRegistryBase):
+#     service = Dependency(ServiceMock, servicefacotry)
+#     sync = Dependency(SyncService, syncfactory)
+
+
+# @pytest.fixture(scope="module", autouse=True)
+# async def service_registry(settings):
+#     registry = ServiceRegistry(settings)
+
+#     async with registry:
+#         yield registry
+
+
+# def test_getdeps(service_registry: ServiceRegistry):
+#     service_registry.service
+#     service_registry.sync

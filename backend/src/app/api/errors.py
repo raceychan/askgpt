@@ -89,10 +89,14 @@ class ClientSideError(DomainError):
     source = "client"  # 400 < status < 500
 
 
-class QuotaExceededError(ClientSideError):
+class ThrottlingError(ClientSideError):
+    "Request throttled"
+
+
+class QuotaExceededError(ThrottlingError):
     "Request quota exceeded"
 
-    def __init__(self, quota, wait_time):
+    def __init__(self, quota: int, wait_time: float):
         self.quota = quota
         self.wait_time = wait_time
         super().__init__(

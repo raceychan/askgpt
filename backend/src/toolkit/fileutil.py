@@ -2,7 +2,7 @@ import abc
 import pathlib
 import typing as ty
 
-from src.domain.base import freezelru
+from src.toolkit.funcutils import simplecache
 
 
 class EndOfChainError(Exception):
@@ -201,7 +201,7 @@ class FileUtil:
         return data
 
     @classmethod
-    @freezelru
+    @simplecache
     def from_cwd(cls) -> ty.Self:
         return cls(work_dir=pathlib.Path.cwd(), file_loader=FileLoader.from_chain())
 

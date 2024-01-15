@@ -29,9 +29,7 @@ class MessageBroker[TMessage](abc.ABC):
     async def put(self, message: TMessage) -> None:
         raise NotImplementedError
 
-    async def start(self) -> None:
-        raise NotImplementedError
-
+    @abc.abstractmethod
     async def stop(self) -> None:
         raise NotImplementedError
 
@@ -53,9 +51,7 @@ class DeliveryBroker[TMessages](abc.ABC):
     def register(self, subscriber: Receivable) -> None:
         raise NotImplementedError
 
-    async def start(self) -> None:
-        raise NotImplementedError
-
+    @abc.abstractmethod
     async def stop(self) -> None:
         raise NotImplementedError
 
@@ -84,12 +80,20 @@ class MessageProducer[TMessage](abc.ABC):
     async def publish(self, message: TMessage) -> None:
         raise NotImplementedError
 
+    @abc.abstractmethod
+    async def close(self) -> None:
+        raise NotImplementedError
+
 
 class MessageConsumer[TMessage](abc.ABC):
     broker: MessageBroker[TMessage]
 
     @abc.abstractmethod
     async def get(self) -> TMessage | None:
+        raise NotImplementedError
+
+    @abc.abstractmethod
+    async def close(self) -> None:
         raise NotImplementedError
 
 
@@ -115,6 +119,9 @@ class QueueBroker[TMessage](MessageBroker[TMessage]):
             msg = None
         return msg
 
+    async def stop(self) -> None:
+        self._queue.clear()
+
 
 class BaseProducer[TMessage](MessageProducer[TMessage]):
     def __init__(self, broker: MessageBroker[TMessage]):
@@ -123,6 +130,9 @@ class BaseProducer[TMessage](MessageProducer[TMessage]):
     async def publish(self, message: TMessage) -> None:
         await self._broker.put(message)
 
+    async def close(self) -> None:
+        await self._broker.stop()
+
 
 class BaseConsumer[TMessage](MessageConsumer[TMessage]):
     def __init__(self, broker: MessageBroker[TMessage]):
@@ -130,6 +140,9 @@ class BaseConsumer[TMessage](MessageConsumer[TMessage]):
 
     async def get(self) -> TMessage | None:
         return await self._broker.get()
+
+    async def close(self) -> None:
+        await self._broker.stop()
 
 
 """
