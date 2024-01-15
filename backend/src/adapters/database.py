@@ -23,7 +23,7 @@ class AsyncDatabase:
         query: str | Executable,
         parameters: StrDict | None = None,
         execution_options: StrDict | None = None,
-    ) -> ty.Any:
+    ):
         # TODO: log slow queries
         if isinstance(query, str):
             query = text(query)

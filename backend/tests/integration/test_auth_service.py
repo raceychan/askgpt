@@ -1,6 +1,7 @@
 import typing as ty
 
 import pytest
+
 from src.adapters.cache import MemoryCache
 from src.adapters.database import AsyncDatabase
 from src.adapters.queue import MessageProducer
@@ -38,7 +39,7 @@ async def test_create_user(test_defaults: TestDefaults, auth_service: AuthServic
     await auth_service.signup_user(
         test_defaults.USER_NAME, test_defaults.USER_EMAIL, test_defaults.USER_PASSWORD
     )
-    user = await auth_service.find_user(useremail=test_defaults.USER_EMAIL)
+    user = await auth_service.find_user(email=test_defaults.USER_EMAIL)
     assert user
     assert user.user_info.user_name == test_defaults.USER_NAME
     assert user.user_info.user_email == test_defaults.USER_EMAIL

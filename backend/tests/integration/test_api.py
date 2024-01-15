@@ -1,19 +1,27 @@
+import dotenv
 import pytest
 from fastapi import FastAPI
 from httpx import AsyncClient
 
+from src.adapters.factory import AdapterRegistry
 from src.domain.config import Settings
-from src.server import app_factory # type: ignore
+from src.server import app_factory  # type: ignore
+from src.toolkit.fileutil import fileutil
 
-import dotenv
 
-dotenv.dotenv_values()
+@pytest.fixture
+async def api_key():
+    f = fileutil.find("test.env")
+    test_secret = dotenv.dotenv_values(f)
+    return test_secret["OPENAI_API_KEY"]
 
 
 async def signup(test_client: AsyncClient) -> None:
     data = {"email": "test@email.com", "password": "test"}
     response = await test_client.post("/auth/signup", json=data, follow_redirects=True)
     assert response.status_code == 200
+    user_id = response.json()["user_id"]
+    return user_id
 
 
 async def login(test_client: AsyncClient) -> str:
@@ -54,6 +62,17 @@ async def auth_header(test_client: AsyncClient):
     return {"Authorization": f"Bearer {token}"}
 
 
+async def test_add_api_key(
+    test_client: AsyncClient, auth_header: dict[str, str], api_key: str
+):
+    response = await test_client.post(
+        "/users/apikeys",
+        headers=auth_header,
+        json=dict(api_type="openai", api_key=api_key),
+    )
+    assert response.status_code == 200
+
+
 async def test_heal(test_client: AsyncClient):
     response = await test_client.get("/health")
     assert response.status_code == 200
@@ -67,12 +86,15 @@ async def test_find_user(test_client: AsyncClient):
     assert response.status_code == 404
 
 
+@pytest.mark.skip(reason="override AI client")
 async def test_gpt_chat(test_client: AsyncClient, auth_header: dict[str, str]):
     session_id: str = await create_session(test_client, auth_header)
-    response = await test_client.post(
+    question = "name a few books to read"
+    async with test_client.stream(
+        "POST",
         f"/gpt/openai/chat/{session_id}",
-        json=dict(question="test", role="user", model="gpt-3.5-turbo"),
+        json=dict(question=question, role="user", model="gpt-3.5-turbo"),
         headers=auth_header,
-    )
-    if not response.status_code == 200:
-        print(response.text)
+    ) as r:
+        async for line in r.aiter_lines():
+            print(line)

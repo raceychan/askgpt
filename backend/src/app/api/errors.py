@@ -59,7 +59,7 @@ class DomainError(Exception):
 
     description: str | None = None
     source: ty.Literal["server", "client"]
-    service: str
+    service: str = ""
 
     def __init__(self, message: str = ""):
         super().__init__(message)

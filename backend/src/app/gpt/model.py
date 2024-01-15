@@ -12,8 +12,8 @@ from src.domain.model.base import (
     Field,
     ValueObject,
     computed_field,
-    uuid_factory,
 )
+from src.domain.model.base import uuid_factory as uuid_factory
 from src.domain.model.user import CreateUser, UserCreated
 
 
@@ -92,7 +92,7 @@ class ChatResponseReceived(ChatMessageSent):
 
 
 class ChatSession(Entity):
-    entity_id: str = Field(alias="session_id", default_factory=uuid_factory)
+    entity_id: str = Field(alias="session_id")
     user_id: str
     messages: list[ChatMessage] = Field(default_factory=list)
 

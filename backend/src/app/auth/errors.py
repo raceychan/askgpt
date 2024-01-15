@@ -31,3 +31,13 @@ class InvalidCredentialError(AuthenticationError):
     """
     Could not validate user credentials
     """
+
+
+class UserAPIKeyNotProvidedError(AuthenticationError):
+    """
+    User API key not provided
+    """
+
+    def __init__(self, *, user_id: str, api_type: str):
+        msg = f"user {user_id} api key not provided for {api_type}"
+        super().__init__(msg)

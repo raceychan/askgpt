@@ -1,4 +1,5 @@
 import pytest
+
 from src.adapters import cache
 from src.app.actor import QueueBox
 from src.app.gpt import gptclient, model, service
@@ -6,6 +7,7 @@ from src.app.gpt.params import ChatResponse
 from src.domain import config
 from src.domain.model.test_default import TestDefaults
 from src.infra import factory
+from src.infra.eventstore import EventStore
 
 # from src.infra.cache import Cache, MemoryCache, RedisCache
 
@@ -24,8 +26,8 @@ def chat_messages(test_defaults: TestDefaults):
 @pytest.fixture(scope="module")
 async def gptsystem(
     settings: config.Settings,
-    eventstore: service.EventStore,
-    redis_cache: cache.RedisCache,
+    eventstore: EventStore,
+    redis_cache: cache.RedisCache[str],
 ):
     system = service.GPTSystem(
         boxfactory=QueueBox,
@@ -59,7 +61,6 @@ def chat_response():
         object="chat.completion.chunk",
     )
 
-    # resp = ChatResponse(choices=[dict(delta=dict(content="pong"))])
     return chunk
 
 
@@ -116,22 +117,39 @@ async def test_system_cache(gptsystem: service.GPTSystem):
 
 
 async def test_ask_question(
-    session_actor: service.SessionActor, chat_messages: list[model.ChatMessage]
+    session_actor: service.SessionActor,
+    chat_messages: list[model.ChatMessage],
+    openai_client: gptclient.OpenAIClient,
 ):
     prompt = chat_messages[0]  # type: ignore
-    cmd = sendchatmessage(prompt)
-    assert session_actor.message_count == 0
-    await session_actor.receive(cmd)
-    journal = session_actor.system.journal
-    session_events = await journal.eventstore.get(session_actor.entity_id)
 
-    assert session_events[0].__class__ is model.ChatMessageSent
-    assert session_events[1].__class__ is model.ChatResponseReceived
+    resp = session_actor.send_chatmessage(
+        client=openai_client,
+        message=prompt,
+        completion_model="gpt-3.5-turbo",
+        options=dict(),
+    )
 
-    assert session_actor.message_count == 2
+    ans = ""
+
+    async for c in resp:
+        ans += c
+
+    assert ans == "pong"
+
+    # cmd = sendchatmessage(prompt)
+    # assert session_actor.message_count == 0
+    # await session_actor.receive(cmd)
+    # journal = session_actor.system.journal
+    # session_events = await journal.eventstore.get(session_actor.entity_id)
+
+    # assert session_events[0].__class__ is model.ChatMessageSent
+    # assert session_events[1].__class__ is model.ChatResponseReceived
+
+    # assert session_actor.message_count == 2
 
 
-async def test_session_self_rebuild(eventstore: service.EventStore):
+async def test_session_self_rebuild(eventstore: EventStore):
     events = await eventstore.get(TestDefaults.SESSION_ID)
     created = model.SessionCreated(
         user_id=TestDefaults.USER_ID, session_id=TestDefaults.SESSION_ID
@@ -174,7 +192,7 @@ async def test_user_rebuild_session(user_actor: service.UserActor):
     assert current_ss_actor.message_count == user_built_session.message_count
 
 
-async def test_user_self_rebuild(eventstore: service.EventStore):
+async def test_user_self_rebuild(eventstore: EventStore):
     user_events = await eventstore.get(TestDefaults.USER_ID)
     user_created = user_events[0]
     user_actor = service.UserActor.apply(user_created)

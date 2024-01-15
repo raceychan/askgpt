@@ -77,13 +77,16 @@ class OpenAIClient(AIClient):
         options: params.CompletionOptions,  # type: ignore
     ) -> ty.AsyncIterable[openai_chat.ChatCompletionChunk]:
         msgs = self.message_adapter(messages)
-        resp = await self._client.chat.completions.create(
+        resp: ty.AsyncIterable[
+            openai_chat.ChatCompletionChunk
+        ] = await self._client.chat.completions.create(
             messages=msgs,  # type: ignore
             model=model,
             stream=stream,
             user=user,
             **options,
         )
+        assert isinstance(resp, ty.AsyncIterable)
         return resp
 
     def message_adapter(
@@ -152,7 +155,7 @@ class APIPool:
         try:
             return self._client_registry[self.api_type]
         except KeyError:
-            raise ClientNotRegisteredError(self.api_type)
+            raise errors.ClientNotRegisteredError(self.api_type)
 
     async def acquire(self):
         # Pop an API key from the front of the deque
@@ -169,7 +172,7 @@ class APIPool:
 
     async def start(self):
         if not self.api_keys:
-            raise APIKeyNotAvailableError(self.api_type)
+            raise errors.APIKeyNotAvailableError(self.api_type)
         await self._cache.rpush(self.pool_key.key, *self.api_keys)
         self.__started = True
 

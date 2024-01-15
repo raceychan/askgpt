@@ -1,4 +1,5 @@
 import pytest
+
 from src.adapters.cache import MemoryCache
 from src.app.actor import MailBox, QueueBox
 from src.app.factory import get_gpt_service
@@ -14,7 +15,7 @@ class EchoMailbox(MailBox):
 
 
 @pytest.fixture(scope="module")
-async def gpt_system(settings: config.Settings, eventstore: service.EventStore):
+async def gpt_system(settings: config.Settings, eventstore: EventStore):
     system = service.GPTSystem(
         boxfactory=QueueBox,
         ref=settings.actor_refs.SYSTEM,
@@ -147,7 +148,7 @@ async def test_send_message_receive_response(
 
 
 async def test_event_unduplicate(
-    eventstore: service.EventStore,
+    eventstore: EventStore,
     system_started: gptsystem.SystemStarted,
     user_created: model.UserCreated,
     session_created: model.SessionCreated,

@@ -2,7 +2,8 @@ from datetime import datetime, timedelta
 
 from src.adapters import cache, queue
 from src.app.auth import errors, model, repository
-from src.domain._log import logger
+
+# from src.domain._log import logger
 from src.domain.config import Settings
 from src.domain.interface import IEvent
 from src.domain.model.base import utcts_factory, uuid_factory
@@ -79,11 +80,10 @@ class AuthService:
 
         user.login()
 
-        logger.success(f"User {user.entity_id} logged in")
         return self._create_access_token(user.entity_id, user.role)
 
-    async def find_user(self, useremail: str) -> model.UserAuth | None:
-        user_or_none = await self._user_repo.search_user_by_email(useremail)
+    async def find_user(self, email: str) -> model.UserAuth | None:
+        user_or_none = await self._user_repo.search_user_by_email(email)
         return user_or_none
 
     async def signup_user(self, user_name: str, email: str, password: str) -> str:
@@ -106,21 +106,28 @@ class AuthService:
         return user_auth.entity_id
 
     async def add_api_key(self, user_id: str, api_key: str, api_type: str) -> None:
+        """
+        TODO?: we might need to decrypt api key and make sure no duplicated key exist
+        since encrypted key might be the same for same user
+        """
         user = await self._user_repo.get(user_id)
         if user is None:
             raise errors.UserNotFoundError(user_email=user_id)
 
         encrypted_key = self._token_encrypt.encrypt_string(api_key).decode()
 
-        event = model.UserAPIKeyAdded(
+        user_api_added = model.UserAPIKeyAdded(
             user_id=user_id,
             api_key=encrypted_key,
             api_type=api_type,
         )
 
-        # NOTE: api key will changed when encrypted, leading to multiple rows of same api key
         await self._user_repo.add_api_key_for_user(user_id, encrypted_key, api_type)
-        await self._producer.publish(event)
+        await self._producer.publish(user_api_added)
 
     async def get_user_detail(self, user_id: str) -> model.UserAuth | None:
         return await self._user_repo.get(user_id)
+
+    # async def check_user_have_api_key(self, user_id: str, api_type: str) -> None:
+    #     if not await self._user_repo.get_api_keys_for_user(user_id, api_type):
+    #         raise errors.UserAPIKeyNotProvidedError(user_id=user_id, api_type=api_type)

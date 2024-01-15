@@ -1,6 +1,5 @@
 import enum
 import typing as ty
-from contextlib import asynccontextmanager
 from functools import cached_property, singledispatchmethod
 
 from src.adapters import cache
@@ -17,7 +16,7 @@ from src.app.gpt import errors, gptclient, model
 from src.domain.config import Settings
 from src.domain.interface import ActorRef, ICommand
 from src.domain.model.base import Command, Event, Message
-from src.infra import eventstore, factory, security
+from src.infra import eventstore
 from src.toolkit.fmtutils import async_receiver
 
 
@@ -78,38 +77,6 @@ class UserActor(GPTBaseActor["SessionActor", model.User]):
     def apipool_keyspace(self) -> cache.KeySpace:
         keyspace = self.system.settings.redis.keyspaces.API_POOL
         return keyspace(self.entity_id)
-
-    def decrypt_api_keys(
-        self, api_type: str, encryptor: security.Encrypt | None = None
-    ) -> tuple[str, ...]:
-        keys = self.entity.get_keys_of_type(api_type)
-        if not keys:
-            return tuple()
-
-        encryptor = encryptor or factory.get_encrypt(self.system.settings)
-
-        return tuple(encryptor.decrypt_string(key.encode()) for key in keys)
-
-    def decrypt_all_keys(self) -> dict[str, tuple[str, ...]]:
-        encryptor = factory.get_encrypt(self.system.settings)
-        decrypted = {
-            api_type: self.decrypt_api_keys(api_type, encryptor)
-            for api_type in self.entity.api_keys
-        }
-        return decrypted
-
-    def get_user_api_pool(self, api_type: str):
-        if self.user_api_pool is not None:
-            return self.user_api_pool
-
-        user_api_pool = gptclient.APIPool(
-            pool_keyspace=self.apipool_keyspace,
-            api_type=api_type,
-            api_keys=self.decrypt_api_keys(api_type),
-            cache=self.system.cache,
-        )
-        self.user_api_pool = user_api_pool
-        return self.user_api_pool
 
     def create_session(self, event: model.SessionCreated) -> "SessionActor":
         session_actor = SessionActor.apply(event)
@@ -176,37 +143,21 @@ class SessionActor(GPTBaseActor["SessionActor", model.ChatSession]):
     def chat_context(self) -> list[model.ChatMessage]:
         return self.entity.messages
 
-    @asynccontextmanager
-    async def get_client(self, api_pool: gptclient.APIPool):
-        async with api_pool.lifespan():
-            async with api_pool.reserve_client() as client:
-                yield client
-
     async def _send_chatmessage(
         self,
-        model_type: str,
+        client: gptclient.AIClient,
         message: model.ChatMessage,
         model: model.CompletionModels,
         options: dict[str, ty.Any],
         stream: bool = True,
     ) -> ty.AsyncGenerator[str, None]:
-        user = self.system.get_child(self.entity.user_id)
-        if not user:
-            user = await self.system.rebuild_user(self.entity.user_id)
-
-        api_pool = user.get_user_api_pool(api_type=model_type)
-
-        async with self.get_client(api_pool=api_pool) as client:
-            options.update(
-                user=self.entity.user_id,
-            )
-            chunks = await client.complete(
-                messages=self.chat_context + [message],
-                model=model,
-                user=self.entity.user_id,
-                stream=stream,
-                options=options,
-            )
+        chunks = await client.complete(
+            messages=self.chat_context + [message],
+            model=model,
+            user=self.entity.user_id,
+            stream=stream,
+            options=options,
+        )
 
         async for resp in chunks:
             for choice in resp.choices:
@@ -217,16 +168,16 @@ class SessionActor(GPTBaseActor["SessionActor", model.ChatSession]):
 
     async def send_chatmessage(
         self,
+        client: gptclient.AIClient,
         message: model.ChatMessage,
-        model_type: str,
         completion_model: model.CompletionModels,
         options: dict[str, ty.Any],
     ) -> ty.AsyncGenerator[str, None]:
         "send messages and publish events"
         chunks = self._send_chatmessage(
+            client=client,
             message=message,
             model=completion_model,
-            model_type=model_type,
             options=options,
         )
         answer = ""
@@ -267,6 +218,7 @@ class SessionActor(GPTBaseActor["SessionActor", model.ChatSession]):
 
     @handle.register
     async def _(self, command: model.SendChatMessage) -> None:
+        raise NotImplementedError
         chunks = self._send_chatmessage(
             message=command.chat_message,
             model=command.model,

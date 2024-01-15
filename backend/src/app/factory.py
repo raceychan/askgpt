@@ -32,8 +32,15 @@ def get_gpt_service(settings: Settings):
         boxfactory=QueueBox,
         cache=adapter_factory.get_cache(settings),
     )
+    user_repo = infra_factory.get_user_repo(settings)
     session_repo = infra_factory.get_session_repo(settings)
-    service = GPTService(system=system, session_repo=session_repo)
+    encryptor = infra_factory.get_encrypt(settings)
+    service = GPTService(
+        system=system,
+        encryptor=encryptor,
+        user_repo=user_repo,
+        session_repo=session_repo,
+    )
     return service
 
 
@@ -71,7 +78,14 @@ def gpt_service_factory(settings: Settings):
         cache=infra_factory.cache_factory(),
     )
     session_repo = infra_factory.session_repo_factory()
-    service = GPTService(system=system, session_repo=session_repo)
+    user_repo = infra_factory.user_repo_factory()
+    encryptor = infra_factory.encrypt_facotry()
+    service = GPTService(
+        system=system,
+        encryptor=encryptor,
+        user_repo=user_repo,
+        session_repo=session_repo,
+    )
     return service
 
 

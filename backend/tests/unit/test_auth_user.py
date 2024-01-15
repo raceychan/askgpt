@@ -9,6 +9,7 @@ from src.domain.model.test_default import TestDefaults
 def user_auth(test_defaults: TestDefaults) -> UserAuth:
     return UserAuth(
         user_info=test_defaults.USER_INFO,
+        user_id=test_defaults.USER_ID,
         last_login=utcts_factory(),
     )
 

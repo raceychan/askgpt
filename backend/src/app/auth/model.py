@@ -4,6 +4,7 @@ from datetime import datetime
 from functools import singledispatchmethod
 
 from pydantic import field_serializer
+
 from src.domain.interface import IRepository
 from src.domain.model.base import (
     Command,
@@ -12,7 +13,7 @@ from src.domain.model.base import (
     Field,
     ValueObject,
     utcts_factory,
-    uuid_factory,
+    # uuid_factory,
 )
 from src.domain.model.token import JWTBase
 from src.domain.model.user import UserInfo
@@ -56,7 +57,7 @@ class UserAPIKeyAdded(Event):
 
 
 class UserAuth(Entity):
-    entity_id: str = Field(default_factory=uuid_factory, alias="user_id")
+    entity_id: str = Field(alias="user_id")
     role: UserRoles = UserRoles.user
     user_info: UserInfo
     last_login: datetime
@@ -119,5 +120,3 @@ class AccessPayload(ValueObject):
 
 class AccessToken(JWTBase, AccessPayload):
     ...
-
-

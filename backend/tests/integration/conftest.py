@@ -3,6 +3,7 @@ import typing as ty
 
 import pytest
 from sqlalchemy.ext import asyncio as sa_aio
+
 from src.adapters.cache import MemoryCache, RedisCache
 from src.adapters.database import AsyncDatabase
 from src.adapters.queue import BaseConsumer, BaseProducer, QueueBroker
@@ -52,7 +53,9 @@ async def eventstore(aiodb: AsyncDatabase) -> EventStore:
 @pytest.fixture(scope="module")
 def user_auth(test_defaults: TestDefaults):
     return UserAuth(
-        user_info=test_defaults.USER_INFO, last_login=datetime.datetime.utcnow()
+        user_info=test_defaults.USER_INFO,
+        last_login=datetime.datetime.utcnow(),
+        user_id=test_defaults.USER_ID,
     )
 
 

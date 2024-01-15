@@ -2,20 +2,26 @@ import typing as ty
 from contextlib import asynccontextmanager
 
 from src.app.actor import QueueBox as QueueBox
-from src.app.gpt import errors, model, params, repository
+from src.app.auth import repository as auth_repo
+from src.app.gpt import gptclient, model, params
+from src.app.gpt import repository as gpt_repo
 from src.app.gpt.gptsystem import GPTSystem, SessionActor, SystemState, UserActor
 from src.domain._log import logger
-from src.infra.eventstore import EventStore
+from src.infra import eventstore, security
 
 
 class GPTService:
     def __init__(
         self,
         system: GPTSystem,
-        session_repo: repository.SessionRepository,
+        encryptor: security.Encrypt,
+        user_repo: auth_repo.UserRepository,
+        session_repo: gpt_repo.SessionRepository,
     ):
         self._service_state = SystemState.created
         self._system = system
+        self._encryptor = encryptor
+        self._user_repo = user_repo
         self._session_repo = session_repo
 
     @property
@@ -52,13 +58,25 @@ class GPTService:
 
         await session_actor.receive(command)
 
-    async def check_corresponding_api_provided(
-        self, user_id: str, api_type: str
-    ) -> None:
-        user = await self.get_user(user_id=user_id)
-        keys = user.entity.get_keys_of_type(api_type)
-        if not keys:
-            raise errors.APIKeyNotProvidedError(user_id=user_id, api_type=api_type)
+    async def build_user_api_pool(self, user_id: str, api_type: str):
+        encrypted_api_keys = await self._user_repo.get_api_keys_for_user(
+            user_id=user_id, api_type=api_type
+        )
+        if not encrypted_api_keys:
+            raise Exception("no api keys found for user")
+
+        api_keys = tuple(
+            self._encryptor.decrypt_string(key) for key in encrypted_api_keys
+        )
+
+        pool_keyspace = self.system.settings.redis.keyspaces.API_POOL / user_id
+        user_api_pool = gptclient.APIPool(
+            pool_keyspace=pool_keyspace,
+            api_type=api_type,
+            api_keys=api_keys,
+            cache=self.system.cache,
+        )
+        return user_api_pool
 
     async def stream_chat(
         self,
@@ -69,14 +87,22 @@ class GPTService:
         question: str,
         options: dict[str, ty.Any],
     ) -> ty.AsyncGenerator[str | None, None]:
-        session_actor = await self.get_session(user_id=user_id, session_id=session_id)
-        completion_model = options.pop("model")
-        ans_gen = session_actor.send_chatmessage(
-            message=model.ChatMessage(role=role, content=question),
-            model_type=gpt_type,
-            completion_model=completion_model,
-            options=options,
-        )
+        """
+        build user api pool and inject gpt client here
+        """
+        api_pool = await self.build_user_api_pool(user_id=user_id, api_type=gpt_type)
+        async with api_pool.lifespan():
+            async with api_pool.reserve_client() as client:
+                session_actor = await self.get_session(
+                    user_id=user_id, session_id=session_id
+                )
+                completion_model = options.pop("model")
+                ans_gen = session_actor.send_chatmessage(
+                    client=client,
+                    message=model.ChatMessage(role=role, content=question),
+                    completion_model=completion_model,
+                    options=options,
+                )
         return ans_gen
 
     async def interactive(
@@ -124,7 +150,7 @@ class GPTService:
             return
 
         await self.system.start(
-            eventstore=EventStore(aiodb=self._session_repo.aiodb),
+            eventstore=eventstore.EventStore(aiodb=self._session_repo.aiodb),
         )
         self.state = self.state.start()
         logger.success("gpt service started")

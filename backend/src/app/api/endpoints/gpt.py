@@ -74,16 +74,14 @@ async def chat(
     req: ChatCompletionRequest,
     access_token: AccessToken = Depends(parse_access_token),
 ):
-    options = req.model_dump(exclude_unset=True)
-    await ApplicationServices.gpt_service.check_corresponding_api_provided(
-        user_id=access_token.sub, api_type="openai"
-    )
-    stream_ans = ApplicationServices.gpt_service.stream_chat(
+    data = req.model_dump(exclude_unset=True)
+
+    stream_ans = await ApplicationServices.gpt_service.stream_chat(
         user_id=access_token.sub,
         session_id=session_id,
         gpt_type="openai",
-        role=req.role,
-        question=req.question,
-        options=options,
+        role=data.pop("role"),
+        question=data.pop("question"),
+        options=data,
     )
     return StreamingResponse(stream_ans)  # type: ignore

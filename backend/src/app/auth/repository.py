@@ -1,6 +1,7 @@
 import typing as ty
 
 import sqlalchemy as sa
+
 # from sqlalchemy.ext import asyncio as sa_aio
 from src.adapters.database import AsyncDatabase
 from src.app.auth.model import IUserRepository, UserAuth, UserInfo
@@ -100,13 +101,15 @@ class UserRepository(IUserRepository):
         async with self._aiodb.begin() as conn:
             await conn.execute(stmt)
 
-    async def get_api_keys_for_user(self, user_id: str) -> list[bytes]:
+    async def get_api_keys_for_user(self, user_id: str, api_type: str) -> list[bytes]:
         stmt = sa.select(USER_OPENAI_KEYS_TABLE).where(
-            USER_OPENAI_KEYS_TABLE.c.user_id == user_id
+            USER_OPENAI_KEYS_TABLE.c.user_id == user_id,
+            USER_OPENAI_KEYS_TABLE.c.api_type == api_type,
         )
 
         async with self._aiodb.begin() as conn:
             cursor = await conn.execute(stmt)
             res = cursor.fetchall()
 
-        return [row.api_key for row in res]
+        encrypted_keys = [row.api_key for row in res]
+        return encrypted_keys
