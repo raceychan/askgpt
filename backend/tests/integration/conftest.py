@@ -10,6 +10,8 @@ from src.adapters.queue import BaseConsumer, BaseProducer, QueueBroker
 from src.app.actor import MailBox
 from src.app.auth.model import UserAuth
 from src.app.auth.repository import UserAuth
+from src.app.gpt import gptclient
+from src.app.gpt.params import ChatResponse
 from src.domain.config import Settings
 from src.domain.model.test_default import TestDefaults
 from src.infra import schema
@@ -83,7 +85,7 @@ async def eventrecord(consumer: BaseConsumer[ty.Any], eventstore: EventStore):
 
 @pytest.fixture(scope="module", autouse=True)
 async def redis_cache(settings: Settings):
-    redis = RedisCache.build(
+    redis = RedisCache[str].build(
         url=settings.redis.URL,
         decode_responses=settings.redis.DECODE_RESPONSES,
         max_connections=settings.redis.MAX_CONNECTIONS,
@@ -93,3 +95,36 @@ async def redis_cache(settings: Settings):
     )
     async with redis.lifespan():
         yield redis
+
+
+@pytest.fixture(scope="module")
+def chat_response():
+    from openai.types.chat import ChatCompletionChunk
+    from openai.types.chat.chat_completion_chunk import Choice, ChoiceDelta
+
+    delta = ChoiceDelta(content="pong")
+    choice = Choice(delta=delta, finish_reason="stop", index=0)
+    chunk = ChatCompletionChunk(
+        id="sth",
+        choices=[choice],
+        created=0,
+        model="model",
+        object="chat.completion.chunk",
+    )
+
+    return chunk
+
+
+@pytest.fixture(scope="module", autouse=True)
+def openai_client(chat_response: ChatResponse):
+    async def wrapper():
+        yield chat_response
+
+    @gptclient.ClientRegistry.register("test")
+    class FakeClient(gptclient.OpenAIClient):
+        async def complete(  # type: ignore
+            self, **kwargs  # type: ignore
+        ):
+            return wrapper()
+
+    return FakeClient.from_apikey("random")

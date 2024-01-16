@@ -16,7 +16,6 @@ from src.app.gpt.params import ChatGPTRoles, CompletionModels
 
 gpt_router = APIRouter(prefix="/gpt")
 llm_router = APIRouter(prefix="/llm")
-
 openai = APIRouter(prefix="/openai")
 
 

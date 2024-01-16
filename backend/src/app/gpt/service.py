@@ -7,6 +7,7 @@ from src.app.gpt import gptclient, model, params
 from src.app.gpt import repository as gpt_repo
 from src.app.gpt.gptsystem import GPTSystem, SessionActor, SystemState, UserActor
 from src.domain._log import logger
+from src.domain.base import SupportedGPTs
 from src.infra import eventstore, security
 
 
@@ -23,6 +24,7 @@ class GPTService:
         self._encryptor = encryptor
         self._user_repo = user_repo
         self._session_repo = session_repo
+        self._client_registry = gptclient.ClientRegistry()
 
     @property
     def system(self) -> GPTSystem:
@@ -58,7 +60,7 @@ class GPTService:
 
         await session_actor.receive(command)
 
-    async def build_user_api_pool(self, user_id: str, api_type: str):
+    async def build_api_pool(self, user_id: str, api_type: str):
         encrypted_api_keys = await self._user_repo.get_api_keys_for_user(
             user_id=user_id, api_type=api_type
         )
@@ -82,17 +84,16 @@ class GPTService:
         self,
         user_id: str,
         session_id: str,
-        gpt_type: str,
+        gpt_type: SupportedGPTs,
         role: params.ChatGPTRoles,
         question: str,
         options: dict[str, ty.Any],
     ) -> ty.AsyncGenerator[str | None, None]:
-        """
-        build user api pool and inject gpt client here
-        """
-        api_pool = await self.build_user_api_pool(user_id=user_id, api_type=gpt_type)
+        api_pool = await self.build_api_pool(user_id=user_id, api_type=gpt_type)
         async with api_pool.lifespan():
-            async with api_pool.reserve_client() as client:
+            async with api_pool.reserve_api_key() as api_key:
+                client_factory = self._client_registry[gpt_type]
+                client = client_factory.from_apikey(api_key)
                 session_actor = await self.get_session(
                     user_id=user_id, session_id=session_id
                 )

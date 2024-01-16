@@ -16,6 +16,8 @@ EMPTY_STR: ty.Annotated[str, "EMPTY_STR"] = ""
 # Where None does not mean default value, but a valid value to be set
 type Nullable[T] = T | _NotGiven | None
 
+type SupportedGPTs = ty.Literal["openai"]
+
 
 class TimeScale:
     "A more type-aware approach to time scale"

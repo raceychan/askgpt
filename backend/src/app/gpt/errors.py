@@ -28,12 +28,6 @@ class APIKeyNotProvidedError(AuthenticationError):
         super().__init__(msg)
 
 
-class ClientNotRegisteredError(Exception):
-    def __init__(self, name: str):
-        msg = f"Client {name} not registered"
-        super().__init__(msg)
-
-
 class APIKeyNotAvailableError(ThrottlingError):
     def __init__(self, api_type: str):
         msg = f"No API keys available for {api_type=}"

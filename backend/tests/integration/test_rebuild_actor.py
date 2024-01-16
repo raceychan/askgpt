@@ -3,7 +3,6 @@ import pytest
 from src.adapters import cache
 from src.app.actor import QueueBox
 from src.app.gpt import gptclient, model, service
-from src.app.gpt.params import ChatResponse
 from src.domain import config
 from src.domain.model.test_default import TestDefaults
 from src.infra import factory
@@ -44,39 +43,6 @@ async def user_actor(gptsystem: service.GPTSystem):
     cmd = model.CreateUser(user_id=TestDefaults.USER_ID)
     user = await gptsystem.create_user(cmd)
     return user
-
-
-@pytest.fixture(scope="module")
-def chat_response():
-    from openai.types.chat import ChatCompletionChunk
-    from openai.types.chat.chat_completion_chunk import Choice, ChoiceDelta
-
-    delta = ChoiceDelta(content="pong")
-    choice = Choice(delta=delta, finish_reason="stop", index=0)
-    chunk = ChatCompletionChunk(
-        id="sth",
-        choices=[choice],
-        created=0,
-        model="model",
-        object="chat.completion.chunk",
-    )
-
-    return chunk
-
-
-@pytest.fixture(scope="module", autouse=True)
-def openai_client(chat_response: ChatResponse):
-    async def wrapper():
-        yield chat_response
-
-    @gptclient.ClientRegistry.register("test")
-    class FakeClient(gptclient.OpenAIClient):
-        async def complete(  # type: ignore
-            self, **kwargs  # type: ignore
-        ):
-            return wrapper()
-
-    return FakeClient.from_apikey("random")
 
 
 @pytest.fixture(scope="module")
@@ -121,6 +87,7 @@ async def test_ask_question(
     chat_messages: list[model.ChatMessage],
     openai_client: gptclient.OpenAIClient,
 ):
+    pre_test_msg_cnt = session_actor.message_count
     prompt = chat_messages[0]  # type: ignore
 
     resp = session_actor.send_chatmessage(
@@ -137,16 +104,7 @@ async def test_ask_question(
 
     assert ans == "pong"
 
-    # cmd = sendchatmessage(prompt)
-    # assert session_actor.message_count == 0
-    # await session_actor.receive(cmd)
-    # journal = session_actor.system.journal
-    # session_events = await journal.eventstore.get(session_actor.entity_id)
-
-    # assert session_events[0].__class__ is model.ChatMessageSent
-    # assert session_events[1].__class__ is model.ChatResponseReceived
-
-    # assert session_actor.message_count == 2
+    assert session_actor.message_count == pre_test_msg_cnt + 2
 
 
 async def test_session_self_rebuild(eventstore: EventStore):

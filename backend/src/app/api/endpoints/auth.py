@@ -10,7 +10,7 @@ from src.app.api.response import RedirectResponse, redirect
 from src.app.auth.errors import InvalidCredentialError, UserNotFoundError
 from src.app.auth.model import UserAuth
 from src.app.factory import ApplicationServices
-from src.domain.base import EMPTY_STR
+from src.domain.base import EMPTY_STR, SupportedGPTs
 
 auth_router = APIRouter(prefix="/auth")
 user_router = APIRouter(prefix="/users")
@@ -35,7 +35,7 @@ class CreateUserRequest(RequestBody):
 
 class UserAddAPIRequest(RequestBody):
     api_key: str
-    api_type: ty.Literal["openai"] = "openai"
+    api_type: SupportedGPTs = "openai"
 
 
 @auth_router.post("/login")

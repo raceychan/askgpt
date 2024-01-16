@@ -4,6 +4,7 @@ from functools import singledispatchmethod
 
 from src.app.auth.model import UserAPIKeyAdded, UserSignedUp
 from src.app.gpt.params import ChatGPTRoles, CompletionModels
+from src.domain.base import SupportedGPTs
 from src.domain.interface import ICommand, IRepository
 from src.domain.model.base import (
     Command,
@@ -71,7 +72,7 @@ class SendChatMessage(Command):
     entity_id: str = Field(alias="session_id")
     user_id: str
     role: ChatGPTRoles
-    client_type: str = "openai"
+    client_type: SupportedGPTs = "openai"
 
     @computed_field  # type: ignore
     @property

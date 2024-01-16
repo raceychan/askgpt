@@ -10,26 +10,13 @@ from openai.types import chat as openai_chat
 
 from src.adapters import cache
 from src.app.gpt import errors, model, params
+from src.domain.base import SupportedGPTs
+from src.toolkit.funcutils import attribute
 
 MAX_RETRIES: int = 3
 
 
-class ClientRegistry:
-    _registry: ty.ClassVar[dict[str, type["AIClient"]]] = dict()
-
-    @classmethod
-    def register(cls, name: str):
-        def inner[T: type["AIClient"]](client_cls: T) -> T:
-            cls._registry[name] = client_cls
-            return client_cls
-
-        return inner
-
-    def __getitem__(self, name: str) -> type["AIClient"]:
-        return self._registry[name]
-
-
-class AIClient(abc.ABC):
+class GPTClient(abc.ABC):
     async def complete(
         self,
         messages: list[model.ChatMessage],
@@ -46,8 +33,36 @@ class AIClient(abc.ABC):
         ...
 
 
+class ClientRegistry:
+    "Abstract factory of GPTClient"
+    _registry: ty.ClassVar[dict[str, type[GPTClient]]] = dict()
+
+    def __getitem__(self, gpt_type: SupportedGPTs) -> type["GPTClient"]:
+        return self._registry[gpt_type]
+
+    @attribute
+    def registry(self) -> dict[str, type[GPTClient]]:
+        return self._registry.copy()
+
+    @classmethod
+    def client_factory(cls, gpt_type: SupportedGPTs) -> type[GPTClient]:
+        try:
+            client = cls._registry[gpt_type]
+        except KeyError:
+            raise Exception(f"Client not registered for {gpt_type}")
+        return client
+
+    @classmethod
+    def register(cls, gpt_type: SupportedGPTs):
+        def inner[T: type[GPTClient]](client_cls: T) -> T:
+            cls._registry[gpt_type] = client_cls
+            return client_cls
+
+        return inner
+
+
 @ClientRegistry.register("openai")
-class OpenAIClient(AIClient):
+class OpenAIClient(GPTClient):
     def __init__(self, client: openai.AsyncOpenAI):
         self._client = client
 
@@ -126,9 +141,16 @@ class OpenAIClient(AIClient):
         )
 
 
+class PoolFacotry:
+    pool_keyspace: cache.KeySpace
+    api_type: SupportedGPTs
+    cache: cache.Cache[str, str]
+
+
 # https://medium.com/@colemanhindes/unofficial-gpt-3-developer-faq-fcb770710f42
 # Only 2 concurrent requests can be made per API key at a time.
 class APIPool:
+    # TODO: refactor this to be an infra component used by gpt service
     def __init__(
         self,
         *,
@@ -136,30 +158,17 @@ class APIPool:
         api_type: str,
         api_keys: ty.Sequence[str],
         cache: cache.Cache[str, str],
-        client_registry: ClientRegistry = ClientRegistry(),
     ):
         self.pool_key = pool_keyspace
         self.api_type = api_type
         self.api_keys = deque(api_keys)
         self._cache = cache
-        self._client_registry = client_registry
-        self._client_cache: dict[str, AIClient] = {}
-        self.__started: bool = False
-
-    @property
-    def is_started(self) -> bool:
-        return self.__started
-
-    @property
-    def client_factory(self):
-        try:
-            return self._client_registry[self.api_type]
-        except KeyError:
-            raise errors.ClientNotRegisteredError(self.api_type)
+        self._client_cache: dict[str, GPTClient] = {}
+        self._keys_loaded: bool = False
 
     async def acquire(self):
         # Pop an API key from the front of the deque
-        if not self.__started:
+        if not self._keys_loaded:
             raise Exception("APIPool not started")
         api_key = await self._cache.lpop(self.pool_key.key)
         if not api_key:
@@ -174,24 +183,18 @@ class APIPool:
         if not self.api_keys:
             raise errors.APIKeyNotAvailableError(self.api_type)
         await self._cache.rpush(self.pool_key.key, *self.api_keys)
-        self.__started = True
+        self._keys_loaded = True
 
     async def close(self) -> None:
         # remove api keys from redis, clear client cache
         await self._cache.remove(self.pool_key.key)
-        self.__started = False
+        self._keys_loaded = False
 
     @asynccontextmanager
-    async def reserve_client(self):
+    async def reserve_api_key(self):
         api_key = await self.acquire()
-
         try:
-            if client := self._client_cache.get(api_key):
-                yield client
-            else:
-                client = self.client_factory.from_apikey(api_key)
-                self._client_cache[api_key] = client
-            yield client
+            yield api_key
         finally:
             await self.release(api_key)
 

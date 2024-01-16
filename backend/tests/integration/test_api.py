@@ -3,16 +3,16 @@ import pytest
 from fastapi import FastAPI
 from httpx import AsyncClient
 
-from src.adapters.factory import AdapterRegistry
+from src.app.gpt.gptclient import ClientRegistry
 from src.domain.config import Settings
 from src.server import app_factory  # type: ignore
 from src.toolkit.fileutil import fileutil
 
 
 @pytest.fixture
-async def api_key():
+async def api_key() -> str:
     f = fileutil.find("test.env")
-    test_secret = dotenv.dotenv_values(f)
+    test_secret: dict[str, str] = dotenv.dotenv_values(f)
     return test_secret["OPENAI_API_KEY"]
 
 
@@ -86,10 +86,11 @@ async def test_find_user(test_client: AsyncClient):
     assert response.status_code == 404
 
 
-@pytest.mark.skip(reason="override AI client")
 async def test_gpt_chat(test_client: AsyncClient, auth_header: dict[str, str]):
+    ClientRegistry.register("openai")(ClientRegistry.client_factory("test"))
     session_id: str = await create_session(test_client, auth_header)
-    question = "name a few books to read"
+    question = "ping"
+    ans = ""
     async with test_client.stream(
         "POST",
         f"/gpt/openai/chat/{session_id}",
@@ -97,4 +98,6 @@ async def test_gpt_chat(test_client: AsyncClient, auth_header: dict[str, str]):
         headers=auth_header,
     ) as r:
         async for line in r.aiter_lines():
-            print(line)
+            ans += line
+
+    assert ans == "pong"

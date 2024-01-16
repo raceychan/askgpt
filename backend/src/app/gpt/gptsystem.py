@@ -145,7 +145,7 @@ class SessionActor(GPTBaseActor["SessionActor", model.ChatSession]):
 
     async def _send_chatmessage(
         self,
-        client: gptclient.AIClient,
+        client: gptclient.GPTClient,
         message: model.ChatMessage,
         model: model.CompletionModels,
         options: dict[str, ty.Any],
@@ -168,7 +168,7 @@ class SessionActor(GPTBaseActor["SessionActor", model.ChatSession]):
 
     async def send_chatmessage(
         self,
-        client: gptclient.AIClient,
+        client: gptclient.GPTClient,
         message: model.ChatMessage,
         completion_model: model.CompletionModels,
         options: dict[str, ty.Any],
