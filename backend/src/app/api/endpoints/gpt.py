@@ -38,10 +38,18 @@ class ChatCompletionRequest(RequestBody):
     tools: list[ty.Any] | None = None
     top_p: float | None = None
     user: str | None = None
-    extra_headers: ty.Mapping[str, str | ty.Literal[False]] | None = None
-    extra_query: ty.Mapping[str, object] | None = None
-    extra_body: dict | None = None
-    timeout: float | None = None
+    extra_headers: ty.Mapping[str, str | ty.Literal[False]] | None = {}
+    extra_query: ty.Mapping[str, object] | None = {}
+    extra_body: dict | None = {}
+    timeout: float | None = 120  # TODO: preconfig ai client
+
+    model_config = {
+        "json_schema_extra": {
+            "examples": [
+                {"model": "gpt-3.5-turbo", "role": "user", "question": "hello"}
+            ]
+        }
+    }
 
 
 class PulibcSessionInfo(ty.TypedDict):

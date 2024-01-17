@@ -4,14 +4,11 @@ from fastapi import Depends
 from fastapi.security import OAuth2PasswordBearer
 from jose.exceptions import JWTError
 from pydantic import ValidationError
-
 from src.adapters.factory import AdapterRegistry
 from src.app import factory as app_fatory
 from src.app.api.errors import QuotaExceededError
 from src.app.auth.errors import InvalidCredentialError
 from src.app.auth.model import AccessToken
-
-# from src.domain.config import get_setting
 from src.infra import factory as infra_factory
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="auth/login")

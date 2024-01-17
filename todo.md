@@ -16,7 +16,7 @@
 
 - [x] build user system, user identity
 
-- [x] restore system state from events
+- [x] restore system state from events[cancelled]
 
 - [x] Deduplicate events
 
