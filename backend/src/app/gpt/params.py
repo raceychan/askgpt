@@ -14,7 +14,6 @@ from openai.types.chat.completion_create_params import (
 from openai.types.chat.completion_create_params import (
     CompletionCreateParamsStreaming as CompletionCreateParamsStreaming,
 )
-
 from src.domain.model.base import ValueObject
 
 # TODO: read
@@ -39,6 +38,8 @@ CompletionModels = ty.Literal[
     "gpt-4-0613",
     "gpt-4-32k",
     "gpt-4-32k-0613",
+    "gpt-4-1106-preview",
+    "gpt-4-vision-preview",
 ]
 
 # TODO: use enum

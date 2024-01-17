@@ -48,7 +48,7 @@ class GPTClient(abc.ABC):
         messages: list[model.ChatMessage],
         model: model.CompletionModels,
         options: params.CompletionOptions,  # type: ignore
-    ) -> ty.AsyncIterable[openai_chat.ChatCompletionChunk]:
+    ) -> ty.AsyncIterable[openai_chat.ChatCompletionChunk] | openai_chat.ChatCompletion:
         ...
 
     @classmethod
@@ -84,7 +84,7 @@ class OpenAIClient(GPTClient):
         messages: list[model.ChatMessage],
         model: model.CompletionModels,
         options: params.CompletionOptions,  # type: ignore
-    ) -> ty.AsyncIterable[openai_chat.ChatCompletionChunk]:
+    ) -> ty.AsyncIterable[openai_chat.ChatCompletionChunk] | openai_chat.ChatCompletion:
         msgs = self.message_adapter(messages)
         resp: ty.AsyncIterable[
             openai_chat.ChatCompletionChunk
@@ -93,7 +93,7 @@ class OpenAIClient(GPTClient):
             model=model,
             **options,
         )
-        assert isinstance(resp, ty.AsyncIterable)
+
         return resp
 
     def message_adapter(

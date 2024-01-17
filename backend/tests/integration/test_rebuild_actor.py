@@ -93,11 +93,9 @@ async def test_ask_question(
         client=openai_client,
         message=prompt,
         completion_model="gpt-3.5-turbo",
-        options=dict(),
+        options=dict(stream=True),
     )
-
     ans = ""
-
     async for c in resp:
         ans += c
 

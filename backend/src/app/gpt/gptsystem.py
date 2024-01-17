@@ -157,14 +157,18 @@ class SessionActor(GPTBaseActor["SessionActor", model.ChatSession]):
             options=options,
         )
 
-        answer = ""
-        async for resp in chunks:
-            for choice in resp.choices:
-                content = choice.delta.content
-                if not content:
-                    continue
-                answer += content
-                yield content
+        if isinstance(chunks, gptclient.openai_chat.ChatCompletion):
+            answer = chunks.choices[0].message.content or ""
+            yield answer
+        else:
+            answer = ""
+            async for resp in chunks:
+                for choice in resp.choices:
+                    content = choice.delta.content
+                    if not content:
+                        continue
+                    answer += content
+                    yield content
 
         events = [
             model.ChatMessageSent(

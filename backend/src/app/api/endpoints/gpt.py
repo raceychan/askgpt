@@ -46,7 +46,12 @@ class ChatCompletionRequest(RequestBody):
     model_config = {
         "json_schema_extra": {
             "examples": [
-                {"model": "gpt-3.5-turbo", "role": "user", "question": "hello"}
+                {
+                    "model": "gpt-4-32k-0613",
+                    "role": "user",
+                    "question": "hello",
+                    "stream": True,
+                },
             ]
         }
     }

@@ -116,14 +116,18 @@ def chat_response():
 
 @pytest.fixture(scope="module", autouse=True)
 def openai_client(chat_response: ChatResponse):
-    async def wrapper():
+    async def asyncgen():
         yield chat_response
+
+    async def asyncresponse():
+        return chat_response
 
     @ClientRegistry.register("test")
     class FakeClient(OpenAIClient):
         async def complete(  # type: ignore
             self, **kwargs  # type: ignore
         ):
-            return wrapper()
+            assert kwargs["options"].get("stream")
+            return asyncgen() if kwargs["options"].get("stream") else asyncresponse()
 
     return FakeClient.from_apikey("random")

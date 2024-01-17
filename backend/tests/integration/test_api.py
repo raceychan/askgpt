@@ -94,7 +94,7 @@ async def test_gpt_chat(test_client: AsyncClient, auth_header: dict[str, str]):
     async with test_client.stream(
         "POST",
         f"/gpt/openai/chat/{session_id}",
-        json=dict(question=question, role="user", model="gpt-3.5-turbo"),
+        json=dict(question=question, role="user", model="gpt-3.5-turbo", stream=True),
         headers=auth_header,
     ) as r:
         async for line in r.aiter_lines():
