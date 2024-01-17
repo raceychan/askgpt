@@ -180,8 +180,7 @@ class User(Entity):
     def apply(self, event: Event) -> ty.Self:
         raise NotImplementedError
 
-    @apply.register(UserCreated)
-    @apply.register(UserSignedUp)
+    @apply.register
     @classmethod
     def _(cls, event: UserCreated | UserSignedUp) -> ty.Self:
         return cls(user_id=event.entity_id)

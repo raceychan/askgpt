@@ -12,8 +12,10 @@ from src.toolkit.fileutil import fileutil
 @pytest.fixture
 async def api_key() -> str:
     f = fileutil.find("test.env")
-    test_secret: dict[str, str] = dotenv.dotenv_values(f)
-    return test_secret["OPENAI_API_KEY"]
+    if f.exists():
+        test_secret: dict[str, str] = dotenv.dotenv_values(f)
+        return test_secret["OPENAI_API_KEY"]
+    return os.environ["OPENAI_API_KEY"]
 
 
 async def signup(test_client: AsyncClient) -> None:
