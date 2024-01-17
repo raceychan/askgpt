@@ -49,7 +49,7 @@ def app_factory(
 ) -> FastAPI:
     app = FastAPI(
         title=settings.PROJECT_NAME,
-        description="gpt service at your home",
+        description="distributed gpt client built with love",
         version=settings.api.API_VERSION,
         openapi_url=settings.api.OPEN_API,
         docs_url=settings.api.DOCS,

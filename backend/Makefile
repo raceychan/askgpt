@@ -39,11 +39,3 @@ run:
 clean:
 	rm -rf .pytest_cache .mypy_cache .coverage .coverage.* .coverage* .pytest_cache .pyt
 
-.PHONY:
-prod:
-	gunicorn src.server:app_factory \
-	--workers 4 \
-	-k uvicorn.workers.UvicornWorker
-
-# --uvicorn.log-config=none 
-# --uvicorn.factory
