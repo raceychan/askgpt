@@ -54,7 +54,7 @@ class ErrorDetail:
         return asdict(self)
 
 
-class DomainError(Exception):
+class APPError(Exception):
     "Uncaught domain error"
 
     description: str | None = None
@@ -81,12 +81,16 @@ class DomainError(Exception):
         )
 
 
-class ServerSideError(DomainError):
+class ServerSideError(APPError):
     source = "server"  # status > 500
 
 
-class ClientSideError(DomainError):
+class ClientSideError(APPError):
     source = "client"  # 400 < status < 500
+
+
+class EntityNotFoundError(ClientSideError):
+    "Entity not found"
 
 
 class ThrottlingError(ClientSideError):

@@ -2,6 +2,7 @@ import types
 import typing as ty
 from contextlib import asynccontextmanager
 
+from sqlalchemy.engine.cursor import CursorResult
 from sqlalchemy.ext.asyncio import AsyncConnection, AsyncEngine
 from sqlalchemy.sql import Executable, text
 
@@ -23,16 +24,16 @@ class AsyncDatabase:
         query: str | Executable,
         parameters: StrDict | None = None,
         execution_options: StrDict | None = None,
-    ):
+    ) -> CursorResult[ty.Any]:
         # TODO: log slow queries
         if isinstance(query, str):
             query = text(query)
 
         async with self._aioengine.begin() as connection:
-            result = await connection.execute(
+            cursor = await connection.execute(
                 query, parameters, execution_options=execution_options
             )
-            return result
+            return cursor
 
     @asynccontextmanager
     async def begin(self) -> ty.AsyncGenerator[AsyncConnection, None]:

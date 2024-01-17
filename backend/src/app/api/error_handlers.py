@@ -3,9 +3,14 @@ import types
 import typing as ty
 
 from fastapi import FastAPI, Request
-from src.app.api.errors import DomainError, ErrorDetail, QuotaExceededError
+from src.app.api.errors import (
+    APPError,
+    EntityNotFoundError,
+    ErrorDetail,
+    QuotaExceededError,
+)
 from src.app.api.xheaders import XHeaders
-from src.app.auth.errors import AuthenticationError, UserNotFoundError
+from src.app.auth.errors import AuthenticationError
 from src.app.gpt.errors import OrphanSessionError
 from starlette import status
 from starlette.background import BackgroundTask
@@ -122,7 +127,7 @@ def any_error_handler(request: Request, exc: Exception) -> ErrorResponse:
 
 
 @HandlerRegistry.register
-def domain_error_handler(request: Request, exc: DomainError) -> ErrorResponse:
+def domain_error_handler(request: Request, exc: APPError) -> ErrorResponse:
     request_id = request.headers[XHeaders.REQUEST_ID.value]
     return ErrorResponse(
         detail=exc.detail,
@@ -145,8 +150,8 @@ def authentication_error_handler(
 
 
 @HandlerRegistry.register
-def usernotfound_error_handler(
-    request: Request, exc: UserNotFoundError
+def entity_not_found_error_handler(
+    request: Request, exc: EntityNotFoundError
 ) -> ErrorResponse:
     request_id = request.headers[XHeaders.REQUEST_ID.value]
     return ErrorResponse(

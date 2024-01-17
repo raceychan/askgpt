@@ -1,14 +1,16 @@
-from src.app.api.errors import ClientSideError
+from src.app.api.errors import ClientSideError, EntityNotFoundError
 
 
 class AuthenticationError(ClientSideError):
     service: str = "auth"
 
 
-class UserNotFoundError(AuthenticationError):
+class UserNotFoundError(EntityNotFoundError, AuthenticationError):
     """
     Unable to find user with the same email
     """
+
+    service: str = "auth"
 
     def __init__(self, *, user_email: str):
         msg = f"user {user_email} not found"

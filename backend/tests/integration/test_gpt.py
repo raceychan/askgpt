@@ -1,5 +1,4 @@
 import pytest
-
 from src.adapters.cache import MemoryCache
 from src.app.actor import MailBox, QueueBox
 from src.app.factory import get_gpt_service
@@ -62,7 +61,9 @@ def user_created():
 @pytest.fixture(scope="module")
 def session_created():
     return model.SessionCreated(
-        user_id=TestDefaults.USER_ID, session_id=TestDefaults.SESSION_ID
+        user_id=TestDefaults.USER_ID,
+        session_id=TestDefaults.SESSION_ID,
+        session_name="New Session",
     )
 
 

@@ -1,4 +1,4 @@
-from src.app.api.errors import ClientSideError, ThrottlingError
+from src.app.api.errors import ClientSideError, EntityNotFoundError, ThrottlingError
 from src.app.auth.errors import AuthenticationError
 
 
@@ -12,6 +12,12 @@ class GPTError(ClientSideError):
 
 class UserNotRegisteredError(AuthenticationError):
     ...
+
+
+class SessionNotFoundError(EntityNotFoundError, GPTError):
+    def __init__(self, session_id: str):
+        msg = f"Session {session_id} not found"
+        super().__init__(msg)
 
 
 class OrphanSessionError(AuthenticationError):

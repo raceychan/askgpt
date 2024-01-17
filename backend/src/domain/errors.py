@@ -6,3 +6,4 @@ class SystemError(Exception):
 
 class SystemNotSetError(SystemError):
     ...
+

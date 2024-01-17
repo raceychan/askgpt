@@ -1,15 +1,30 @@
+import typing as ty
+from urllib.parse import urlencode, urlunsplit
+
 from fastapi import APIRouter
 from fastapi.responses import RedirectResponse
+from fastapi.responses import StreamingResponse as StreamingResponse
 from starlette import status
 
 from src.adapters.factory import AdapterRegistry
 
 
+class UrllibURL(ty.NamedTuple):
+    scheme: str = ""
+    netloc: str = ""
+    url: str = ""
+    query: str = ""
+    fragment: str = ""
+
+
 def redirect(
-    route: APIRouter, entity_id: str, status_code: int = status.HTTP_303_SEE_OTHER
+    route: APIRouter,
+    *,
+    path: str = "",
+    query: ty.Mapping[str, str] | None = None,
+    status_code: int = status.HTTP_303_SEE_OTHER,
 ):
-    api_str = AdapterRegistry.settings.api.API_VERSION_STR
-    resp = RedirectResponse(
-        f"{api_str}{route.prefix}?email={entity_id}", status_code=status_code
-    )
-    return resp
+    u = f"{AdapterRegistry.settings.api.API_VERSION_STR}{route.prefix}{path}"
+    url = UrllibURL(url=u, query=urlencode(query) if query else "")
+    rere = RedirectResponse(urlunsplit(url), status_code=status_code)
+    return rere

@@ -1,5 +1,4 @@
 import pytest
-
 from src.app.gpt import model
 from src.domain.model.test_default import TestDefaults
 
@@ -35,7 +34,9 @@ def user_created():  # user_info: model.UserInfo):
 @pytest.fixture(scope="module")
 def session_created():
     return model.SessionCreated(
-        user_id=TestDefaults.USER_ID, session_id=TestDefaults.SESSION_ID
+        user_id=TestDefaults.USER_ID,
+        session_id=TestDefaults.SESSION_ID,
+        session_name="New Session",
     )
 
 

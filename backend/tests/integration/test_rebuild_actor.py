@@ -1,5 +1,4 @@
 import pytest
-
 from src.adapters import cache
 from src.app.actor import QueueBox
 from src.app.gpt import gptclient, model, service
@@ -110,7 +109,9 @@ async def test_ask_question(
 async def test_session_self_rebuild(eventstore: EventStore):
     events = await eventstore.get(TestDefaults.SESSION_ID)
     created = model.SessionCreated(
-        user_id=TestDefaults.USER_ID, session_id=TestDefaults.SESSION_ID
+        user_id=TestDefaults.USER_ID,
+        session_id=TestDefaults.SESSION_ID,
+        session_name="New Session",
     )
 
     session_actor = service.SessionActor.apply(created)

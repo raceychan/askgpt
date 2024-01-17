@@ -4,33 +4,32 @@ from datetime import datetime
 from functools import singledispatchmethod
 
 from pydantic import field_serializer
-
 from src.domain.interface import IRepository
-from src.domain.model.base import (
+from src.domain.model.base import (  # uuid_factory,
     Command,
+    DataStruct,
     Entity,
     Event,
     Field,
     ValueObject,
     utcts_factory,
-    # uuid_factory,
 )
 from src.domain.model.token import JWTBase
 from src.domain.model.user import UserInfo
 
 
 class UserLoggedIn(Event):
-    user_id: str
+    entity_id: str = Field(alias="user_id")
     last_login: datetime
 
 
 class UserDeactivated(Event):
-    user_id: str
+    entity_id: str = Field(alias="user_id")
     is_active: bool
 
 
 class UserPromotedAdmin(Event):
-    user_id: str
+    entity_id: str = Field(alias="user_id")
     is_admin: bool
 
 

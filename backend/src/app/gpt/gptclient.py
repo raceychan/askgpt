@@ -9,9 +9,9 @@ from openai.types import beta as openai_beta
 from openai.types import chat as openai_chat
 
 from src.adapters import cache
-from src.app.gpt import errors, model, params
+from src.app.gpt import model, params
 from src.domain.base import SupportedGPTs
-from src.toolkit.funcutils import attribute
+from src.toolkit.funcutils import attribute, lru_cache
 
 MAX_RETRIES: int = 3
 
@@ -28,6 +28,7 @@ class GPTClient(abc.ABC):
         ...
 
     @classmethod
+    @lru_cache(maxsize=1000)
     @abc.abstractmethod
     def from_apikey(cls, api_key: str) -> ty.Self:
         ...
@@ -110,6 +111,7 @@ class OpenAIClient(GPTClient):
         return [message.asdict(exclude={"user_id"}) for message in messages]
 
     @classmethod
+    @lru_cache(maxsize=1000)
     def from_apikey(cls, api_key: str) -> ty.Self:
         client = openai.AsyncOpenAI(api_key=api_key)
         return cls(client=client)
@@ -163,7 +165,6 @@ class APIPool:
         self.api_type = api_type
         self.api_keys = deque(api_keys)
         self._cache = cache
-        self._client_cache: dict[str, GPTClient] = {}
         self._keys_loaded: bool = False
 
     async def acquire(self):
@@ -179,29 +180,16 @@ class APIPool:
         # Push the API key back to the end of the deque
         await self._cache.rpush(self.pool_key.key, api_key)
 
-    async def start(self):
-        if not self.api_keys:
-            raise errors.APIKeyNotAvailableError(self.api_type)
-        await self._cache.rpush(self.pool_key.key, *self.api_keys)
+    async def load_keys(self, keys: ty.Sequence[str]):
+        await self._cache.rpush(self.pool_key.key, *keys)
         self._keys_loaded = True
-
-    async def close(self) -> None:
-        # remove api keys from redis, clear client cache
-        await self._cache.remove(self.pool_key.key)
-        self._keys_loaded = False
 
     @asynccontextmanager
     async def reserve_api_key(self):
+        if not self._keys_loaded:
+            await self.load_keys(self.api_keys)
         api_key = await self.acquire()
         try:
             yield api_key
         finally:
             await self.release(api_key)
-
-    @asynccontextmanager
-    async def lifespan(self):
-        try:
-            await self.start()
-            yield self
-        finally:
-            await self.close()

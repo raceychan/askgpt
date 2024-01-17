@@ -2,7 +2,6 @@ import dotenv
 import pytest
 from fastapi import FastAPI
 from httpx import AsyncClient
-
 from src.app.gpt.gptclient import ClientRegistry
 from src.domain.config import Settings
 from src.server import app_factory  # type: ignore
@@ -101,3 +100,12 @@ async def test_gpt_chat(test_client: AsyncClient, auth_header: dict[str, str]):
             ans += line
 
     assert ans == "pong"
+
+
+async def test_list_sessions(test_client: AsyncClient, auth_header: dict[str, str]):
+    response = await test_client.get(
+        "/gpt/openai/sessions", headers=auth_header, follow_redirects=True
+    )
+    assert response.status_code == 200
+    session_info = response.json()
+    assert session_info

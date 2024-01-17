@@ -6,7 +6,7 @@ from functools import cached_property, singledispatchmethod
 
 from src.app.interface import AbstractActor, AbstractStetefulActor, IJournal
 from src.domain.config import Settings
-from src.domain.error import SystemNotSetError
+from src.domain.errors import SystemNotSetError
 from src.domain.interface import (
     ActorRef,
     ICommand,

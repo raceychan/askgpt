@@ -12,7 +12,8 @@ def chat_message(test_defaults: TestDefaults):
 @pytest.fixture(scope="module")
 def session_created():
     return model.SessionCreated(
-        session_id=TestDefaults.SESSION_ID, user_id=TestDefaults.USER_ID
+        session_id=TestDefaults.SESSION_ID, user_id=TestDefaults.USER_ID,
+        session_name="New Session",
     )
 
 

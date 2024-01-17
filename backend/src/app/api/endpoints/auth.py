@@ -3,10 +3,9 @@ import typing as ty
 from fastapi import APIRouter, Depends
 from fastapi.security import OAuth2PasswordRequestForm
 from pydantic import EmailStr
-
 from src.app.api.dependencies import AccessToken, parse_access_token
 from src.app.api.model import RequestBody
-from src.app.api.response import RedirectResponse, redirect
+from src.app.api.response import RedirectResponse
 from src.app.auth.errors import InvalidCredentialError, UserNotFoundError
 from src.app.auth.model import UserAuth
 from src.app.factory import ApplicationServices
@@ -52,7 +51,7 @@ async def signup_user(req: CreateUserRequest) -> RedirectResponse:
     await ApplicationServices.auth_service.signup_user(
         req.user_name, req.email, req.password
     )
-    return redirect(user_router, req.email)
+    return RedirectResponse(f"/v1/users?email={req.email}", status_code=303)
 
 
 @user_router.get("/{user_id}")

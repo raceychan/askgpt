@@ -76,9 +76,9 @@ class UserSchema(TableBase):
 class SessionSchema(TableBase):
     __tablename__: str = "sessions"  # type: ignore
 
-    id = sa.Column("id", sa.String, primary_key=True)
+    id = sa.Column("id", sa.String, primary_key=True, comment="session_id")
     user_id = sa.Column("user_id", sa.String, sa.ForeignKey("users.id"))
-    session_id = sa.Column("session_id", sa.String, unique=True, index=True)
+    session_name = sa.Column("session_name", sa.String, unique=False, index=False)
     is_active = sa.Column("is_active", sa.Boolean, default=True)
 
 
@@ -91,7 +91,7 @@ class UserAPIKeySchema(TableBase):
     id = sa.Column("id", sa.Integer, autoincrement=True, primary_key=True)
     user_id = sa.Column("user_id", sa.String, sa.ForeignKey("users.id"))
     api_type = sa.Column("api_type", sa.String, index=True)
-    api_key = sa.Column("api_key", sa.String, unique=True, index=True)
+    api_key = sa.Column("api_key", sa.String, unique=False, index=True)
     is_active = sa.Column("is_active", sa.Boolean, default=True)
 
 

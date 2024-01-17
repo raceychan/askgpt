@@ -8,6 +8,7 @@ from src.domain.base import SupportedGPTs
 from src.domain.interface import ICommand, IRepository
 from src.domain.model.base import (
     Command,
+    DataStruct,
     Entity,
     Event,
     Field,
@@ -47,29 +48,37 @@ class ChatMessage(ValueObject):
         return cls(role="system", content=content)
 
 
-class CreateSession(Command):
-    user_id: str
-    entity_id: str = Field(alias="session_id")
-
-
-class SessionCreated(Event):
-    session_id: str
+class UserRelated(DataStruct):
     entity_id: str = Field(alias="user_id")
 
 
-class SendChatMessage(Command):
-    """
-    TODO:
-    refactor,
-    class SendChatMessage(Command):
-        client_type: str # openai, llama2 etc.
-        chat_message: ChatMessage
-    """
+class SessionRelated(DataStruct):
+    entity_id: str = Field(alias="session_id")
 
+
+class CreateSession(SessionRelated, Command):
+    user_id: str
+    session_name: str = "New Session"
+    session_id: str
+
+
+class SessionCreated(UserRelated, Event):
+    session_name: str
+    session_id: str
+
+
+class SessionRenamed(SessionRelated, Event):
+    new_name: str
+
+
+class SessionRemoved(SessionRelated, Event):
+    ...
+
+
+class SendChatMessage(SessionRelated, Command):
     message_body: str
     model: CompletionModels = "gpt-3.5-turbo"
     stream: bool = True
-    entity_id: str = Field(alias="session_id")
     user_id: str
     role: ChatGPTRoles
     client_type: SupportedGPTs = "openai"
@@ -80,8 +89,7 @@ class SendChatMessage(Command):
         return ChatMessage(role=self.role, content=self.message_body)
 
 
-class ChatMessageSent(Event):
-    entity_id: str = Field(alias="session_id")
+class ChatMessageSent(SessionRelated, Event):
     chat_message: ChatMessage
 
 
@@ -95,6 +103,7 @@ class ChatResponseReceived(ChatMessageSent):
 class ChatSession(Entity):
     entity_id: str = Field(alias="session_id")
     user_id: str
+    session_name: str = "New Session"
     messages: list[ChatMessage] = Field(default_factory=list)
 
     @property
@@ -138,6 +147,11 @@ class ChatSession(Entity):
         self.add_message(event.chat_message)
         return self
 
+    @apply.register
+    def _(self, event: SessionRenamed) -> ty.Self:
+        self.session_name = event.new_name
+        return self
+
 
 class User(Entity):
     entity_id: str = Field(alias="user_id")
@@ -147,7 +161,11 @@ class User(Entity):
     def predict_command(self, command: ICommand) -> list[SessionCreated]:
         if isinstance(command, CreateSession):
             return [
-                SessionCreated(session_id=command.entity_id, user_id=self.entity_id)
+                SessionCreated(
+                    session_id=command.entity_id,
+                    user_id=self.entity_id,
+                    session_name=command.session_name,
+                )
             ]
         else:
             raise NotImplementedError

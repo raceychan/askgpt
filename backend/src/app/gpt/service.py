@@ -3,7 +3,7 @@ from contextlib import asynccontextmanager
 
 from src.app.actor import QueueBox as QueueBox
 from src.app.auth import repository as auth_repo
-from src.app.gpt import gptclient, model, params
+from src.app.gpt import errors, gptclient, model, params
 from src.app.gpt import repository as gpt_repo
 from src.app.gpt.gptsystem import GPTSystem, SessionActor, SystemState, UserActor
 from src.domain._log import logger
@@ -48,7 +48,9 @@ class GPTService:
         role: model.ChatGPTRoles,
         completion_model: model.CompletionModels,
     ) -> None:
-        session_actor = await self.get_session(user_id=user_id, session_id=session_id)
+        session_actor = await self.get_session_actor(
+            user_id=user_id, session_id=session_id
+        )
 
         command = model.SendChatMessage(
             user_id=user_id,
@@ -90,20 +92,19 @@ class GPTService:
         options: dict[str, ty.Any],
     ) -> ty.AsyncGenerator[str | None, None]:
         api_pool = await self.build_api_pool(user_id=user_id, api_type=gpt_type)
-        async with api_pool.lifespan():
-            async with api_pool.reserve_api_key() as api_key:
-                client_factory = self._client_registry[gpt_type]
-                client = client_factory.from_apikey(api_key)
-                session_actor = await self.get_session(
-                    user_id=user_id, session_id=session_id
-                )
-                completion_model = options.pop("model")
-                ans_gen = session_actor.send_chatmessage(
-                    client=client,
-                    message=model.ChatMessage(role=role, content=question),
-                    completion_model=completion_model,
-                    options=options,
-                )
+        async with api_pool.reserve_api_key() as api_key:
+            client_factory = self._client_registry[gpt_type]
+            client = client_factory.from_apikey(api_key)
+            session_actor = await self.get_session_actor(
+                user_id=user_id, session_id=session_id
+            )
+            completion_model = options.pop("model")
+            ans_gen = session_actor.send_chatmessage(
+                client=client,
+                message=model.ChatMessage(role=role, content=question),
+                completion_model=completion_model,
+                options=options,
+            )
         return ans_gen
 
     async def interactive(
@@ -119,29 +120,52 @@ class GPTService:
                 completion_model=completion_model,
             )
 
-    async def create_session(self, user_id: str) -> str:
-        user_actor = self.system.get_child(user_id)
-        if not user_actor:
-            user_actor = await self.system.rebuild_user(user_id)
-
-        session_id = model.uuid_factory()
-        await user_actor.handle(
-            model.CreateSession(user_id=user_id, session_id=session_id)
-        )
-        return session_id
-
-    async def get_user(self, user_id: str) -> UserActor:
+    async def get_user_actor(self, user_id: str) -> UserActor:
         user_actor = self.system.get_child(user_id)
         if user_actor is None:
             user_actor = await self.system.rebuild_user(user_id)
         return user_actor
 
-    async def get_session(self, user_id: str, session_id: str) -> SessionActor:
-        user_actor = await self.get_user(user_id)
+    async def create_session(
+        self, user_id: str, session_name: str = "New Session"
+    ) -> model.ChatSession:
+        user_actor = self.system.get_child(user_id)
+        if not user_actor:
+            user_actor = await self.system.rebuild_user(user_id)
+
+        session_id = model.uuid_factory()
+        ss = model.ChatSession(
+            user_id=user_id, session_id=session_id, session_name=session_name
+        )
+
+        await user_actor.handle(
+            model.CreateSession(user_id=user_id, session_id=session_id)
+        )
+        await self._session_repo.add(ss)
+        return ss
+
+    async def get_session_actor(self, user_id: str, session_id: str) -> SessionActor:
+        user_actor = await self.get_user_actor(user_id)
         session_actor = user_actor.get_child(session_id)
         if session_actor is None:
             session_actor = await user_actor.rebuild_session(session_id)
         return session_actor
+
+    async def list_sessions(self, user_id: str):
+        return await self._session_repo.list_sessions(user_id=user_id)
+
+    async def rename_session(self, session_id: str, new_name: str):
+        # Publish event to eventstore
+        chat_session = await self._session_repo.get(entity_id=session_id)
+        if not chat_session:
+            raise errors.SessionNotFoundError(session_id)
+        e = model.SessionRenamed(session_id=session_id, new_name=new_name)
+        chat_session.apply(e)
+        await self._session_repo.rename(session_id=session_id, new_name=new_name)
+
+    async def delete_session(self, session_id: str):
+        # Publish event to eventstore
+        await self._session_repo.remove(session_id=session_id)
 
     async def start(self) -> None:
         if self.state.is_running:

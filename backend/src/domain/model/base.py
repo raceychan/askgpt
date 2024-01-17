@@ -152,6 +152,10 @@ class Message(DomainModel):
     entity_id: str
 
 
+class DataStruct(DomainModel):
+    "Pure Data object, no logic, no behavior, use to reduce code repetition"
+
+
 class Command(Message):
     ...
 
