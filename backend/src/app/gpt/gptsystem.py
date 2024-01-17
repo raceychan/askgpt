@@ -122,15 +122,13 @@ class UserActor(GPTBaseActor["SessionActor", model.User]):
         for e in events:
             await self.publish(e)
 
-    @apply.register(auth_model.UserSignedUp)
-    @apply.register(model.UserCreated)
+    @apply.register
     @classmethod
-    def _(cls, event: model.UserCreated) -> ty.Self:
+    def _(cls, event: model.UserCreated | auth_model.UserSignedUp) -> ty.Self:
         return cls(user=model.User.apply(event))
 
-    @apply.register(model.SessionCreated)
-    @apply.register(model.UserAPIKeyAdded)
-    def _(self, event: model.Event) -> ty.Self:
+    @apply.register
+    def _(self, event: model.SessionCreated | model.UserAPIKeyAdded) -> ty.Self:
         self.entity.apply(event)
         return self
 
@@ -238,7 +236,7 @@ class SessionActor(GPTBaseActor["SessionActor", model.ChatSession]):
         raise NotImplementedError(f"apply for {unknown} is not implemented")
 
     @apply.register
-    def _(self, event: model.ChatMessageSent) -> ty.Self:
+    def _(self, event: model.ChatMessageSent | model.SessionRenamed) -> ty.Self:
         self.entity.apply(event)
         return self
 

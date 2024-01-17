@@ -47,9 +47,9 @@ class ChatCompletionRequest(RequestBody):
         "json_schema_extra": {
             "examples": [
                 {
-                    "model": "gpt-4-32k-0613",
+                    "model": "gpt-4-1106-preview",
                     "role": "user",
-                    "question": "hello",
+                    "question": "enter your question here",
                     "stream": True,
                 },
             ]
