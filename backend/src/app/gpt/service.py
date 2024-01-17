@@ -1,13 +1,16 @@
 import typing as ty
 from contextlib import asynccontextmanager
 
+from src.adapters import gptclient, queue
 from src.app.actor import QueueBox as QueueBox
 from src.app.auth import repository as auth_repo
-from src.app.gpt import errors, gptclient, model, params
+from src.app.gpt import errors, model, params
 from src.app.gpt import repository as gpt_repo
+from src.app.gpt import request
 from src.app.gpt.gptsystem import GPTSystem, SessionActor, SystemState, UserActor
 from src.domain._log import logger
 from src.domain.base import SupportedGPTs
+from src.domain.interface import IEvent
 from src.infra import eventstore, security
 
 
@@ -18,12 +21,14 @@ class GPTService:
         encryptor: security.Encrypt,
         user_repo: auth_repo.UserRepository,
         session_repo: gpt_repo.SessionRepository,
+        producer: queue.BaseProducer[IEvent],
     ):
         self._service_state = SystemState.created
         self._system = system
         self._encryptor = encryptor
         self._user_repo = user_repo
         self._session_repo = session_repo
+        self._producer = producer
         self._client_registry = gptclient.ClientRegistry()
 
     @property
@@ -74,7 +79,7 @@ class GPTService:
         )
 
         pool_keyspace = self.system.settings.redis.keyspaces.API_POOL / user_id
-        user_api_pool = gptclient.APIPool(
+        user_api_pool = request.APIPool(
             pool_keyspace=pool_keyspace,
             api_type=api_type,
             api_keys=api_keys,
@@ -127,7 +132,7 @@ class GPTService:
         return user_actor
 
     async def create_session(
-        self, user_id: str, session_name: str = "New Session"
+        self, user_id: str, session_name: str = model.DEFAULT_SESSION_NAME
     ) -> model.ChatSession:
         user_actor = self.system.get_child(user_id)
         if not user_actor:
@@ -155,16 +160,17 @@ class GPTService:
         return await self._session_repo.list_sessions(user_id=user_id)
 
     async def rename_session(self, session_id: str, new_name: str):
-        # Publish event to eventstore
         chat_session = await self._session_repo.get(entity_id=session_id)
         if not chat_session:
             raise errors.SessionNotFoundError(session_id)
-        e = model.SessionRenamed(session_id=session_id, new_name=new_name)
-        chat_session.apply(e)
-        await self._session_repo.rename(session_id=session_id, new_name=new_name)
+        session_renamed = model.SessionRenamed(session_id=session_id, new_name=new_name)
+        chat_session.apply(session_renamed)
+        await self._producer.publish(session_renamed)
+        await self._session_repo.rename(chat_session)
 
     async def delete_session(self, session_id: str):
-        # Publish event to eventstore
+        session_removed = model.SessionRemoved(session_id=session_id)
+        await self._producer.publish(session_removed)
         await self._session_repo.remove(session_id=session_id)
 
     async def start(self) -> None:

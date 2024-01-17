@@ -2,7 +2,6 @@ import pathlib
 import typing as ty
 
 from pydantic import BaseModel, ConfigDict, computed_field, field_validator
-
 from src.domain.base import TimeScale
 from src.domain.interface import SQL_ISOLATIONLEVEL, EventLogRef, JournalRef, SystemRef
 from src.toolkit.fileutil import FileUtil
@@ -194,9 +193,15 @@ class Settings(SettingsBase):
     throttling: Throttling
 
     class EventRecord(SettingsBase):
-        EventFetchInterval: float = 0.1
+        EVENT_FETCH_INTERVAL: float = 0.1
 
     event_record: EventRecord
+
+    class OpenAIClient(SettingsBase):
+        TIMEOUT: float = 30.0
+        MAX_RETRIES: int = 3
+
+    openai_client: OpenAIClient
 
     @classmethod
     @simplecache

@@ -18,6 +18,7 @@ openai_router = APIRouter(prefix="/openai")
 
 
 class ChatCompletionRequest(RequestBody):
+    "This is problematic, in openapi test there are a lot of bad defaults here."
     question: str
     role: ChatGPTRoles
     model: CompletionModels = "gpt-3.5-turbo"
@@ -39,7 +40,7 @@ class ChatCompletionRequest(RequestBody):
     user: str | None = None
     extra_headers: ty.Mapping[str, str | ty.Literal[False]] | None = None
     extra_query: ty.Mapping[str, object] | None = None
-    extra_body: object | None = None
+    extra_body: dict | None = None
     timeout: float | None = None
 
 
@@ -118,6 +119,7 @@ async def chat(
     access_token: AccessToken = Depends(parse_access_token),
 ):
     data = req.model_dump(exclude_unset=True)
+    data.setdefault("user", access_token.sub)
 
     stream_ans = await ApplicationServices.gpt_service.stream_chat(
         user_id=access_token.sub,

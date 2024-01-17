@@ -2,7 +2,7 @@ import enum
 import typing as ty
 from functools import cached_property, singledispatchmethod
 
-from src.adapters import cache
+from src.adapters import cache, gptclient
 from src.app.actor import (
     BoxFactory,
     EntityActor,
@@ -12,7 +12,7 @@ from src.app.actor import (
     System,
 )
 from src.app.auth import model as auth_model
-from src.app.gpt import errors, gptclient, model
+from src.app.gpt import errors, model
 from src.domain.config import Settings
 from src.domain.interface import ActorRef, ICommand
 from src.domain.model.base import Command, Event, Message
@@ -143,29 +143,6 @@ class SessionActor(GPTBaseActor["SessionActor", model.ChatSession]):
     def chat_context(self) -> list[model.ChatMessage]:
         return self.entity.messages
 
-    async def _send_chatmessage(
-        self,
-        client: gptclient.GPTClient,
-        message: model.ChatMessage,
-        model: model.CompletionModels,
-        options: dict[str, ty.Any],
-        stream: bool = True,
-    ) -> ty.AsyncGenerator[str, None]:
-        chunks = await client.complete(
-            messages=self.chat_context + [message],
-            model=model,
-            user=self.entity.user_id,
-            stream=stream,
-            options=options,
-        )
-
-        async for resp in chunks:
-            for choice in resp.choices:
-                content = choice.delta.content
-                if not content:
-                    continue
-                yield content
-
     async def send_chatmessage(
         self,
         client: gptclient.GPTClient,
@@ -174,16 +151,20 @@ class SessionActor(GPTBaseActor["SessionActor", model.ChatSession]):
         options: dict[str, ty.Any],
     ) -> ty.AsyncGenerator[str, None]:
         "send messages and publish events"
-        chunks = self._send_chatmessage(
-            client=client,
-            message=message,
+        chunks = await client.complete(
+            messages=self.chat_context + [message],
             model=completion_model,
             options=options,
         )
+
         answer = ""
-        async for chunk in chunks:
-            answer += chunk
-            yield chunk
+        async for resp in chunks:
+            for choice in resp.choices:
+                content = choice.delta.content
+                if not content:
+                    continue
+                answer += content
+                yield content
 
         events = [
             model.ChatMessageSent(

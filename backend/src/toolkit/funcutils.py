@@ -1,5 +1,7 @@
 import typing as ty
-from functools import lru_cache, update_wrapper
+from functools import lru_cache
+from functools import partial as partial
+from functools import update_wrapper
 
 AnyCallable = ty.Callable[..., ty.Any]
 

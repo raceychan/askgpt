@@ -35,11 +35,13 @@ def get_gpt_service(settings: Settings):
     user_repo = infra_factory.get_user_repo(settings)
     session_repo = infra_factory.get_session_repo(settings)
     encryptor = infra_factory.get_encrypt(settings)
+    producer = adapter_factory.get_producer(settings)
     service = GPTService(
         system=system,
         encryptor=encryptor,
         user_repo=user_repo,
         session_repo=session_repo,
+        producer=producer,
     )
     return service
 
@@ -80,11 +82,13 @@ def gpt_service_factory(settings: Settings):
     session_repo = infra_factory.session_repo_factory()
     user_repo = infra_factory.user_repo_factory()
     encryptor = infra_factory.encrypt_facotry()
+    producer = infra_factory.producer_factory()
     service = GPTService(
         system=system,
         encryptor=encryptor,
         user_repo=user_repo,
         session_repo=session_repo,
+        producer=producer,
     )
     return service
 

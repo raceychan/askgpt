@@ -3,14 +3,13 @@ import typing as ty
 
 import pytest
 from sqlalchemy.ext import asyncio as sa_aio
-
 from src.adapters.cache import MemoryCache, RedisCache
 from src.adapters.database import AsyncDatabase
+from src.adapters.gptclient import ClientRegistry, OpenAIClient
 from src.adapters.queue import BaseConsumer, BaseProducer, QueueBroker
 from src.app.actor import MailBox
 from src.app.auth.model import UserAuth
 from src.app.auth.repository import UserAuth
-from src.app.gpt import gptclient
 from src.app.gpt.params import ChatResponse
 from src.domain.config import Settings
 from src.domain.model.test_default import TestDefaults
@@ -120,8 +119,8 @@ def openai_client(chat_response: ChatResponse):
     async def wrapper():
         yield chat_response
 
-    @gptclient.ClientRegistry.register("test")
-    class FakeClient(gptclient.OpenAIClient):
+    @ClientRegistry.register("test")
+    class FakeClient(OpenAIClient):
         async def complete(  # type: ignore
             self, **kwargs  # type: ignore
         ):

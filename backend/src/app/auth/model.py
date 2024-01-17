@@ -25,7 +25,7 @@ class UserLoggedIn(Event):
 
 class UserDeactivated(Event):
     entity_id: str = Field(alias="user_id")
-    is_active: bool
+    is_active: bool = False
 
 
 class UserPromotedAdmin(Event):
@@ -91,6 +91,11 @@ class UserAuth(Entity):
             user_info=event.user_info,
             last_login=event.last_login,
         )
+
+    @apply.register
+    def _(self, event: UserDeactivated) -> ty.Self:
+        self.deactivate()
+        return self
 
 
 class IUserRepository(IRepository[UserAuth]):

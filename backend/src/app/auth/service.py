@@ -101,9 +101,18 @@ class AuthService:
             last_login=datetime.utcnow(),
         )
         user_auth = model.UserAuth.apply(user_signed_up)
-        await self._user_repo.add(user_auth)
         await self._producer.publish(user_signed_up)
+        await self._user_repo.add(user_auth)
         return user_auth.entity_id
+
+    async def deactivate_user(self, user_id: str) -> None:
+        user = await self._user_repo.get(user_id)
+        if user is None:
+            raise errors.UserNotFoundError(user_email=user_id)
+        e = model.UserDeactivated(user_id=user_id)
+        user.apply(e)
+        await self._producer.publish(e)
+        await self._user_repo.remove(user.entity_id)
 
     async def add_api_key(self, user_id: str, api_key: str, api_type: str) -> None:
         """
@@ -125,9 +134,5 @@ class AuthService:
         await self._user_repo.add_api_key_for_user(user_id, encrypted_key, api_type)
         await self._producer.publish(user_api_added)
 
-    async def get_user_detail(self, user_id: str) -> model.UserAuth | None:
+    async def get_user(self, user_id: str) -> model.UserAuth | None:
         return await self._user_repo.get(user_id)
-
-    # async def check_user_have_api_key(self, user_id: str, api_type: str) -> None:
-    #     if not await self._user_repo.get_api_keys_for_user(user_id, api_type):
-    #         raise errors.UserAPIKeyNotProvidedError(user_id=user_id, api_type=api_type)

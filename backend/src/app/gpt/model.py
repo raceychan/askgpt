@@ -18,6 +18,8 @@ from src.domain.model.base import (
 from src.domain.model.base import uuid_factory as uuid_factory
 from src.domain.model.user import CreateUser, UserCreated
 
+DEFAULT_SESSION_NAME = "New Session"
+
 
 class ChatMessage(ValueObject):
     role: ChatGPTRoles
@@ -58,12 +60,12 @@ class SessionRelated(DataStruct):
 
 class CreateSession(SessionRelated, Command):
     user_id: str
-    session_name: str = "New Session"
+    session_name: str = DEFAULT_SESSION_NAME
     session_id: str
 
 
 class SessionCreated(UserRelated, Event):
-    session_name: str
+    session_name: str = DEFAULT_SESSION_NAME
     session_id: str
 
 
@@ -103,7 +105,7 @@ class ChatResponseReceived(ChatMessageSent):
 class ChatSession(Entity):
     entity_id: str = Field(alias="session_id")
     user_id: str
-    session_name: str = "New Session"
+    session_name: str = DEFAULT_SESSION_NAME
     messages: list[ChatMessage] = Field(default_factory=list)
 
     @property

@@ -1,6 +1,6 @@
 import typing as ty
 
-from src.adapters import cache, database, queue, tokenbucket
+from src.adapters import cache, database, gptclient, queue, tokenbucket
 from src.domain.config import Settings, settingfactory
 from src.domain.interface import IEvent
 from src.infra import eventstore
@@ -92,6 +92,18 @@ def get_tokenbucket_factory(settings: Settings, keyspace: cache.KeySpace):
         redis=redis,
         script=script_func,
         keyspace=keyspace,
+    )
+
+
+from functools import partial
+
+
+def request_client_factory(settings: Settings):
+    configs = settings.openai_client
+    return partial(
+        gptclient.OpenAIClient.build,
+        timeout=configs.TIMEOUT,
+        max_retries=configs.MAX_RETRIES,
     )
 
 

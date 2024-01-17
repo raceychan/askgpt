@@ -61,8 +61,13 @@ async def user_detail(
     "Private user info"
     if not user_id == token.sub:
         raise InvalidCredentialError("user does not match with credentials")
-    user = await ApplicationServices.auth_service.get_user_detail(user_id)
+    user = await ApplicationServices.auth_service.get_user(user_id)
     return user
+
+
+@user_router.delete("/{user_id}")
+async def delete_user(user_id: str, token: AccessToken = Depends(parse_access_token)):
+    await ApplicationServices.auth_service.deactivate_user(token.sub)
 
 
 @user_router.post("/apikeys")

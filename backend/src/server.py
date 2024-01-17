@@ -2,7 +2,6 @@ from contextlib import asynccontextmanager
 from functools import partial
 
 from fastapi import APIRouter, FastAPI
-
 from src.adapters.factory import AdapterRegistry
 from src.app.api.endpoints import api_router
 from src.app.api.error_handlers import HandlerRegistry
@@ -46,7 +45,7 @@ def add_middlewares(app: FastAPI) -> None:
 
 
 def app_factory(
-    lifespan=lifespan, *, settings: Settings = get_setting("settings.toml")  # type: ignore
+    lifespan=lifespan, *, settings: Settings = get_setting("settings.toml")
 ) -> FastAPI:
     app = FastAPI(
         title=settings.PROJECT_NAME,

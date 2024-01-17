@@ -33,7 +33,7 @@ def get_eventrecord(settings: Settings):
     return EventRecord(
         consumer=adapter_factory.get_consumer(settings),
         eventstore=adapter_factory.get_eventstore(settings),
-        wait_gap=settings.event_record.EventFetchInterval,
+        wait_gap=settings.event_record.EVENT_FETCH_INTERVAL,
     )
 
 

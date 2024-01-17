@@ -1,7 +1,7 @@
 import pytest
-from src.adapters import cache
+from src.adapters import cache, gptclient
 from src.app.actor import QueueBox
-from src.app.gpt import gptclient, model, service
+from src.app.gpt import model, service
 from src.domain import config
 from src.domain.model.test_default import TestDefaults
 from src.infra import factory

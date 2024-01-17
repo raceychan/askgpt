@@ -14,6 +14,10 @@ SESSION_TABLE: ty.Final[sa.TableClause] = sa.table(
 )
 
 
+# def entity_loader(row: sa.engine.Row) -> ChatSession:
+#     ...
+
+
 class SessionRepository(ISessionRepository):
     def __init__(self, aiodb: AsyncDatabase):
         self._aiodb = aiodb
@@ -43,11 +47,11 @@ class SessionRepository(ISessionRepository):
 
         await self._aiodb.execute(stmt)
 
-    async def rename(self, session_id: str, new_name: str):
+    async def rename(self, entity: ChatSession):
         stmt = (
             sa.update(SESSION_TABLE)
-            .where(SESSION_TABLE.c.id == session_id)
-            .values(session_name=new_name)
+            .where(SESSION_TABLE.c.id == entity.entity_id)
+            .values(session_name=entity.session_name)
         )
         await self._aiodb.execute(stmt)
 
@@ -59,3 +63,8 @@ class SessionRepository(ISessionRepository):
         stmt = sa.select(SESSION_TABLE).where(SESSION_TABLE.c.id == entity_id)
         cursor = await self._aiodb.execute(stmt)
         row = cursor.one_or_none()
+        if not row:
+            return None
+        return ChatSession(
+            session_id=row.id, user_id=row.user_id, session_name=row.session_name
+        )

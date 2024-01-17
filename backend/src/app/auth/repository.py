@@ -78,6 +78,14 @@ class UserRepository(IUserRepository):
                 return None
         return load_userauth(dict(row._mapping))  # type: ignore
 
+    async def remove(self, entity_id: str) -> None:
+        stmt = (
+            sa.update(USER_TABLE)
+            .where(USER_TABLE.c.id == entity_id)
+            .values(is_active=False)
+        )
+        await self._aiodb.execute(stmt)
+
     async def search_user_by_email(self, useremail: str) -> UserAuth | None:
         stmt = sa.select(USER_TABLE).where(USER_TABLE.c.email == useremail)
 
