@@ -45,28 +45,6 @@ class GPTService:
             raise Exception("system already stopped")
         self._service_state = state
 
-    async def send_question(
-        self,
-        user_id: str,
-        session_id: str,
-        question: str,
-        role: model.ChatGPTRoles,
-        completion_model: model.CompletionModels,
-    ) -> None:
-        session_actor = await self.get_session_actor(
-            user_id=user_id, session_id=session_id
-        )
-
-        command = model.SendChatMessage(
-            user_id=user_id,
-            session_id=session_id,
-            message_body=question,
-            role=role,
-            model=completion_model,
-        )
-
-        await session_actor.receive(command)
-
     async def build_api_pool(self, user_id: str, api_type: str):
         encrypted_api_keys = await self._user_repo.get_api_keys_for_user(
             user_id=user_id, api_type=api_type
@@ -87,7 +65,7 @@ class GPTService:
         )
         return user_api_pool
 
-    async def stream_chat(
+    async def chatcomplete(
         self,
         user_id: str,
         session_id: str,
@@ -111,19 +89,6 @@ class GPTService:
                 options=options,
             )
         return ans_gen
-
-    async def interactive(
-        self, user_id: str, session_id: str, completion_model: model.CompletionModels
-    ) -> None:
-        while True:
-            question = input("\nwhat woud you like to ask?\n\n")
-            await self.send_question(
-                user_id,
-                session_id,
-                question,
-                role="user",
-                completion_model=completion_model,
-            )
 
     async def get_user_actor(self, user_id: str) -> UserActor:
         user_actor = self.system.get_child(user_id)
