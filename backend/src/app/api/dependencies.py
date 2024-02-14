@@ -15,7 +15,7 @@ oauth2_scheme = OAuth2PasswordBearer(tokenUrl="auth/login")
 
 
 def parse_access_token(token: str = Depends(oauth2_scheme)) -> AccessToken:
-    token_encrypt = infra_factory.get_encrypt(AdapterRegistry.settings)
+    token_encrypt = infra_factory.make_encrypt(AdapterRegistry.settings)
     try:
         decoded = token_encrypt.decrypt_jwt(token)
         access_token = AccessToken.model_validate(decoded)

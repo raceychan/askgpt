@@ -7,7 +7,7 @@ from src.infra import security
 from src.infra.eventrecord import EventRecord
 
 
-def get_encrypt(settings: Settings) -> security.Encrypt:
+def make_encrypt(settings: Settings) -> security.Encrypt:
     return security.Encrypt(
         secret_key=settings.security.SECRET_KEY,
         algorithm=settings.security.ALGORITHM,
@@ -15,32 +15,32 @@ def get_encrypt(settings: Settings) -> security.Encrypt:
 
 
 @settingfactory
-def get_user_repo(settings: Settings):
-    database = adapter_factory.get_database(settings)
+def make_user_repo(settings: Settings):
+    database = adapter_factory.make_database(settings)
     user_repo = UserRepository(database)
     return user_repo
 
 
 @settingfactory
-def get_session_repo(settings: Settings):
-    database = adapter_factory.get_database(settings)
+def make_session_repo(settings: Settings):
+    database = adapter_factory.make_database(settings)
     session_repo = SessionRepository(database)
     return session_repo
 
 
 @settingfactory
-def get_eventrecord(settings: Settings):
+def make_eventrecord(settings: Settings):
     return EventRecord(
-        consumer=adapter_factory.get_consumer(settings),
-        eventstore=adapter_factory.get_eventstore(settings),
+        consumer=adapter_factory.make_consumer(settings),
+        eventstore=adapter_factory.make_eventstore(settings),
         wait_gap=settings.event_record.EVENT_FETCH_INTERVAL,
     )
 
 
 @settingfactory
-def get_token_registry(settings: Settings):
+def make_token_registry(settings: Settings):
     return TokenRegistry(
-        token_cache=adapter_factory.get_cache(settings),
+        token_cache=adapter_factory.make_cache(settings),
         keyspace=settings.redis.keyspaces.APP.generate_for_cls(TokenRegistry),
     )
 

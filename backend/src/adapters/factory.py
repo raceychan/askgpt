@@ -9,13 +9,13 @@ from src.toolkit import sa_utils
 
 
 @settingfactory
-def get_async_engine(settings: Settings):
-    async_engine = sa_utils.asyncengine(get_engine(settings))
+def make_async_engine(settings: Settings):
+    async_engine = sa_utils.asyncengine(make_engine(settings))
     return async_engine
 
 
 @settingfactory
-def get_engine(settings: Settings):
+def make_engine(settings: Settings):
     connect_args = (
         settings.db.connect_args.model_dump() if settings.db.connect_args else None
     )
@@ -36,33 +36,33 @@ def get_engine(settings: Settings):
 
 
 @settingfactory
-def get_database(settings: Settings) -> database.AsyncDatabase:
-    return database.AsyncDatabase(get_async_engine(settings))
+def make_database(settings: Settings) -> database.AsyncDatabase:
+    return database.AsyncDatabase(make_async_engine(settings))
 
 
 @settingfactory
-def get_eventstore(settings: Settings) -> eventstore.EventStore:
-    es = eventstore.EventStore(aiodb=get_database(settings))
+def make_eventstore(settings: Settings) -> eventstore.EventStore:
+    es = eventstore.EventStore(aiodb=make_database(settings))
     return es
 
 
 @settingfactory
-def get_broker(settings: Settings):
+def make_broker(settings: Settings):
     return queue.QueueBroker[IEvent]()
 
 
 @settingfactory
-def get_consumer(settings: Settings):
-    return queue.BaseConsumer(get_broker(settings))
+def make_consumer(settings: Settings):
+    return queue.BaseConsumer(make_broker(settings))
 
 
 @settingfactory
-def get_producer(settings: Settings):
-    return queue.BaseProducer(get_broker(settings))
+def make_producer(settings: Settings):
+    return queue.BaseProducer(make_broker(settings))
 
 
 @settingfactory
-def get_cache(settings: Settings):
+def make_cache(settings: Settings):
     config = settings.redis
     return cache.RedisCache[str].build(
         url=config.URL,
@@ -75,17 +75,17 @@ def get_cache(settings: Settings):
 
 
 @settingfactory
-def get_local_cache(settings: Settings):
+def make_local_cache(settings: Settings):
     return cache.MemoryCache[str, str]()
 
 
 @settingfactory
-def get_sqldbg(settings: Settings):
-    return sa_utils.SQLDebugger(get_engine(settings))
+def make_sqldbg(settings: Settings):
+    return sa_utils.SQLDebugger(make_engine(settings))
 
 
-def get_tokenbucket_factory(settings: Settings, keyspace: cache.KeySpace):
-    redis = get_cache(settings)
+def make_tokenbucket_factory(settings: Settings, keyspace: cache.KeySpace):
+    redis = make_cache(settings)
     script = settings.redis.TOKEN_BUCKET_SCRIPT
     script_func = redis.load_script(script)
     return tokenbucket.TokenBucketFactory(
@@ -98,7 +98,7 @@ def get_tokenbucket_factory(settings: Settings, keyspace: cache.KeySpace):
 from functools import partial
 
 
-def request_client_factory(settings: Settings):
+def make_request_client(settings: Settings):
     configs = settings.openai_client
     return partial(
         gptclient.OpenAIClient.build,
@@ -108,7 +108,7 @@ def request_client_factory(settings: Settings):
 
 
 class AdapterRegistry(InfraRegistryBase):
-    aiodb = Dependency(database.AsyncDatabase, get_database)
-    redis_cache = Dependency(cache.RedisCache[str], get_cache)
-    consumer = Dependency(queue.BaseConsumer[ty.Any], get_consumer)
-    producer = Dependency(queue.BaseProducer[ty.Any], get_producer)
+    aiodb = Dependency(database.AsyncDatabase, make_database)
+    redis_cache = Dependency(cache.RedisCache[str], make_cache)
+    consumer = Dependency(queue.BaseConsumer[ty.Any], make_consumer)
+    producer = Dependency(queue.BaseProducer[ty.Any], make_producer)

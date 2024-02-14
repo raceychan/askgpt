@@ -11,10 +11,10 @@ from src.infra.service_registry import Dependency, ServiceRegistryBase
 
 @settingfactory
 def get_auth_service(settings: Settings):
-    user_repo = infra_factory.get_user_repo(settings)
-    token_registry = infra_factory.get_token_registry(settings)
-    token_encrypt = infra_factory.get_encrypt(settings)
-    producer = adapter_factory.get_producer(settings)
+    user_repo = infra_factory.make_user_repo(settings)
+    token_registry = infra_factory.make_token_registry(settings)
+    token_encrypt = infra_factory.make_encrypt(settings)
+    producer = adapter_factory.make_producer(settings)
     return AuthService(
         user_repo=user_repo,
         token_registry=token_registry,
@@ -30,12 +30,12 @@ def get_gpt_service(settings: Settings):
         settings=settings,
         ref=settings.actor_refs.SYSTEM,
         boxfactory=QueueBox,
-        cache=adapter_factory.get_cache(settings),
+        cache=adapter_factory.make_cache(settings),
     )
-    user_repo = infra_factory.get_user_repo(settings)
-    session_repo = infra_factory.get_session_repo(settings)
-    encryptor = infra_factory.get_encrypt(settings)
-    producer = adapter_factory.get_producer(settings)
+    user_repo = infra_factory.make_user_repo(settings)
+    session_repo = infra_factory.make_session_repo(settings)
+    encryptor = infra_factory.make_encrypt(settings)
+    producer = adapter_factory.make_producer(settings)
     service = GPTService(
         system=system,
         encryptor=encryptor,
@@ -49,7 +49,7 @@ def get_gpt_service(settings: Settings):
 @settingfactory
 def get_user_request_throttler(settings: Settings):
     keyspace = settings.redis.keyspaces.THROTTLER / "user_request"
-    bucket_facotry = adapter_factory.get_tokenbucket_factory(settings, keyspace)
+    bucket_facotry = adapter_factory.make_tokenbucket_factory(settings, keyspace)
     throttler = UserRequestThrottler(
         bucket_factory=bucket_facotry,
         max_requests=settings.throttling.USER_MAX_REQUEST_PER_MINUTE,
@@ -79,6 +79,7 @@ def gpt_service_factory(settings: Settings):
         boxfactory=QueueBox,
         cache=infra_factory.cache_factory(),
     )
+    # TODO: use lambda instead, session_repo = lambda: SessionRepository(aiodb)
     session_repo = infra_factory.session_repo_factory()
     user_repo = infra_factory.user_repo_factory()
     encryptor = infra_factory.encrypt_facotry()

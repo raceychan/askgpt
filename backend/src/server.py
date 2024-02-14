@@ -10,13 +10,13 @@ from src.app.bootstrap import bootstrap
 from src.app.factory import ApplicationServices
 from src.domain._log import logger
 from src.domain.config import Settings, get_setting
-from src.infra.factory import get_eventrecord
+from src.infra.factory import make_eventrecord
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI | None = None, *, settings: Settings):
     await bootstrap(settings)
-    event_record = get_eventrecord(settings)
+    event_record = make_eventrecord(settings)
 
     adapters = AdapterRegistry(settings)
     app_services = ApplicationServices(settings)
