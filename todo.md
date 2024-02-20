@@ -6,6 +6,8 @@
 
 - [ ] call AI agents from APIs
 
+- [ ] clean up unused factory methods
+
 ## Done
 
 - [x] README.md

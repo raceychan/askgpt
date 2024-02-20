@@ -4,7 +4,7 @@ from src.adapters import cache, database, gptclient, queue, tokenbucket
 from src.domain.config import Settings, settingfactory
 from src.domain.interface import IEvent
 from src.infra import eventstore
-from src.infra.service_registry import Dependency, InfraRegistryBase
+from src.infra.service_registry import Dependency, InfraLocatorBase
 from src.toolkit import sa_utils
 
 
@@ -107,7 +107,7 @@ def make_request_client(settings: Settings):
     )
 
 
-class AdapterRegistry(InfraRegistryBase):
+class AdapterRegistry(InfraLocatorBase):
     aiodb = Dependency(database.AsyncDatabase, make_database)
     redis_cache = Dependency(cache.RedisCache[str], make_cache)
     consumer = Dependency(queue.BaseConsumer[ty.Any], make_consumer)

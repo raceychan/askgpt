@@ -18,7 +18,13 @@ each of them can be a dependency themself, thus we need to extract the dependenc
  ServiceRegistry deps: [dep1, dep2, dep3]   
 ]
 
+reff:
+Service locator pattern
+https://stackify.com/service-locator-pattern/
+
+it seems like i am implementiong the service locator pattern before knowing it exists.
 """
+
 import types
 import typing as ty
 from contextlib import AsyncExitStack
@@ -30,9 +36,6 @@ from src.toolkit.funcutils import attribute
 type Resource = ty.AsyncContextManager[ty.Any] | ty.ContextManager[
     ty.Any
 ] | LiveService | Closable
-# type Dep[TService: Resource, TFactory: ty.Callable] = ty.Annotated[
-#     TService, "Dependency[TService]"
-# ]
 
 
 def solve_dependency(service: type):
@@ -173,17 +176,35 @@ class Dependency[TDep: ty.Any]:
 
 
 class RegistryBase[Registee: ty.Any]:
+    """
+    This turns out sadly an anti-pattern, which mentioned in the article below
+    https://www.codeproject.com/Articles/5337102/Service-Locator-Pattern-in-Csharp
+    Disadvantages of this pattern are:
+
+    - Implementing the service locator as a singleton can create scalability problems in highly concurrent environments.
+    - Testability problems might arise since all tests need to use the same global ServiceLocator (singleton).
+    - During unit testing, you need to mock both the ServiceLocator and the services it locates.
+
+    from martin fowler:
+    https://martinfowler.com/articles/injection.html#UsingAServiceLocator
+
+    The key difference is that with a Service Locator every user of a service has a dependency to the locator.
+    The locator can hide dependencies to other implementations, but you do need to see the locator.
+    So the decision between locator and injector depends on whether that dependency is a problem.
+    """
+
+    _registry: dict[type[Registee], Registee]
     _dependencies: dict[type[Registee], Dependency[Registee]]
     _singleton: ty.ClassVar["ty.Self | None"]
 
     def __init_subclass__(cls) -> None:
-        cls._dependencies: dict[type[Registee], Dependency[Registee]] = dict()
+        cls._dependencies = dict()
         for _, dep in cls.__dict__.items():
             if not isinstance(dep, Dependency):
                 continue
             cls._dependencies[dep.dependency] = dep  # type: ignore
 
-        cls._singleton = None
+        cls._singleton = None  # init attribute '__singleton' for subclass
 
     def __new__(cls, settings: Settings) -> ty.Self:
         if cls._singleton is None:
@@ -246,16 +267,14 @@ class ResourceRegistry[Registee: Resource](RegistryBase[Registee]):
         return self._resource_manager
 
     @attribute
-    def dependencies(self):
+    def dependencies(self) -> dict[type[Registee], Dependency[Registee]]:
         return self._dependencies
 
     def register(self, service: Registee) -> None:
         self._resource_manager.register(service)
 
 
-class ServiceRegistryBase[TService: object](RegistryBase[TService]):
-    ...
+class ServiceLocator[TService: object](RegistryBase[TService]): ...
 
 
-class InfraRegistryBase(ResourceRegistry[ty.Any]):
-    ...
+class InfraLocatorBase(ResourceRegistry[ty.Any]): ...

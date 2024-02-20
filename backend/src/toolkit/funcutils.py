@@ -7,13 +7,11 @@ AnyCallable = ty.Callable[..., ty.Any]
 
 
 @ty.overload
-def simplecache(max_size: int, strict: bool) -> AnyCallable:
-    ...
+def simplecache(max_size: int, strict: bool) -> AnyCallable: ...
 
 
 @ty.overload
-def simplecache[**P, R](max_size: ty.Callable[P, R]) -> ty.Callable[P, R]:
-    ...
+def simplecache[**P, R](max_size: ty.Callable[P, R]) -> ty.Callable[P, R]: ...
 
 
 def simplecache(max_size: int | AnyCallable = 1, strict: bool = False):
@@ -96,10 +94,24 @@ class attribute[TOwner: ty.Any, TField: ty.Any]:
     like property, but works for both class and instance.
     """
 
+    @ty.overload
     def __init__(
         self,
-        fget: ty.Callable[[TOwner | type[TOwner]], TField] | None = None,
-        fset: ty.Callable[[TOwner | type[TOwner], TField], None] | None = None,
+        fget: ty.Callable[[TOwner], TField] | None = None,
+        fset: ty.Callable[[TOwner, TField], None] | None = None,
+    ) -> None: ...
+
+    @ty.overload
+    def __init__(
+        self,
+        fget: ty.Callable[[type[TOwner]], TField] | None = None,
+        fset: ty.Callable[[type[TOwner], TField], None] | None = None,
+    ) -> None: ...
+
+    def __init__(
+        self,
+        fget: ty.Callable | None = None,
+        fset: ty.Callable | None = None,
     ):
         self.fget = fget
         self.fset = fset
@@ -114,7 +126,7 @@ class attribute[TOwner: ty.Any, TField: ty.Any]:
         if name != self._attrname:
             raise TypeError("cannot assign the same attribute name twice")
 
-    def __get__(self, owner_object: TOwner | None, owner_type: type[TOwner]) -> TField:
+    def __get__(self, owner_object, owner_type: type[TOwner]) -> TField:
         if not self.fget:
             raise AttributeError("unreadable attribute")
 

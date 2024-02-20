@@ -6,7 +6,7 @@ from src.app.auth.service import AuthService
 from src.app.gpt.service import GPTService, GPTSystem, QueueBox
 from src.domain.config import Settings, settingfactory
 from src.infra import factory as infra_factory
-from src.infra.service_registry import Dependency, ServiceRegistryBase
+from src.infra.service_registry import Dependency, ServiceLocator
 
 
 @settingfactory
@@ -79,6 +79,7 @@ def gpt_service_factory(settings: Settings):
         boxfactory=QueueBox,
         cache=infra_factory.cache_factory(),
     )
+
     # TODO: use lambda instead, session_repo = lambda: SessionRepository(aiodb)
     session_repo = infra_factory.session_repo_factory()
     user_repo = infra_factory.user_repo_factory()
@@ -94,6 +95,6 @@ def gpt_service_factory(settings: Settings):
     return service
 
 
-class ApplicationServices(ServiceRegistryBase[ty.Any]):
+class ApplicationServices(ServiceLocator[ty.Any]):
     auth_service = Dependency(AuthService, auth_service_factory)
-    gpt_service = Dependency(GPTService, get_gpt_service)
+    gpt_service = Dependency(GPTService, gpt_service_factory)
