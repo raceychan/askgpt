@@ -1,6 +1,6 @@
 from src.adapters.tokenbucket import TokenBucketFactory
 
-# we probably need throttler manager class
+# we probably need a throttler manager class
 
 
 # TODO: make this easier to access

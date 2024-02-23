@@ -107,7 +107,7 @@ def make_request_client(settings: Settings):
     )
 
 
-class AdapterRegistry(InfraLocatorBase):
+class AdapterLocator(InfraLocatorBase):
     aiodb = Dependency(database.AsyncDatabase, make_database)
     redis_cache = Dependency(cache.RedisCache[str], make_cache)
     consumer = Dependency(queue.BaseConsumer[ty.Any], make_consumer)

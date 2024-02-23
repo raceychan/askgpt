@@ -2,24 +2,24 @@ from contextlib import asynccontextmanager
 from functools import partial
 
 from fastapi import APIRouter, FastAPI
-from src.adapters.factory import AdapterRegistry
+from src.adapters.factory import AdapterLocator
 from src.app.api.endpoints import api_router
 from src.app.api.error_handlers import HandlerRegistry
 from src.app.api.middleware import LoggingMiddleware, TraceMiddleware
 from src.app.bootstrap import bootstrap
-from src.app.factory import ApplicationServices
+from src.app.factory import AppServiceLocator
+from src.domain import config
 from src.domain._log import logger
-from src.domain.config import Settings, get_setting
 from src.infra.factory import make_eventrecord
 
 
 @asynccontextmanager
-async def lifespan(app: FastAPI | None = None, *, settings: Settings):
+async def lifespan(app: FastAPI | None = None, *, settings: config.Settings):
     await bootstrap(settings)
     event_record = make_eventrecord(settings)
 
-    adapters = AdapterRegistry(settings)
-    app_services = ApplicationServices(settings)
+    adapters = AdapterLocator(settings)
+    app_services = AppServiceLocator(settings)
     adapters.register(event_record)  # type: ignore
 
     await app_services.gpt_service.start()
@@ -45,7 +45,9 @@ def add_middlewares(app: FastAPI) -> None:
 
 
 def app_factory(
-    lifespan=lifespan, *, settings: Settings = get_setting("settings.toml")
+    lifespan=lifespan,
+    *,
+    settings: config.Settings = config.get_setting("settings.toml"),
 ) -> FastAPI:
     app = FastAPI(
         title=settings.PROJECT_NAME,
@@ -72,7 +74,7 @@ def app_factory(
     return app
 
 
-def server(settings: Settings) -> None:
+def server(settings: config.Settings) -> None:
     import uvicorn
 
     modulename = settings.get_modulename(__file__)
@@ -88,4 +90,5 @@ def server(settings: Settings) -> None:
 
 
 if __name__ == "__main__":
-    server(get_setting("settings.toml"))
+    config.set_params()
+    server(config.get_setting("settings.toml"))

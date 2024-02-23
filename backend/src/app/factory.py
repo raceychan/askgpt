@@ -95,6 +95,6 @@ def gpt_service_factory(settings: Settings):
     return service
 
 
-class ApplicationServices(ServiceLocator[ty.Any]):
+class AppServiceLocator(ServiceLocator[ty.Any]):
     auth_service = Dependency(AuthService, auth_service_factory)
     gpt_service = Dependency(GPTService, gpt_service_factory)

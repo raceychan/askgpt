@@ -22,7 +22,7 @@ reff:
 Service locator pattern
 https://stackify.com/service-locator-pattern/
 
-it seems like i am implementiong the service locator pattern before knowing it exists.
+it seems like i am implementing the service locator pattern before knowing it exists.
 """
 
 import types
@@ -242,6 +242,7 @@ class RegistryBase[Registee: ty.Any]:
 
 
 class ResourceRegistry[Registee: Resource](RegistryBase[Registee]):
+    "Provide extra lifetime management based upon registrybase"
     _registry: dict[type[Registee], Registee]
     _dependencies: dict[type[Registee], Dependency[Registee]]
     _singleton: ty.ClassVar["ty.Self | None"]

@@ -47,21 +47,21 @@ def make_token_registry(settings: Settings):
 
 # ===== Experimental =====
 def user_repo_factory():
-    aiodb = adapter_factory.AdapterRegistry.aiodb
+    aiodb = adapter_factory.AdapterLocator.aiodb
     user_repo = UserRepository(aiodb)
     return user_repo
 
 
 def session_repo_factory():
-    aiodb = adapter_factory.AdapterRegistry.aiodb
+    aiodb = adapter_factory.AdapterLocator.aiodb
     session_repo = SessionRepository(aiodb)
     return session_repo
 
 
 def token_registry_factory():
     token_registry = TokenRegistry(
-        token_cache=adapter_factory.AdapterRegistry.redis_cache,
-        keyspace=adapter_factory.AdapterRegistry.redis_cache.keyspace.generate_for_cls(
+        token_cache=adapter_factory.AdapterLocator.redis_cache,
+        keyspace=adapter_factory.AdapterLocator.redis_cache.keyspace.generate_for_cls(
             TokenRegistry
         ),
     )
@@ -70,15 +70,15 @@ def token_registry_factory():
 
 def encrypt_facotry():
     encrypt = security.Encrypt(
-        secret_key=adapter_factory.AdapterRegistry.settings.security.SECRET_KEY,
-        algorithm=adapter_factory.AdapterRegistry.settings.security.ALGORITHM,
+        secret_key=adapter_factory.AdapterLocator.settings.security.SECRET_KEY,
+        algorithm=adapter_factory.AdapterLocator.settings.security.ALGORITHM,
     )
     return encrypt
 
 
 def producer_factory():
-    return adapter_factory.AdapterRegistry.producer
+    return adapter_factory.AdapterLocator.producer
 
 
 def cache_factory():
-    return adapter_factory.AdapterRegistry.redis_cache
+    return adapter_factory.AdapterLocator.redis_cache

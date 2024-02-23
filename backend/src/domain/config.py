@@ -17,19 +17,31 @@ WEEK = 7 * DAY
 TIME_EPSILON_S = 0.001  # 1ms
 
 
+def set_params():
+    import gc
+    import sys
+
+    # set max times of recursion to 10000
+    sys.setrecursionlimit(10000)
+
+    # drop gil every 1 second, remove after python 3.14
+    sys.setswitchinterval(1)
+
+    # 0gen gc revoked once live objects reach 3000(allocated - deallocated)
+    gc.set_threshold(3000, 100, 100)
+
+
 class UnknownAddress(ty.NamedTuple):
     ip: str = "unknown_ip"
     port: str = "unknown_port"
 
 
 class SettingsFactory[T](ty.Protocol):
-    def __call__(self, settings: "Settings") -> T:
-        ...
+    def __call__(self, settings: "Settings") -> T: ...
 
 
 class PureFacotry[T](ty.Protocol):
-    def __call__(self) -> T:
-        ...
+    def __call__(self) -> T: ...
 
 
 def settingfactory[T: ty.Any](factory: SettingsFactory[T]) -> SettingsFactory[T]:
