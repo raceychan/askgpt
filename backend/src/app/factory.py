@@ -6,7 +6,7 @@ from src.app.auth.service import AuthService
 from src.app.gpt.service import GPTService, GPTSystem, QueueBox
 from src.domain.config import Settings, settingfactory
 from src.infra import factory as infra_factory
-from src.infra.service_registry import Dependency, ServiceLocator
+from backend.src.infra.service_locator import Dependency, ServiceLocator
 
 
 @settingfactory

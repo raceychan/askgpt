@@ -24,10 +24,10 @@ def set_params():
     # set max times of recursion to 10000
     sys.setrecursionlimit(10000)
 
-    # drop gil every 1 second, remove after python 3.14
+    # drop gil every 1 second, remove this after python 3.14
     sys.setswitchinterval(1)
 
-    # 0gen gc revoked once live objects reach 3000(allocated - deallocated)
+    # zero_gen gc gets revoked when live objects reach 3000(allocated - deallocated)
     gc.set_threshold(3000, 100, 100)
 
 

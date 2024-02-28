@@ -1,30 +1,3 @@
-"""
-1. API design:
-class ServiceRegistry(ServiceRegistryBase):
-    gpt_service: Dependency[GPTService, get_gpt_service]
-    or 
-    gpt_service = dependency(GPTService, get_gpt_service)
-
-async with ServiceRegistry(settings) as registry:
-    yield registry
-
-gpt_service = registry.gpt_service()
-registry.gpt_service.override_factory(get_gpt_service)
-2. nested dependency detech
-create a dependency graph using stacks
-[ServiceRegistry, GPTService, GPTSystem, QueueBox, Cache]
-each of them can be a dependency themself, thus we need to extract the dependency from the class
-[
- ServiceRegistry deps: [dep1, dep2, dep3]   
-]
-
-reff:
-Service locator pattern
-https://stackify.com/service-locator-pattern/
-
-it seems like i am implementing the service locator pattern before knowing it exists.
-"""
-
 import types
 import typing as ty
 from contextlib import AsyncExitStack
@@ -177,9 +150,10 @@ class Dependency[TDep: ty.Any]:
 
 class RegistryBase[Registee: ty.Any]:
     """
-    This turns out sadly an anti-pattern, which mentioned in the article below
+    some might argue that service locator pattern is an anti-pattern,
+    but we improve it and remove many drawbacks the original version has
     https://www.codeproject.com/Articles/5337102/Service-Locator-Pattern-in-Csharp
-    Disadvantages of this pattern are:
+    Disadvantages of this pattern(after our improvements) are:
 
     - Implementing the service locator as a singleton can create scalability problems in highly concurrent environments.
     - Testability problems might arise since all tests need to use the same global ServiceLocator (singleton).
@@ -278,4 +252,4 @@ class ResourceRegistry[Registee: Resource](RegistryBase[Registee]):
 class ServiceLocator[TService: object](RegistryBase[TService]): ...
 
 
-class InfraLocatorBase(ResourceRegistry[ty.Any]): ...
+class InfraLocator(ResourceRegistry[ty.Any]): ...
