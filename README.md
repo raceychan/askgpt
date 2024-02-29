@@ -22,6 +22,14 @@ AskGPT is a production-ready Dstirbuted, multi-Tenant ML-OPS platform that enabl
 - openai
 - all models supported by llama.cpp
 
+| Supported Cloud Provider  |
+| ------------------------- | 
+| OpenAI                    |
+
+| Supported Local LLMs |
+| --------------------- |
+| Llama2 |
+
 ## Local Model Serving
 
 Local model serving is supported using llama.cpp, download your model in

@@ -17,7 +17,7 @@ WEEK = 7 * DAY
 TIME_EPSILON_S = 0.001  # 1ms
 
 
-def set_params():
+def sys_finetune():
     import gc
     import sys
 

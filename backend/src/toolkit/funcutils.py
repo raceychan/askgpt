@@ -1,7 +1,5 @@
 import typing as ty
-from functools import lru_cache
-from functools import partial as partial
-from functools import update_wrapper
+from functools import lru_cache, partial, update_wrapper
 
 AnyCallable = ty.Callable[..., ty.Any]
 
@@ -15,6 +13,11 @@ def simplecache[**P, R](max_size: ty.Callable[P, R]) -> ty.Callable[P, R]: ...
 
 
 def simplecache(max_size: int | AnyCallable = 1, strict: bool = False):
+    """
+    a simple cache that puts cached object in a dict,
+    if strict set to true, it would raise error when the dict is full
+    otherwise it would replace the first cached item and insert the new one.
+    """
     _max_size = 1 if callable(max_size) else max_size
 
     def _simplecache[**P, R](user_func: ty.Callable[P, R]) -> ty.Callable[P, R]:
@@ -28,7 +31,7 @@ def simplecache(max_size: int | AnyCallable = 1, strict: bool = False):
             if len(cache) >= _max_size:
                 if strict:
                     raise RuntimeError("Cache is full")
-                cache.popitem()
+                (k_ := next(iter(cache)), cache.pop(k_))  # type: ignore
             res = user_func(*args, **kwargs)
             cache[key_val] = res
             return res
@@ -142,3 +145,6 @@ class attribute[TOwner: ty.Any, TField: ty.Any]:
         self, fset: ty.Callable[[TOwner | type[TOwner], TField], None]
     ) -> ty.Self:
         return type(self)(self.fget, fset)
+
+
+# TODO: cached_attribute

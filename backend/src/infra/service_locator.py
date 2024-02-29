@@ -36,7 +36,7 @@ class InvalidResourceError(Exception):
 
 
 class RegistryUninitializedError(Exception):
-    def __init__(self, registry_cls: type["RegistryBase[ty.Any]"]):
+    def __init__(self, registry_cls: type["DependencyRegistry[ty.Any]"]):
         msg = f"ServiceRegistry {registry_cls.__name__} is not initialized"
         super().__init__(msg)
 
@@ -111,7 +111,7 @@ class Dependency[TDep: ty.Any]:
     def factory(self):
         return self._factory
 
-    def __set_name__(self, registry_cls: type["RegistryBase[ty.Any]"], name: str):
+    def __set_name__(self, registry_cls: type["DependencyRegistry[ty.Any]"], name: str):
         if self._name == "":
             self._name = name
             return
@@ -125,7 +125,7 @@ class Dependency[TDep: ty.Any]:
         return f"<Dependency {self._dependency.__name__} reuse={self._reuse}>"
 
     def __get__[
-        T: "RegistryBase[ty.Any]"
+        T: "DependencyRegistry[ty.Any]"
     ](self, registry: T | None, registry_cls: type[T]) -> TDep:
         if self._reuse is True and registry_cls.registry.get(self._dependency, None):
             return registry_cls.registry[self._dependency]
@@ -148,7 +148,7 @@ class Dependency[TDep: ty.Any]:
         self._factory = factory
 
 
-class RegistryBase[Registee: ty.Any]:
+class DependencyRegistry[Registee: ty.Any]:
     """
     some might argue that service locator pattern is an anti-pattern,
     but we improve it and remove many drawbacks the original version has
@@ -215,7 +215,7 @@ class RegistryBase[Registee: ty.Any]:
         self._dependencies[registee].override_factory(factory)
 
 
-class ResourceRegistry[Registee: Resource](RegistryBase[Registee]):
+class ResourceRegistry[Registee: Resource](DependencyRegistry[Registee]):
     "Provide extra lifetime management based upon registrybase"
     _registry: dict[type[Registee], Registee]
     _dependencies: dict[type[Registee], Dependency[Registee]]
@@ -249,7 +249,7 @@ class ResourceRegistry[Registee: Resource](RegistryBase[Registee]):
         self._resource_manager.register(service)
 
 
-class ServiceLocator[TService: object](RegistryBase[TService]): ...
+class ServiceLocator[TService: object](DependencyRegistry[TService]): ...
 
 
 class InfraLocator(ResourceRegistry[ty.Any]): ...

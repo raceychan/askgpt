@@ -10,3 +10,6 @@ generate:
 
 #../proto/*.proto
 
+server:
+	ray start --head && python src/server.py
+

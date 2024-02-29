@@ -1,12 +1,12 @@
 import typing as ty
+from functools import partial
 
 from src.adapters import cache, database, gptclient, queue, tokenbucket
 from src.domain.config import Settings, settingfactory
 from src.domain.interface import IEvent
 from src.infra import eventstore
+from src.infra.service_locator import Dependency, InfraLocator
 from src.toolkit import sa_utils
-
-from backend.src.infra.service_locator import Dependency, InfraLocator
 
 
 @settingfactory
@@ -85,20 +85,6 @@ def make_sqldbg(settings: Settings):
     return sa_utils.SQLDebugger(make_engine(settings))
 
 
-def make_tokenbucket_factory(settings: Settings, keyspace: cache.KeySpace):
-    redis = make_cache(settings)
-    script = settings.redis.TOKEN_BUCKET_SCRIPT
-    script_func = redis.load_script(script)
-    return tokenbucket.TokenBucketFactory(
-        redis=redis,
-        script=script_func,
-        keyspace=keyspace,
-    )
-
-
-from functools import partial
-
-
 def make_request_client(settings: Settings):
     configs = settings.openai_client
     return partial(
@@ -108,8 +94,18 @@ def make_request_client(settings: Settings):
     )
 
 
-class AdapterLocator(InfraLocator):
+class adapter_locator(InfraLocator):
     aiodb = Dependency(database.AsyncDatabase, make_database)
     redis_cache = Dependency(cache.RedisCache[str], make_cache)
     consumer = Dependency(queue.BaseConsumer[ty.Any], make_consumer)
     producer = Dependency(queue.BaseProducer[ty.Any], make_producer)
+
+    @classmethod
+    def build_token_bucket(cls, keyspace: cache.KeySpace):
+        script = cls.settings.redis.TOKEN_BUCKET_SCRIPT
+        script_func = cls.redis_cache.load_script(script)
+        return tokenbucket.TokenBucketFactory(
+            redis=cls.redis_cache,
+            script=script_func,
+            keyspace=keyspace,
+        )

@@ -2,24 +2,24 @@ from contextlib import asynccontextmanager
 from functools import partial
 
 from fastapi import APIRouter, FastAPI
-from src.adapters.factory import AdapterLocator
+from src.adapters.factory import adapter_locator
 from src.app.api.endpoints import api_router
 from src.app.api.error_handlers import HandlerRegistry
 from src.app.api.middleware import LoggingMiddleware, TraceMiddleware
 from src.app.bootstrap import bootstrap
-from src.app.factory import AppServiceLocator
+from src.app.factory import app_service_locator
 from src.domain import config
 from src.domain._log import logger
-from src.infra.factory import make_eventrecord
+from src.infra.factory import event_record_factory
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI | None = None, *, settings: config.Settings):
     await bootstrap(settings)
-    event_record = make_eventrecord(settings)
+    adapters = adapter_locator(settings)
+    app_services = app_service_locator(settings)
 
-    adapters = AdapterLocator(settings)
-    app_services = AppServiceLocator(settings)
+    event_record = event_record_factory()
     adapters.register(event_record)  # type: ignore
 
     await app_services.gpt_service.start()
@@ -90,5 +90,5 @@ def server(settings: config.Settings) -> None:
 
 
 if __name__ == "__main__":
-    config.set_params()
+    config.sys_finetune()
     server(config.get_setting("settings.toml"))

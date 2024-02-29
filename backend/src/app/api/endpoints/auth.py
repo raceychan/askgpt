@@ -8,7 +8,7 @@ from src.app.api.model import RequestBody
 from src.app.api.response import RedirectResponse
 from src.app.auth.errors import InvalidCredentialError, UserNotFoundError
 from src.app.auth.model import UserAuth
-from src.app.factory import AppServiceLocator
+from src.app.factory import app_service_locator
 from src.domain.base import EMPTY_STR, SupportedGPTs
 
 auth_router = APIRouter(prefix="/auth")
@@ -39,7 +39,7 @@ class UserAddAPIRequest(RequestBody):
 
 @auth_router.post("/login")
 async def login(login_form: OAuth2PasswordRequestForm = Depends()) -> TokenResponse:
-    token = await AppServiceLocator.auth_service.login(
+    token = await app_service_locator.auth_service.login(
         email=login_form.username, password=login_form.password
     )
     return TokenResponse(access_token=token, token_type="bearer")
@@ -48,7 +48,7 @@ async def login(login_form: OAuth2PasswordRequestForm = Depends()) -> TokenRespo
 @auth_router.post("/signup")
 async def signup_user(req: CreateUserRequest) -> RedirectResponse:
     "Request will be redirected to user route for user info"
-    await AppServiceLocator.auth_service.signup_user(
+    await app_service_locator.auth_service.signup_user(
         req.user_name, req.email, req.password
     )
     return RedirectResponse(f"/v1/users?email={req.email}", status_code=303)
@@ -61,13 +61,13 @@ async def user_detail(
     "Private user info"
     if not user_id == token.sub:
         raise InvalidCredentialError("user does not match with credentials")
-    user = await AppServiceLocator.auth_service.get_user(user_id)
+    user = await app_service_locator.auth_service.get_user(user_id)
     return user
 
 
 @user_router.delete("/{user_id}")
 async def delete_user(user_id: str, token: AccessToken = Depends(parse_access_token)):
-    await AppServiceLocator.auth_service.deactivate_user(token.sub)
+    await app_service_locator.auth_service.deactivate_user(token.sub)
 
 
 @user_router.post("/apikeys")
@@ -75,14 +75,14 @@ async def add_api_key(
     req: UserAddAPIRequest,
     token: AccessToken = Depends(parse_access_token),
 ):
-    await AppServiceLocator.auth_service.add_api_key(
+    await app_service_locator.auth_service.add_api_key(
         user_id=token.sub, api_key=req.api_key, api_type=req.api_type
     )
 
 
 @user_router.get("/")
 async def find_user_by_email(email: str) -> PublicUserInfo | None:
-    user = await AppServiceLocator.auth_service.find_user(email)
+    user = await app_service_locator.auth_service.find_user(email)
     if not user:
         raise UserNotFoundError(user_email=email)
 

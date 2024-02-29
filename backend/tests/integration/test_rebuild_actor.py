@@ -56,7 +56,7 @@ async def session_actor(user_actor: service.UserActor):
 
 
 def test_user_add_key(settings: config.Settings, user_actor: service.UserActor):
-    api_key = factory.make_encrypt(settings).encrypt_string("random").decode()
+    api_key = factory.encrypt_facotry().encrypt_string("random").decode()
     cmd = model.UserAPIKeyAdded(
         user_id=user_actor.entity_id,
         api_key=api_key,
