@@ -19,22 +19,23 @@ AskGPT is a production-ready Dstirbuted, multi-Tenant ML-OPS platform that enabl
 
 ## supported-platform
 
-- openai
-- all models supported by llama.cpp
+All major cloud providers are supported, including AWS, GCP, and Azure. AskGPT is also compatible with local LLMs, such as Llama2.
+but currently these are the ones we have tested, and ones you can call directly from the webapi.
 
 | Supported Cloud Provider  |
-| ------------------------- | 
+| ------------------------- |
 | OpenAI                    |
 
 | Supported Local LLMs |
-| --------------------- |
-| Llama2 |
+| ---------------------|
+| Llama2               |
 
 ## Local Model Serving
 
-Local model serving is supported using llama.cpp, download your model in
-`actors/src/models`
-and define corresponding api in the `backend/src/app/api` directory.
+Local model serving is supported using llama.cpp, due to the size restriction
+you will need to download your model on your own and place them
+in the `actors/src/models` fodler
+corresponding apis will be defined in the `backend/src/app/api` directory, and call llm using ray.
 
 ## Note
 
