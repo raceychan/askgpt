@@ -1,17 +1,20 @@
 import typing as ty
+from pathlib import Path
 
 from llama_cpp import Llama
+from rich import print
 
-MODEL_NAME = "llama-2-7b.Q4_K_M"
-MODEL_PATH = f"./models/{MODEL_NAME}.gguf"
+from src.config import Config
 
 
-def load_model(model_path: str) -> Llama:
-    llm = Llama(model_path=model_path)
+def load_model(model_path: Path) -> Llama:
+    llm = Llama(model_path=str(model_path))
     return llm
 
 
-def complete(llm: Llama, prompt: str, max_tokens: int, stream: bool = False):
+def complete(
+    llm: Llama, prompt: str, *, max_tokens: int, stream: bool = False
+) -> ty.Iterator[str]:
     output = llm(
         prompt, max_tokens=max_tokens, stop=["Q:", "\n"], echo=False, stream=stream
     )
@@ -20,15 +23,18 @@ def complete(llm: Llama, prompt: str, max_tokens: int, stream: bool = False):
 
     for item in output:
         for choice in item["choices"]:
-            yield choice["text"]
+            text = choice["text"]
+            yield text
 
 
-def main():
-    llm = load_model(MODEL_PATH)
+def main(config: Config):
+    if not config.MODEL_PATH.exists():
+        raise ValueError("model path not found")
+    llm = load_model(config.MODEL_PATH)
     output = complete(
         llm,
         "Q: Name the planets in the solar system?, list out their names A: ",
-        500,
+        max_tokens=500,
         stream=True,
     )
     ans = ""
@@ -38,4 +44,4 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
+    main(Config())

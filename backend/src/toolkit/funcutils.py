@@ -1,47 +1,38 @@
 import typing as ty
-from functools import lru_cache, partial, update_wrapper
+from functools import lru_cache, update_wrapper
 
 AnyCallable = ty.Callable[..., ty.Any]
+SENTINEL = object()
 
 
 @ty.overload
-def simplecache(max_size: int, strict: bool) -> AnyCallable: ...
+def simplecache(max_size: int = 1, *, size_check: bool = False) -> AnyCallable: ...
 
 
 @ty.overload
 def simplecache[**P, R](max_size: ty.Callable[P, R]) -> ty.Callable[P, R]: ...
 
 
-def simplecache(max_size: int | AnyCallable = 1, strict: bool = False):
-    """
-    a simple cache that puts cached object in a dict,
-    if strict set to true, it would raise error when the dict is full
-    otherwise it would replace the first cached item and insert the new one.
-    """
+def simplecache(max_size: int | AnyCallable = 1, *, size_check: bool = False):
     _max_size = 1 if callable(max_size) else max_size
 
     def _simplecache[**P, R](user_func: ty.Callable[P, R]) -> ty.Callable[P, R]:
-        sentinel = object()
-        cache: dict[int, ty.Any] = {}
+        cache: dict[int, R] = {}
 
         def wrapper(*args: P.args, **kwargs: P.kwargs) -> R:
             key_val = hash(tuple(args) + tuple(kwargs.values()))
-            if (cached_res := cache.get(key_val, sentinel)) is not sentinel:
+            if (cached_res := cache.get(key_val, SENTINEL)) is not SENTINEL:
                 return cached_res
             if len(cache) >= _max_size:
-                if strict:
+                if size_check:
                     raise RuntimeError("Cache is full")
-                (k_ := next(iter(cache)), cache.pop(k_))  # type: ignore
-            res = user_func(*args, **kwargs)
-            cache[key_val] = res
+                (k__ := next(iter(cache)), cache.pop(k__))  # type: ignore pop first inserted item
+            cache[key_val] = res = user_func(*args, **kwargs)
             return res
 
         return wrapper
 
-    if callable(max_size):
-        return _simplecache(max_size)
-    else:
-        return _simplecache
+    return _simplecache(max_size) if callable(max_size) else _simplecache
 
 
 class hashabledict[TKey, TVal](dict[TKey, TVal]):

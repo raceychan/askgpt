@@ -39,10 +39,8 @@ def gpt_service_factory(settings: Settings):
         cache=infra_factory.cache_factory(),
     )
 
-    """
-    or we can just define lambda in locator?
-    session_repo = lambda: SessionRepository(aiodb)
-    """
+    # session_repo = SessionRepository(adapter_locator.aiodb)
+
     session_repo = infra_factory.session_repo_factory()
     user_repo = infra_factory.user_repo_factory()
     encryptor = infra_factory.encrypt_facotry()
@@ -59,5 +57,6 @@ def gpt_service_factory(settings: Settings):
 
 class app_service_locator(ServiceLocator[ty.Any]):
     "singleton class for service locator"
+    # actually infra locator might be more needed
     auth_service = Dependency(AuthService, auth_service_factory)
     gpt_service = Dependency(GPTService, gpt_service_factory)

@@ -2,8 +2,6 @@ from datetime import datetime, timedelta
 
 from src.adapters import cache, queue
 from src.app.auth import errors, model, repository
-
-# from src.domain._log import logger
 from src.domain.config import Settings
 from src.domain.interface import IEvent
 from src.domain.model.base import utcts_factory, uuid_factory
@@ -33,6 +31,8 @@ class TokenRegistry:
 
 
 class AuthService:
+    # NOTE: we are ignoring the dual write problem here,
+    # but we should solve it in next few commits
     def __init__(
         self,
         user_repo: repository.UserRepository,
@@ -101,8 +101,8 @@ class AuthService:
             last_login=datetime.utcnow(),
         )
         user_auth = model.UserAuth.apply(user_signed_up)
-        await self._producer.publish(user_signed_up)
         await self._user_repo.add(user_auth)
+        await self._producer.publish(user_signed_up)
         return user_auth.entity_id
 
     async def deactivate_user(self, user_id: str) -> None:
@@ -111,14 +111,18 @@ class AuthService:
             raise errors.UserNotFoundError(user_email=user_id)
         e = model.UserDeactivated(user_id=user_id)
         user.apply(e)
-        await self._producer.publish(e)
         await self._user_repo.remove(user.entity_id)
+        await self._producer.publish(e)
 
     async def add_api_key(self, user_id: str, api_key: str, api_type: str) -> None:
         """
-        TODO?: we might need to decrypt api key and make sure no duplicated key exist
-        since encrypted key might be the same for same user
+        TODO: calculate the hash_value of api_key so that we can avoid duplicated api_key
+        key_hash = hash(api_key)
+        is_duplicate = await self._user_repo.check_for_key_duplicate(user_id, key_hash)
+        if is_duplicate:
+            raise DuplicatedAPIKeyError
         """
+
         user = await self._user_repo.get(user_id)
         if user is None:
             raise errors.UserNotFoundError(user_email=user_id)

@@ -2,13 +2,13 @@
 
 - [AskGPT](#askgpt)
   - [Introduction](#introduction)
-  - [supported-platform](#supported-platform)
+  - [Supported-platform](#supported-platform)
   - [Local Model Serving](#local-model-serving)
   - [Note](#note)
   - [Community](#community)
   - [Usage](#usage)
   - [Test](#test)
-  - [deployment](#deployment)
+  - [Deployment](#deployment)
     - [single-node](#single-node)
   - [External-Dependencies](#external-dependencies)
   - [Features](#features)
@@ -17,7 +17,7 @@
 
 AskGPT is a production-ready Dstirbuted, multi-Tenant ML-OPS platform that enables businesses to leverage cutting-edge language models like OpenAI's ChatGPT and various LLMs models. It's built with a robust multi-tenant architecture, powerful actor-based computational model, and a reactive, user-friendly interface.
 
-## supported-platform
+## Supported-platform
 
 All major cloud providers are supported, including AWS, GCP, and Azure. AskGPT is also compatible with local LLMs, such as Llama2.
 but currently these are the ones we have tested, and ones you can call directly from the webapi.
@@ -64,7 +64,7 @@ make server
 make test
 ```
 
-## deployment
+## Deployment
 
 ### single-node
 

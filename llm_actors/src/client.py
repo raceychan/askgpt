@@ -1,4 +1,9 @@
+"""
+For debug only, service should be called from askgpt client  
+"""
+
 import grpc
+
 from llama_pb2 import CompletionRequest
 from llama_pb2_grpc import CompletionServiceStub
 

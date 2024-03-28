@@ -1,6 +1,8 @@
 import typing as ty
 
 from fastapi import APIRouter, Depends
+from starlette import status
+
 from src.app.api.dependencies import (
     AccessToken,
     parse_access_token,
@@ -10,7 +12,6 @@ from src.app.api.model import RequestBody
 from src.app.api.response import RedirectResponse, StreamingResponse
 from src.app.factory import app_service_locator
 from src.app.gpt.params import ChatGPTRoles, CompletionModels
-from starlette import status
 
 gpt_router = APIRouter(prefix="/gpt")
 openai_router = APIRouter(prefix="/openai")
@@ -135,7 +136,7 @@ class ChatCompletionRequest(RequestBody):
     user: str | None = None
     extra_headers: ty.Mapping[str, str | ty.Literal[False]] | None = {}
     extra_query: ty.Mapping[str, object] | None = {}
-    extra_body: dict | None = {}
+    extra_body: dict[str, ty.Any] | None = {}
     timeout: float | None = 120  # TODO: preconfig ai client
 
     model_config = {

@@ -24,8 +24,7 @@ class SystemStarted(Event):
     settings: Settings
 
 
-class SystemStoped(Event):
-    ...
+class SystemStoped(Event): ...
 
 
 class SystemState(enum.Enum):

@@ -25,7 +25,7 @@ shell:
 
 .PHONY: server
 server:
-	python -m src.server
+	pixi run python -m src.server
 
 .PHONY: build
 build:

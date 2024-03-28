@@ -13,7 +13,9 @@ ENV PATH="$PIXI_HOME/bin:${PATH}"
 WORKDIR /app
 
 # Copy the pixi files
-COPY pixi.lock pixi.toml ./
+# COPY pixi.lock pixi.toml ./
+COPY pixi.toml ./
+
 
 
 # # Install dependencies using Pixi
