@@ -4,7 +4,7 @@ import pytest
 from src.adapters.cache import RedisBool, RedisCache, ScriptFunc
 from src.adapters.tokenbucket import TokenBucket
 from src.domain.config import Settings
-from src.toolkit.fileutil import FileUtil
+from src.helpers.fileutil import FileUtil
 
 
 @pytest.fixture(scope="module")

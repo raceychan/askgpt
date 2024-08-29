@@ -35,6 +35,14 @@ build:
 run:
 	docker run -p 8000:8000 askgpt
 
+.PHONY: stop
+stop:
+	docker stop askgpt
+
+.PHONY: docker-clean
+docker-clean:
+	docker image prune -a -f
+
 .PHONY:
 clean:
 	rm -rf .pytest_cache .mypy_cache .coverage .coverage.* .coverage* .pytest_cache .pyt

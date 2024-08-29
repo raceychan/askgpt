@@ -7,12 +7,18 @@ from src.infra import schema
 
 
 async def bootstrap(settings: Settings):
-    if settings.is_prod_env:
-        update_sink(partial(prod_sink, settings=settings))
-        return
+    try:
+        if settings.is_prod_env:
+            update_sink(partial(prod_sink, settings=settings))
+            return
 
-    aioengine = make_database(settings)
-    await schema.create_tables(aioengine)
-    logger.info(f"db: {settings.db.HOST}")
-    logger.info(f"redis: {settings.redis.HOST}")
-    logger.success("database is ready")
+        aioengine = make_database(settings)
+        await schema.create_tables(aioengine)
+    except Exception as e:
+        logger.error("Failed to bootstrap application")
+        raise e
+    else:
+        logger.info(f"db: {settings.db.HOST}")
+        logger.info(f"redis: {settings.redis.HOST}")
+        logger.success("database is ready")
+

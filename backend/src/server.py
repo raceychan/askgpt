@@ -4,6 +4,7 @@ from functools import partial
 from fastapi import APIRouter, FastAPI
 
 from src.adapters.factory import adapter_locator
+from src.app.api import route_id_factory
 from src.app.api.endpoints import api_router
 from src.app.api.error_handlers import HandlerRegistry
 from src.app.api.middleware import LoggingMiddleware, TraceMiddleware
@@ -24,6 +25,7 @@ async def lifespan(app: FastAPI | None = None, *, settings: config.Settings):
     adapters.register(event_record)  # type: ignore
 
     await app_services.gpt_service.start()
+
 
     async with adapters:
         yield
@@ -58,6 +60,7 @@ def app_factory(
         docs_url=settings.api.DOCS,
         redoc_url=settings.api.REDOC,
         lifespan=partial(lifespan, settings=settings),  # type: ignore
+        generate_unique_id_function=route_id_factory,
     )
 
     root_router = APIRouter()
@@ -93,3 +96,4 @@ def server(settings: config.Settings) -> None:
 if __name__ == "__main__":
     config.sys_finetune()
     server(config.get_setting("settings.toml"))
+

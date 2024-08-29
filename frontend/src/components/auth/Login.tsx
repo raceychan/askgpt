@@ -19,7 +19,6 @@ const Login: React.FC = () => {
     try {
       await login(email, password);
     } catch (error) {
-      console.error('Login failed:', error);
       setError('Please check your credentials and try again.');
     }
   };
@@ -29,7 +28,6 @@ const Login: React.FC = () => {
     try {
       await loginWithGoogle();
     } catch (error) {
-      console.error('Google login failed:', error);
       setError('Google login failed. Please try again.');
     }
   };

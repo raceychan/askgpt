@@ -6,7 +6,7 @@ from src.adapters.factory import adapter_locator
 from src.adapters.gptclient import ClientRegistry
 from src.domain.config import Settings
 from src.server import app_factory  # type: ignore
-from src.toolkit.fileutil import fileutil
+from src.helpers.fileutil import fileutil
 
 
 @pytest.fixture

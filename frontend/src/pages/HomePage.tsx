@@ -1,10 +1,16 @@
 import { useAuth } from "../contexts/AuthContext";
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Navigate, Link } from 'react-router-dom';
 
 
 const HomePage: React.FC = () => {
   const { user, logout } = useAuth();
+
+  if (!user) {
+    return <div> welcome to home page, visit <Link to="/login" className="text-blue-500"  >login page</Link> </div>
+    // return <Navigate to="/login" />;
+  }
 
   return (
     <div className="min-h-screen flex flex-col">

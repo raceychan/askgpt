@@ -1,12 +1,14 @@
 import React, { createContext, useState, useContext, useEffect } from 'react';
 import axios from 'axios';
+import { Config } from '@/config/config';
+import api from '@/helpers/request';
 
 
 interface AuthContextType {
   user: User | null;
   login: (email: string, password: string) => Promise<void>;
-  loginWithGoogle: () => void;
-  logout: () => void;
+  loginWithGoogle: () => Promise<void>;
+  logout: (token: string) => Promise<void>;
   isLoading: boolean;
 }
 
@@ -16,11 +18,6 @@ interface User {
   name: string;
 }
 
-
-export const Config = {
-  API_BASE_URL: 'http://localhost:5000',
-  API_AUTH_URL: 'http://localhost:5000/api/auth',
-};
 
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -44,8 +41,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const verifyToken = async (token: string) => {
     try {
-      const response = await axios.get(`${Config.API_BASE_URL}/api/auth/verify`, {
-        headers: { Authorization: `Bearer ${token}`}, timeout: 1000
+      const response = await api.get(`/verify`, {
+        headers: { Authorization: `Bearer ${token}`}
       });
       setUser(response.data.user);
     } catch (error) {
@@ -58,8 +55,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const login = async (email: string, password: string) => {
     setIsLoading(true);
+
     try {
-      const response = await axios.post(`${Config.API_BASE_URL}/api/auth/login`, { email, password }, { timeout: 1000 });
+      const data = new FormData()
+      data.append('username', email)
+      data.append('password', password)
+      const response = await api.post(`/login`, data);
       const { user, token } = response.data;
       setUser(user);
       localStorage.setItem('token', token);
@@ -76,13 +77,15 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
-  const loginWithGoogle = () => {
-    window.location.href = `${Config.API_BASE_URL}/api/auth/google`;
+  const loginWithGoogle = async (): Promise<void> => {
+    window.location.href = `${Config.API_AUTH_URL}/google`;
   };
 
-  const logout = async () => {
+  const logout = async (token: string) => {
     try {
-      await axios.post(`${Config.API_BASE_URL}/api/auth/logout`, { timeout: 1000 });
+      await api.post(`/logout`, {
+        headers: { Authorization: `Bearer ${token}`}
+      });
     } catch (error) {
       console.error('Logout failed:', error);
     } finally {
@@ -99,7 +102,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   );
 };
 
-export const useAuth = () => {
+export const useAuth = (): AuthContextType => {
   const context = useContext(AuthContext);
   if (context === undefined) {
     throw new Error('useAuth must be used within an AuthProvider');

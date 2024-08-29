@@ -39,8 +39,6 @@ def gpt_service_factory(settings: Settings):
         cache=infra_factory.cache_factory(),
     )
 
-    # session_repo = SessionRepository(adapter_locator.aiodb)
-
     session_repo = infra_factory.session_repo_factory()
     user_repo = infra_factory.user_repo_factory()
     encryptor = infra_factory.encrypt_facotry()

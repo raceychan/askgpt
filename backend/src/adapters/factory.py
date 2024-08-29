@@ -6,7 +6,7 @@ from src.domain.config import Settings, settingfactory
 from src.domain.interface import IEvent
 from src.infra import eventstore
 from src.infra.service_locator import Dependency, InfraLocator
-from src.toolkit import sa_utils
+from src.helpers import sa_utils
 
 
 @settingfactory
@@ -95,6 +95,7 @@ def make_request_client(settings: Settings):
 
 
 class adapter_locator(InfraLocator):
+    # aiodb: Dependency[database.AsyncDatabase]
     aiodb = Dependency(database.AsyncDatabase, make_database)
     redis_cache = Dependency(cache.RedisCache[str], make_cache)
     consumer = Dependency(queue.BaseConsumer[ty.Any], make_consumer)

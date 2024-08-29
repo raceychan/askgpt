@@ -1,7 +1,7 @@
 import typing as ty
 from enum import Enum
 
-from src.toolkit.nameutils import str_to_snake
+from src.helpers.nameutils import str_to_snake
 
 
 def enum_generator(

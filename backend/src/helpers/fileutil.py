@@ -2,7 +2,7 @@ import abc
 import pathlib
 import typing as ty
 
-from src.toolkit.funcutils import simplecache
+from src.helpers.funcutils import simplecache
 
 
 class EndOfChainError(Exception):

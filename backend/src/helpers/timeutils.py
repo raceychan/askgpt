@@ -8,7 +8,7 @@ from functools import wraps
 from time import perf_counter
 
 from src.domain._log import logger
-from src.toolkit.extratypes import AnyCallable
+from src.helpers.extratypes import AnyCallable
 
 
 @dataclass(frozen=True, kw_only=True, slots=True, repr=False, unsafe_hash=True)

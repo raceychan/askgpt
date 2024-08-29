@@ -1,5 +1,8 @@
 import httpx
 from src.domain.config import get_setting
+import sysconfig
+
+
 
 
 def client_factory() -> httpx.AsyncClient:

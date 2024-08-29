@@ -15,7 +15,7 @@ from pydantic import computed_field as computed_field
 from pydantic import field_serializer as field_serializer
 from pydantic import validator as validator
 from src.domain.model.interface import ICommand, IEvent, utc_datetime
-from src.toolkit.nameutils import str_to_snake
+from src.helpers.nameutils import str_to_snake
 
 frozen = dataclass(frozen=True, slots=True, kw_only=True)
 

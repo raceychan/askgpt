@@ -4,7 +4,7 @@ from sqlalchemy.ext import asyncio as sa_aio
 from sqlalchemy.sql import func
 
 from src.adapters.database import AsyncDatabase
-from src.toolkit.nameutils import str_to_snake
+from src.helpers.nameutils import str_to_snake
 
 
 # Reference: https://docs.sqlalchemy.org/en/14/orm/declarative_mixins.html

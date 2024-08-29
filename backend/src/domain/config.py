@@ -4,9 +4,9 @@ import typing as ty
 from pydantic import BaseModel, ConfigDict, computed_field, field_validator
 from src.domain.base import TimeScale
 from src.domain.interface import SQL_ISOLATIONLEVEL, EventLogRef, JournalRef, SystemRef
-from src.toolkit.fileutil import FileUtil
-from src.toolkit.funcutils import freeze, simplecache
-from src.toolkit.nameutils import KeySpace
+from src.helpers.fileutil import FileUtil
+from src.helpers.funcutils import freeze, simplecache
+from src.helpers.nameutils import KeySpace
 
 UNIT = MINUTE = 1
 HOUR = 60 * MINUTE
@@ -46,7 +46,7 @@ class PureFacotry[T](ty.Protocol):
 
 def settingfactory[T: ty.Any](factory: SettingsFactory[T]) -> SettingsFactory[T]:
     "Cached factory that returns a cached instance for each settings instance"
-    return simplecache(max_size=1, strict=True)(factory)  # type: ignore
+    return simplecache(max_size=1, size_check=True)(factory)  # type: ignore
 
 
 class SettingsBase(BaseModel):

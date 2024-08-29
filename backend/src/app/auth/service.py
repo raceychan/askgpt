@@ -80,7 +80,8 @@ class AuthService:
 
         user.login()
 
-        return self._create_access_token(user.entity_id, user.role)
+        access_token = self._create_access_token(user.entity_id, user.role)
+        return access_token
 
     async def find_user(self, email: str) -> model.UserAuth | None:
         user_or_none = await self._user_repo.search_user_by_email(email)

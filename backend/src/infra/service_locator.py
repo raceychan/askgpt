@@ -4,7 +4,7 @@ from contextlib import AsyncExitStack
 
 from src.domain.config import Settings, SettingsFactory
 from src.domain.interface import Closable, LiveService
-from src.toolkit.funcutils import attribute
+from src.helpers.funcutils import attribute
 
 type Resource = ty.AsyncContextManager[ty.Any] | ty.ContextManager[
     ty.Any
