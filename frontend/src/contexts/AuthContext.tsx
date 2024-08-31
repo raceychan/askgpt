@@ -1,80 +1,66 @@
-import React, { createContext, useState, useContext, useEffect } from 'react';
+import React, { createContext, useContext } from 'react';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
 import axios from 'axios';
 import { Config } from '@/config/config';
-import api from '@/helpers/request';
 
+// import api from '@/helpers/request';
+import { AuthService } from '@/lib/api/services.gen';
 
 interface AuthContextType {
-  user: User | null;
   login: (email: string, password: string) => Promise<void>;
   loginWithGoogle: () => Promise<void>;
   logout: (token: string) => Promise<void>;
-  isLoading: boolean;
 }
 
-interface User {
-  id: string;
-  email: string;
-  name: string;
-}
-
-
+// interface User {
+//   id: string;
+//   email: string;
+//   name: string;
+// }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [user, setUser] = useState<User | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
+  const queryClient = useQueryClient();
 
-  useEffect(() => {
-    const token = localStorage.getItem('token');
-    if (token) {
-      verifyToken(token);
-    } else {
-      const storedUser = localStorage.getItem('user');
-      if (storedUser) {
-        setUser(JSON.parse(storedUser));
-      }
-      setIsLoading(false);
-    }
-  }, []);
 
-  const verifyToken = async (token: string) => {
-    try {
-      const response = await api.get(`/verify`, {
-        headers: { Authorization: `Bearer ${token}`}
+  const loginMutation = useMutation({
+    mutationFn: ({ email, password }: { email: string; password: string }) => {
+      return AuthService.authLogin({
+        body: {
+          username: email,
+          password: password,
+        },
       });
-      setUser(response.data.user);
-    } catch (error) {
-      console.error('Token verification failed:', error);
-      localStorage.removeItem('token');
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const login = async (email: string, password: string) => {
-    setIsLoading(true);
-
-    try {
-      const data = new FormData()
-      data.append('username', email)
-      data.append('password', password)
-      const response = await api.post(`/login`, data);
-      const { user, token } = response.data;
-      setUser(user);
-      localStorage.setItem('token', token);
-      localStorage.setItem('user', JSON.stringify(user));
-    } catch (error) {
+    },
+    onSuccess: (response) => {
+      const { access_token, token_type } = response.data!;
+      localStorage.setItem('token', access_token);
+    },
+    onError: (error: unknown) => {
       console.error('Login failed:', error);
       let errorMessage = 'An error occurred during login. Please try again.';
       if (axios.isAxiosError(error) && error.response) {
         errorMessage = error.response.data.message || errorMessage;
       }
       throw error;
-    } finally {
-      setIsLoading(false);
-    }
+    },
+  });
+
+  const logoutMutation = useMutation({
+    mutationFn: (token: string) => {
+      // Update this to use the new API client when a logout endpoint is available
+      // For now, we'll keep the existing code
+      return axios.post(`${Config.API_AUTH_URL}/logout`, {}, { headers: { Authorization: `Bearer ${token}` } });
+    },
+    onSettled: () => {
+      localStorage.removeItem('token');
+      queryClient.clear();
+    },
+  });
+
+  const login = async (email: string, password: string) => {
+    await loginMutation.mutateAsync({ email, password });
   };
 
   const loginWithGoogle = async (): Promise<void> => {
@@ -82,21 +68,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   const logout = async (token: string) => {
-    try {
-      await api.post(`/logout`, {
-        headers: { Authorization: `Bearer ${token}`}
-      });
-    } catch (error) {
-      console.error('Logout failed:', error);
-    } finally {
-      setUser(null);
-      localStorage.removeItem('token');
-      localStorage.removeItem('user');
-    }
+    await logoutMutation.mutateAsync(token);
   };
 
   return (
-    <AuthContext.Provider value={{ user, login, loginWithGoogle, logout, isLoading }}>
+    <AuthContext.Provider value={{ login, loginWithGoogle, logout }}>
       {children}
     </AuthContext.Provider>
   );
