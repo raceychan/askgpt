@@ -64,22 +64,18 @@ class ErrorResponse(JSONResponse):
 
 type ExceptionHandler[E] = ty.Callable[[Request, E], ErrorResponse]
 
-
+@ty.final
 class HandlerRegistry[Exc: Exception | int]:
     """
     Add error handler to fastapi according to their signature
     """
 
-    _registry: dict[type[Exc] | int, ExceptionHandler[Exc]] = {}
+    __registry: dict[type[Exc] | int, ExceptionHandler[Exc]] = {}
 
     def __iter__(
         self,
     ) -> ty.Iterator[tuple[type[Exc] | int, ExceptionHandler[Exc]]]:
-        return iter(self._registry.items())
-
-    def inject_handlers(self, app: FastAPI) -> None:
-        for exc, handler in self:
-            app.add_exception_handler(exc, handler)  # type: ignore
+        return iter(self.__registry.items())
 
     @classmethod
     def register(cls, handler: ExceptionHandler[Exc]) -> None:
@@ -92,10 +88,10 @@ class HandlerRegistry[Exc: Exception | int]:
 
         if exc_types:
             for exctype in exc_types:
-                cls._registry[exctype] = handler
+                cls.__registry[exctype] = handler
         else:
             exc_type = ty.cast(type[Exc] | int, exc_type)
-            cls._registry[exc_type] = handler
+            cls.__registry[exc_type] = handler
 
     @classmethod
     def extra_exception_handler(
@@ -108,6 +104,9 @@ class HandlerRegistry[Exc: Exception | int]:
             raise ValueError(f"handler {handler} has no annotation for {exc.name}")
         return exc_type
 
+    def inject_handlers(self, app: FastAPI) -> None:
+        for exc, handler in self:
+            app.add_exception_handler(exc, handler)  # type: ignore
 
 @HandlerRegistry.register
 def any_error_handler(request: Request, exc: Exception) -> ErrorResponse:
@@ -180,3 +179,7 @@ def quota_exceeded_error_handler(request: Request, exc: QuotaExceededError):
         status_code=status.HTTP_429_TOO_MANY_REQUESTS,
         request_id=request_id,
     )
+
+def add_exception_handlers(app: FastAPI) -> None:
+    registry: HandlerRegistry[Exception] = HandlerRegistry()
+    registry.inject_handlers(app)

@@ -1,14 +1,14 @@
 from time import perf_counter
 from urllib.parse import quote
 
-from fastapi import Request
-from starlette.middleware.base import BaseHTTPMiddleware, RequestResponseEndpoint
-from starlette.types import ASGIApp, Receive, Scope, Send
-
+from fastapi import FastAPI, Request
 from src.app.api.xheaders import XHeaders
 from src.domain._log import logger
-from src.domain.config import TIME_EPSILON_S, UnknownAddress
+from src.domain.config import TIME_EPSILON_S, Settings, UnknownAddress
 from src.domain.model.base import request_id_factory
+from starlette.middleware.base import BaseHTTPMiddleware, RequestResponseEndpoint
+from starlette.middleware.cors import CORSMiddleware as CORSMiddleware
+from starlette.types import ASGIApp, Receive, Scope, Send
 
 
 class TraceMiddleware:
@@ -68,3 +68,19 @@ class LoggingMiddleware(BaseHTTPMiddleware):
             response.headers[XHeaders.REQUEST_ID.value] = request_id
             response.headers[XHeaders.PROCESS_TIME.value] = str(duration)
             return response
+
+
+def add_middlewares(app: FastAPI, *, settings: Settings) -> None:
+    """
+    FILO
+    """
+    app.add_middleware(LoggingMiddleware)
+    app.add_middleware(TraceMiddleware)
+    app.add_middleware(
+        CORSMiddleware, 
+        allow_origins=settings.security.CORS_ORIGINS,
+        allow_credentials=True,
+        allow_methods=["*"],
+        allow_headers=["*"],
+    )
+

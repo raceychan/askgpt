@@ -1,7 +1,6 @@
-import React from 'react';
-import { AuthProvider } from '@/contexts/AuthContext';
-import { Outlet } from 'react-router-dom';
-
+import React from "react";
+import { AuthProvider } from "@/contexts/AuthContext";
+import { Outlet } from "@tanstack/react-router";
 
 const App: React.FC = () => {
   return (
@@ -12,11 +11,7 @@ const App: React.FC = () => {
 };
 
 const AppContent: React.FC = () => {
-  return (
-    <Outlet />
-  );
+  return <Outlet />;
 };
-
-
 
 export default App;

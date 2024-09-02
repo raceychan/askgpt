@@ -1,10 +1,8 @@
-import React, { createContext, useContext } from 'react';
-import { useMutation, useQueryClient } from '@tanstack/react-query';
-import axios from 'axios';
-import { Config } from '@/config/config';
+import React, { createContext, useContext } from "react";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { Config } from "@/config/config";
 
-// import api from '@/helpers/request';
-import { AuthService } from '@/lib/api/services.gen';
+import { AuthService, AuthLoginError } from "@/lib/api";
 
 interface AuthContextType {
   login: (email: string, password: string) => Promise<void>;
@@ -20,9 +18,14 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
+  children,
+}) => {
   const queryClient = useQueryClient();
 
+  const login = async (email: string, password: string) => {
+    await loginMutation.mutateAsync({ email, password });
+  };
 
   const loginMutation = useMutation({
     mutationFn: ({ email, password }: { email: string; password: string }) => {
@@ -35,40 +38,24 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     },
     onSuccess: (response) => {
       const { access_token, token_type } = response.data!;
-      localStorage.setItem('token', access_token);
+      localStorage.setItem("token", access_token);
     },
     onError: (error: unknown) => {
-      console.error('Login failed:', error);
-      let errorMessage = 'An error occurred during login. Please try again.';
-      if (axios.isAxiosError(error) && error.response) {
-        errorMessage = error.response.data.message || errorMessage;
-      }
+      console.error("Login failed:", error);
+      let errorMessage = "An error occurred during login. Please try again.";
+      // if (axios.isAxiosError(error) && error.response) {
+      //   errorMessage = error.response.data.message || errorMessage;
+      // }
       throw error;
     },
   });
-
-  const logoutMutation = useMutation({
-    mutationFn: (token: string) => {
-      // Update this to use the new API client when a logout endpoint is available
-      // For now, we'll keep the existing code
-      return axios.post(`${Config.API_AUTH_URL}/logout`, {}, { headers: { Authorization: `Bearer ${token}` } });
-    },
-    onSettled: () => {
-      localStorage.removeItem('token');
-      queryClient.clear();
-    },
-  });
-
-  const login = async (email: string, password: string) => {
-    await loginMutation.mutateAsync({ email, password });
-  };
 
   const loginWithGoogle = async (): Promise<void> => {
     window.location.href = `${Config.API_AUTH_URL}/google`;
   };
 
-  const logout = async (token: string) => {
-    await logoutMutation.mutateAsync(token);
+  const logout = () => {
+    localStorage.removeItem("access_token");
   };
 
   return (
@@ -81,7 +68,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 export const useAuth = (): AuthContextType => {
   const context = useContext(AuthContext);
   if (context === undefined) {
-    throw new Error('useAuth must be used within an AuthProvider');
+    throw new Error("useAuth must be used within an AuthProvider");
   }
   return context;
 };

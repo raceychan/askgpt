@@ -4,7 +4,7 @@ services:
     ports:
       - 5000:5000
     environment:
-      - PYTHONUNBUFFERED=1  # send output to terminal 
+      - PYTHONUNBUFFERED=1 # send output to terminal
       - RUNTIME_ENV=prod
 
     entrypoint:
@@ -12,7 +12,7 @@ services:
       - run
       - gunicorn
 
-    command: 
+    command:
       - "src.server:app_factory"
       - "--workers"
       - "1"
@@ -24,16 +24,13 @@ services:
     restart: unless-stopped
     build:
       context: ./backend
-      dockerfile:
-        Dockerfile
+      dockerfile: Dockerfile
 
     volumes:
       - ./backend/src/settings.toml:/app/settings.toml
     labels:
       - "traefik.enable=true"
       - "traefik.http.services.askgpt.loadbalancer.server.port=5000"
-
-
 
   # frontend:
   #   ports:
@@ -47,7 +44,6 @@ services:
   #     - "traefik.enable=true"
   #     - "traefik.http.routers.frontend.rule=Host(`frontend.example.com`)"
   #     - "traefik.http.services.frontend.loadbalancer.server.port=3000"
-
 # networks:
 #   default:
 #     external:

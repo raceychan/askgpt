@@ -133,6 +133,15 @@ class Settings(SettingsBase):
         SECRET_KEY: str  # 32 bytes url safe string
         ALGORITHM: str  # jose.constants.ALGORITHMS
         ACCESS_TOKEN_EXPIRE_MINUTES: TimeScale.Minute = TimeScale.Minute(WEEK)
+        CORS_ORIGINS: list[str]
+
+        @field_validator("CORS_ORIGINS", mode="before")
+        def _(cls, v: str) -> list[str]:
+            if isinstance(v, list):
+                return v
+            return v.split(",")
+
+        
 
     security: Security
 
@@ -187,12 +196,12 @@ class Settings(SettingsBase):
             @computed_field
             @property
             def THROTTLER(cls) -> KeySpace:
-                return cls.APP("throttler")
+                return cls.APP / "throttler"
 
             @computed_field
             @property
             def API_POOL(cls) -> KeySpace:
-                return cls.APP("apikeypool")
+                return cls.APP / "apikeypool"
 
         keyspaces: KeySpaces
 
