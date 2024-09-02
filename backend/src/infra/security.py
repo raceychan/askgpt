@@ -4,7 +4,9 @@ from functools import lru_cache
 import bcrypt
 from cryptography.fernet import Fernet
 from jose import jwt
+from jose.exceptions import JWTError as JWTError 
 from src.domain.model.token import JWTBase
+from pydantic import ValidationError as ValidationError
 
 SALT = bcrypt.gensalt()
 

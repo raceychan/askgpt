@@ -16,6 +16,10 @@ class UserNotFoundError(EntityNotFoundError, AuthenticationError):
         msg = f"user {user_email} not found"
         super().__init__(msg)
 
+class UserNotRegisteredError(EntityNotFoundError, AuthenticationError):
+    def __init__(self, *, user_id: str):
+        msg = f"user {user_id} not registerd"
+        super().__init__(msg)
 
 class InvalidPasswordError(AuthenticationError):
     """

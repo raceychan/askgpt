@@ -141,3 +141,17 @@ class AuthService:
 
     async def get_user(self, user_id: str) -> model.UserAuth | None:
         return await self._user_repo.get(user_id)
+
+    async def get_current_user(self, token: str):
+        try:
+            payload = self._token_encrypt.decrypt_jwt(token)
+            data = model.AccessToken.model_validate(payload)
+        except (security.JWTError, security.ValidationError):
+            raise errors.InvalidCredentialError
+
+        user = self.get_user(data.sub)
+        if not user:
+            raise errors.UserNotRegisteredError(user_id=data.sub)
+        return user
+
+            
