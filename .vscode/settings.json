@@ -1,0 +1,24 @@
+{
+    "[python]": {
+        "editor.defaultFormatter": "ms-python.black-formatter"
+    },
+    "python.formatting.provider": "none",
+    "python.testing.pytestArgs": [
+        "tests"
+    ],
+    "python.testing.unittestEnabled": false,
+    "python.testing.pytestEnabled": true,
+    "sqltools.useNodeRuntime": true,
+    "sqltools.connections": [
+        {
+            "previewLimit": 50,
+            "server": "192.168.50.22",
+            "port": 5709,
+            "askForPassword": true,
+            "driver": "PostgreSQL",
+            "username": "askgptapp",
+            "database": "askgpt",
+            "name": "askgpt"
+        }
+    ]
+}
