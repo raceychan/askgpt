@@ -4,11 +4,16 @@ import signal
 import types
 import typing as ty
 from dataclasses import dataclass
+from datetime import datetime
 from functools import wraps
 from time import perf_counter
 
 from src.domain._log import logger
 from src.helpers.extratypes import AnyCallable
+
+
+def iso_now() -> str:
+    return datetime.now().isoformat()
 
 
 @dataclass(frozen=True, kw_only=True, slots=True, repr=False, unsafe_hash=True)
@@ -69,23 +74,20 @@ class ExecInfo:
 # TODO: rewrite overloads
 
 
-class Sentinel_:
-    ...
+class Sentinel_: ...
 
 
 SENTINEL = Sentinel_()
 
 
 @ty.overload
-def timeit[R, **P](func: ty.Callable[P, R]) -> ty.Callable[P, R]:
-    ...
+def timeit[R, **P](func: ty.Callable[P, R]) -> ty.Callable[P, R]: ...
 
 
 @ty.overload
 def timeit[
     R, **P
-](func: ty.Callable[P, ty.Awaitable[R]]) -> ty.Callable[P, ty.Awaitable[R]]:
-    ...
+](func: ty.Callable[P, ty.Awaitable[R]]) -> ty.Callable[P, ty.Awaitable[R]]: ...
 
 
 def timeit[

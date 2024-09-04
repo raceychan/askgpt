@@ -1,8 +1,9 @@
 import typing as ty
 from functools import lru_cache, update_wrapper
 
+from src.helpers.extratypes import SENTINEL, _Sentinel
+
 AnyCallable = ty.Callable[..., ty.Any]
-SENTINEL = object()
 
 
 @ty.overload
@@ -21,7 +22,7 @@ def simplecache(max_size: int | AnyCallable = 1, *, size_check: bool = False):
 
         def wrapper(*args: P.args, **kwargs: P.kwargs) -> R:
             key_val = hash(tuple(args) + tuple(kwargs.values()))
-            if (cached_res := cache.get(key_val, SENTINEL)) is not SENTINEL:
+            if not isinstance((cached_res := cache.get(key_val, SENTINEL)), _Sentinel):
                 return cached_res
             if len(cache) >= _max_size:
                 if size_check:

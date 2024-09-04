@@ -2,23 +2,36 @@ from src.app.api.errors import ClientSideError, EntityNotFoundError
 
 
 class AuthenticationError(ClientSideError):
+    """
+    Failed to authenticate user
+    """
     service: str = "auth"
 
 
+
+class UserNotRegisteredError(AuthenticationError):
+    """
+    Unable to find user with the email 
+    """
+    def __init__(self, *, user_email: str):
+        msg = f"user with email:{user_email} is not found"
+        super().__init__(msg)
 class UserNotFoundError(EntityNotFoundError, AuthenticationError):
     """
-    Unable to find user with the same email
+    Unable to find user with the same user id
     """
 
-    service: str = "auth"
-
-    def __init__(self, *, user_email: str):
-        msg = f"user {user_email} not found"
+    def __init__(self, *, user_id: str):
+        msg = f"user {user_id} is not found"
         super().__init__(msg)
 
-class UserNotRegisteredError(EntityNotFoundError, AuthenticationError):
+
+class UserInactiveError(EntityNotFoundError, AuthenticationError):
+    """
+    User is not active
+    """
     def __init__(self, *, user_id: str):
-        msg = f"user {user_id} not registerd"
+        msg = f"user {user_id} is not active"
         super().__init__(msg)
 
 class InvalidPasswordError(AuthenticationError):

@@ -70,13 +70,13 @@ class AuthService:
         user = await self._user_repo.search_user_by_email(email)
 
         if user is None:
-            raise errors.UserNotFoundError(user_email=email)
+            raise errors.UserNotFoundError(user_id=email)
 
         if not user.user_info.verify_password(password):
             raise errors.InvalidPasswordError("Invalid password")
 
         if not user.is_active:
-            raise errors.UserNotFoundError(user_email=email)
+            raise errors.UserNotFoundError(user_id=email)
 
         user.login()
 
@@ -109,7 +109,7 @@ class AuthService:
     async def deactivate_user(self, user_id: str) -> None:
         user = await self._user_repo.get(user_id)
         if user is None:
-            raise errors.UserNotFoundError(user_email=user_id)
+            raise errors.UserNotFoundError(user_id=user_id)
         e = model.UserDeactivated(user_id=user_id)
         user.apply(e)
         await self._user_repo.remove(user.entity_id)
@@ -126,7 +126,7 @@ class AuthService:
 
         user = await self._user_repo.get(user_id)
         if user is None:
-            raise errors.UserNotFoundError(user_email=user_id)
+            raise errors.UserNotFoundError(user_id=user_id)
 
         encrypted_key = self._token_encrypt.encrypt_string(api_key).decode()
 
@@ -142,16 +142,17 @@ class AuthService:
     async def get_user(self, user_id: str) -> model.UserAuth | None:
         return await self._user_repo.get(user_id)
 
-    async def get_current_user(self, token: str):
+    async def get_current_user(self, token: str)->model.UserAuth:
         try:
             payload = self._token_encrypt.decrypt_jwt(token)
             data = model.AccessToken.model_validate(payload)
         except (security.JWTError, security.ValidationError):
             raise errors.InvalidCredentialError
 
-        user = self.get_user(data.sub)
+        user_id = data.sub
+        user = await self.get_user(user_id)
         if not user:
-            raise errors.UserNotRegisteredError(user_id=data.sub)
+            raise errors.UserNotFoundError(user_id=user_id)
         return user
 
             

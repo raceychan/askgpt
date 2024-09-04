@@ -4,13 +4,13 @@ from functools import partial
 from fastapi import APIRouter, FastAPI
 from src.adapters.factory import adapter_locator, make_database
 from src.app.api import route_id_factory
-from src.app.api.endpoints import api_router
-from src.app.api.error_handlers import add_exception_handlers
 from src.app.api.middleware import add_middlewares
+from src.app.api.routers import api_router
 from src.app.factory import app_service_locator
 from src.domain import config
 from src.domain._log import logger, prod_sink, update_sink
 from src.domain.config import Settings
+from src.helpers.error_handlers import add_exception_handlers
 from src.infra import schema
 from src.infra.factory import event_record_factory
 
