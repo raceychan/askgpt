@@ -1,5 +1,5 @@
 from src.app.auth.model import UserRoles
-from src.domain.model.user import UserInfo
+from src.domain.model.user import UserCredential
 from src.infra import security
 
 
@@ -13,7 +13,7 @@ class TestDefaults:
     SESSION_NAME: str = "default_session"
     MODEL: str = "gpt-3.5-turbo"
     USER_ROLE: UserRoles = UserRoles.user
-    USER_INFO: UserInfo = UserInfo(
+    USER_INFO: UserCredential = UserCredential(
         user_email=USER_EMAIL,
         user_name=USER_NAME,
         hash_password=security.hash_password(USER_PASSWORD.encode()),

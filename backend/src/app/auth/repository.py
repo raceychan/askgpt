@@ -4,7 +4,7 @@ import sqlalchemy as sa
 
 # from sqlalchemy.ext import asyncio as sa_aio
 from src.adapters.database import AsyncDatabase
-from src.app.auth.model import IUserRepository, UserAuth, UserInfo
+from src.app.auth.model import IUserRepository, UserAuth, UserCredential
 
 USER_TABLE: ty.Final[sa.TableClause] = sa.table(
     "users",
@@ -45,14 +45,14 @@ def dump_userauth(user: UserAuth) -> dict[str, ty.Any]:
 
 
 def load_userauth(user_data: dict[str, ty.Any]) -> UserAuth:
-    user_info = UserInfo(
+    user_info = UserCredential(
         user_name=user_data["username"],
         user_email=user_data["email"],
         hash_password=user_data["password_hash"],
     )
     return UserAuth(
         user_id=user_data["id"],
-        user_info=user_info,
+        credential=user_info,
         role=user_data["role"],
         last_login=user_data["last_login"],
     )

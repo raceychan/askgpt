@@ -2,15 +2,13 @@ import abc
 import pathlib
 import typing as ty
 
-from backend.src.helpers.functions import simplecache
+from src.helpers.functions import simplecache
 
 
-class EndOfChainError(Exception):
-    ...
+class EndOfChainError(Exception): ...
 
 
-class NotDutyError(Exception):
-    ...
+class NotDutyError(Exception): ...
 
 
 class UnsupportedFileFormatError(Exception):

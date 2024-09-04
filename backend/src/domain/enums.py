@@ -1,7 +1,7 @@
 import typing as ty
 from enum import Enum
 
-from backend.src.helpers.string import str_to_snake
+from src.helpers.string import str_to_snake
 
 
 def enum_generator(

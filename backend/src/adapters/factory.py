@@ -4,9 +4,9 @@ from functools import partial
 from src.adapters import cache, database, gptclient, queue, tokenbucket
 from src.domain.config import Settings, settingfactory
 from src.domain.interface import IEvent
+from src.helpers import sql
 from src.infra import eventstore
 from src.infra.service_locator import Dependency, InfraLocator
-from backend.src.helpers import sql
 
 
 @settingfactory

@@ -1,7 +1,7 @@
 import pathlib
 
 import pytest
-from backend.src.helpers.file import FileLoader  # , value_parser
+from src.helpers.file import FileLoader  # , value_parser
 
 
 def test_load_env(fileloader: FileLoader, tmp_path: pathlib.Path):

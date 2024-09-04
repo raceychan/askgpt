@@ -9,7 +9,7 @@ from typing import Any
 
 from redis import asyncio as aioredis
 
-from backend.src.helpers.string import KeySpace
+from src.helpers.string import KeySpace
 
 type RedisBool = ty.Literal[0, 1]
 
@@ -19,8 +19,7 @@ class ScriptFunc[
     ArgsT: ty.Iterable[str | int | float | bytes | memoryview],
     ResultT,
 ](ty.Protocol):
-    def __call__(self, keys: KeysT, args: ArgsT) -> ty.Awaitable[ResultT]:
-        ...
+    def __call__(self, keys: KeysT, args: ArgsT) -> ty.Awaitable[ResultT]: ...
 
 
 class CacheList[TKey, TValue]:
@@ -51,16 +50,13 @@ class CacheList[TKey, TValue]:
 
 class Cache[TKey: ty.Hashable, TValue: ty.Any](abc.ABC):
     @abc.abstractmethod
-    async def get(self, key: TKey) -> TValue | None:
-        ...
+    async def get(self, key: TKey) -> TValue | None: ...
 
     @abc.abstractmethod
-    async def set(self, key: TKey, value: TValue) -> None:
-        ...
+    async def set(self, key: TKey, value: TValue) -> None: ...
 
     @abc.abstractmethod
-    async def remove(self, key: TKey) -> None:
-        ...
+    async def remove(self, key: TKey) -> None: ...
 
     @abc.abstractmethod
     async def rpush(self, key: TKey, *values: TValue) -> bool:
@@ -88,9 +84,9 @@ class Cache[TKey: ty.Hashable, TValue: ty.Any](abc.ABC):
     async def sadd(self, key: TKey, *values: ty.Any) -> bool:
         raise NotImplementedError
 
-    @abc.abstractproperty
-    def keyspace(self) -> KeySpace:
-        ...
+    @property
+    @abc.abstractmethod
+    def keyspace(self) -> KeySpace: ...
 
 
 class MemoryCache[TKey: str, TVal: ty.Any](Cache[TKey, TVal]):

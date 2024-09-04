@@ -53,8 +53,7 @@ def gpt_service_factory(settings: Settings):
     return service
 
 
-class app_service_locator(ServiceLocator[ty.Any]):
+class service_locator(ServiceLocator[ty.Any]):
     "singleton class for service locator"
-    # actually infra locator might be more needed
     auth_service = Dependency(AuthService, auth_service_factory)
     gpt_service = Dependency(GPTService, gpt_service_factory)

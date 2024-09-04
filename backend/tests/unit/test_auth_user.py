@@ -1,5 +1,4 @@
 import pytest
-
 from src.app.auth.model import UserAuth
 from src.domain.model.base import utcts_factory
 from src.domain.model.test_default import TestDefaults
@@ -8,7 +7,7 @@ from src.domain.model.test_default import TestDefaults
 @pytest.fixture(scope="function")
 def user_auth(test_defaults: TestDefaults) -> UserAuth:
     return UserAuth(
-        user_info=test_defaults.USER_INFO,
+        credential=test_defaults.USER_INFO,
         user_id=test_defaults.USER_ID,
         last_login=utcts_factory(),
     )

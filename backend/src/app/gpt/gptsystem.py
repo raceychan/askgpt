@@ -17,7 +17,7 @@ from src.domain.config import Settings
 from src.domain.interface import ActorRef, ICommand
 from src.domain.model.base import Command, Event, Message
 from src.infra import eventstore
-from backend.src.helpers.fmt import async_receiver
+from src.helpers.fmt import async_receiver
 
 
 class SystemStarted(Event):
@@ -151,7 +151,7 @@ class SessionActor(GPTBaseActor["SessionActor", model.ChatSession]):
         chunks = await client.complete(
             messages=self.chat_context + [message],
             model=completion_model,
-            options=options,
+            options=options, # type: ignore
         )
 
         if isinstance(chunks, gptclient.openai_chat.ChatCompletion):
@@ -290,7 +290,7 @@ class GPTSystem(System[UserActor]):
 
         journal_ref = self.settings.actor_refs.JOURNAL
         journal = Journal(eventstore=eventstore, boxfactory=boxfactory, ref=journal_ref)
-        self._journal = journal
+        self._journal = journal # type: ignore
 
     async def rebuild_user(self, user_id: str) -> "UserActor":
         events = await self.journal.list_events(user_id)

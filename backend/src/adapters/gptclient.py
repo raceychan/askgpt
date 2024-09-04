@@ -7,7 +7,7 @@ from openai.types import beta as openai_beta
 from openai.types import chat as openai_chat
 from src.app.gpt import model, params
 from src.domain.base import SupportedGPTs
-from backend.src.helpers.functions import attribute, lru_cache
+from src.helpers.functions import attribute, lru_cache
 
 MAX_RETRIES: int = 3
 
@@ -48,13 +48,13 @@ class GPTClient(abc.ABC):
         messages: list[model.ChatMessage],
         model: model.CompletionModels,
         options: params.CompletionOptions,  # type: ignore
-    ) -> ty.AsyncIterable[openai_chat.ChatCompletionChunk] | openai_chat.ChatCompletion:
-        ...
+    ) -> (
+        ty.AsyncIterable[openai_chat.ChatCompletionChunk] | openai_chat.ChatCompletion
+    ): ...
 
     @classmethod
     @abc.abstractmethod
-    def from_apikey(cls, api_key: str) -> ty.Self:
-        ...
+    def from_apikey(cls, api_key: str) -> ty.Self: ...
 
 
 @ClientRegistry.register("openai")
@@ -86,12 +86,12 @@ class OpenAIClient(GPTClient):
         options: params.CompletionOptions,  # type: ignore
     ) -> ty.AsyncIterable[openai_chat.ChatCompletionChunk] | openai_chat.ChatCompletion:
         msgs = self.message_adapter(messages)
-        resp: ty.AsyncIterable[
-            openai_chat.ChatCompletionChunk
-        ] = await self._client.chat.completions.create(
-            messages=msgs,  # type: ignore
-            model=model,
-            **options,
+        resp: ty.AsyncIterable[openai_chat.ChatCompletionChunk] = (
+            await self._client.chat.completions.create(
+                messages=msgs,  # type: ignore
+                model=model,
+                **options,
+            )
         )
 
         return resp
