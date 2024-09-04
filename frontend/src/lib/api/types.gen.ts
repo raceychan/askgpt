@@ -218,6 +218,16 @@ export type AuthSignupUserResponse = (unknown);
 
 export type AuthSignupUserError = (HTTPValidationError);
 
+export type UserFindUserByEmailData = {
+    query: {
+        email: string;
+    };
+};
+
+export type UserFindUserByEmailResponse = ((PublicUserInfo | null));
+
+export type UserFindUserByEmailError = (HTTPValidationError);
+
 export type UserUserDetailData = {
     path: {
         user_id: string;
@@ -245,16 +255,6 @@ export type UserAddApiKeyData = {
 export type UserAddApiKeyResponse = (unknown);
 
 export type UserAddApiKeyError = (HTTPValidationError);
-
-export type UserFindUserByEmailData = {
-    query: {
-        email: string;
-    };
-};
-
-export type UserFindUserByEmailResponse = ((PublicUserInfo | null));
-
-export type UserFindUserByEmailError = (HTTPValidationError);
 
 export type GptListSessionsResponse = (Array<PulibcSessionInfo>);
 

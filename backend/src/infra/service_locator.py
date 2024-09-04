@@ -4,7 +4,9 @@ from contextlib import AsyncExitStack
 
 from src.domain.config import Settings, SettingsFactory
 from src.domain.interface import Closable, LiveService
-from src.helpers.funcutils import attribute
+from backend.src.helpers.functions import attribute
+
+# TODO: move this module to helpers
 
 type Resource = ty.AsyncContextManager[ty.Any] | ty.ContextManager[
     ty.Any

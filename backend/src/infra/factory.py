@@ -32,7 +32,7 @@ def session_repo_factory():
 def token_registry_factory():
     token_registry = TokenRegistry(
         token_cache=adapter_factory.adapter_locator.redis_cache,
-        keyspace=adapter_factory.adapter_locator.redis_cache.keyspace.generate_for_cls(
+        keyspace=adapter_factory.adapter_locator.redis_cache.keyspace.add_cls(
             TokenRegistry
         ),
     )

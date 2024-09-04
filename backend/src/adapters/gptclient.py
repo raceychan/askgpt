@@ -7,7 +7,7 @@ from openai.types import beta as openai_beta
 from openai.types import chat as openai_chat
 from src.app.gpt import model, params
 from src.domain.base import SupportedGPTs
-from src.helpers.funcutils import attribute, lru_cache
+from backend.src.helpers.functions import attribute, lru_cache
 
 MAX_RETRIES: int = 3
 

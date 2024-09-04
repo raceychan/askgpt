@@ -81,7 +81,7 @@ def freezelru[
         update_wrapper(frozenfactory, factory)
         return frozenfactory
 
-    return decorated(factory) if factory else decorated
+    return decorated(factory) if factory else decorated  # type: ignore
 
 
 class attribute[TOwner: ty.Any, TField: ty.Any]:
@@ -140,3 +140,23 @@ class attribute[TOwner: ty.Any, TField: ty.Any]:
 
 
 # TODO: cached_attribute
+class cached_attribute[TOwner: ty.Any, TField: ty.Any](attribute[TOwner, TField]):
+    """
+    Cached version of attribute that stores the value after the first access.
+    """
+
+    def __get__(self, owner_object, owner_type: type[TOwner]) -> TField:
+        if not self.fget:
+            raise AttributeError("unreadable attribute")
+
+        owner = owner_object or owner_type
+        if not hasattr(owner, self._attrname):
+            value = self.fget(owner)
+            setattr(owner, self._attrname, value)
+        return getattr(owner, self._attrname)
+
+    def __set__(self, instance: TOwner, value: TField) -> None:
+        if not self.fset:
+            raise AttributeError("can't set attribute")
+        self.fset(instance, value)
+        setattr(instance, self._attrname, value)  # Cache the value

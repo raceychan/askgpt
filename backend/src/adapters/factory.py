@@ -6,12 +6,12 @@ from src.domain.config import Settings, settingfactory
 from src.domain.interface import IEvent
 from src.infra import eventstore
 from src.infra.service_locator import Dependency, InfraLocator
-from src.helpers import sa_utils
+from backend.src.helpers import sql
 
 
 @settingfactory
 def make_async_engine(settings: Settings):
-    async_engine = sa_utils.asyncengine(make_engine(settings))
+    async_engine = sql.asyncengine(make_engine(settings))
     return async_engine
 
 
@@ -25,7 +25,7 @@ def make_engine(settings: Settings):
         if settings.db.execution_options
         else None
     )
-    engine = sa_utils.engine_factory(
+    engine = sql.engine_factory(
         db_url=settings.db.DB_URL,
         echo=settings.db.ENGINE_ECHO,
         isolation_level=settings.db.ISOLATION_LEVEL,
@@ -82,7 +82,7 @@ def make_local_cache(settings: Settings):
 
 @settingfactory
 def make_sqldbg(settings: Settings):
-    return sa_utils.SQLDebugger(make_engine(settings))
+    return sql.SQLDebugger(make_engine(settings))
 
 
 def make_request_client(settings: Settings):

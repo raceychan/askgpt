@@ -1,6 +1,6 @@
 import time
 
-from src.helpers.timeutils import FuncInfo, timeit
+from backend.src.helpers.time import FuncInfo, timeit
 
 
 @timeit

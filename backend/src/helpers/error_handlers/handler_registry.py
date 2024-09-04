@@ -5,7 +5,7 @@ from dataclasses import asdict, dataclass, field
 from datetime import datetime
 
 from fastapi import FastAPI, Request
-from src.helpers.timeutils import iso_now
+from backend.src.helpers.time import iso_now
 
 
 @dataclass(frozen=True, slots=True, kw_only=True)

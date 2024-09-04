@@ -25,10 +25,9 @@ class TestSettings(Settings):
         USER: str | None = None
         PASSWORD: str | None = None
 
-    class ActorRefs(Settings.ActorRefs):
-        ...
+    class ActorRefs(Settings.ActorRefs): ...
 
-    db: DB
+    db: DB = DB(ISOLATION_LEVEL="SERIALIZABLE")
 
 
 @pytest.fixture(scope="session")

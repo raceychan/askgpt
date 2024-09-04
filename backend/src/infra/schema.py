@@ -6,7 +6,7 @@ from sqlalchemy.sql import func
 
 
 from src.adapters.database import AsyncDatabase
-from src.helpers.nameutils import str_to_snake
+from backend.src.helpers.string import str_to_snake
 
 
 # Reference: https://docs.sqlalchemy.org/en/14/orm/declarative_mixins.html

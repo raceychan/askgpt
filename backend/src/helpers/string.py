@@ -30,6 +30,8 @@ class KeySpace(ty.NamedTuple):  # use namedtuple for memory efficiency
     """Organize key to create redis key namespace
     >>> KeySpace("base")("new").key
     'base:new'
+    >>> (Keyspace("key") / "new").key
+    'key:new'
     """
 
     key: str = ""
@@ -67,8 +69,12 @@ class KeySpace(ty.NamedTuple):  # use namedtuple for memory efficiency
     def base(self):
         return KeySpace(self.key[: self.key.find(":")])
 
-    def generate_for_cls(self, cls: type, with_module: bool = True) -> "KeySpace":
-        "generate key space for class, under current keyspace"
+    def add_cls(self, cls: type, with_module: bool = True) -> "KeySpace":
+        """
+        Generate key space for class, under current keyspace
+        >>> Keyspace("test").add_cls(Test)
+        test:module:test
+        """
         if with_module:
             key = f"{cls.__module__}:{str_to_snake(cls.__name__)}"
         else:

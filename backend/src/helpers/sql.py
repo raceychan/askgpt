@@ -153,15 +153,15 @@ def sqlcli():
         print(f"sql or interactive mode required")
         sys.exit(0)
 
-    sql = get_sqldbg(get_setting())
-    with sql.lifespan() as sql:
+    sqldbg = get_sqldbg(get_setting())
+    with sqldbg.lifespan() as sqldbg:
         if ns.interactive:
-            sql.interactive()
+            sqldbg.interactive()
             sys.exit(0)
-        sql_caluse = ns.sql
+        sql_query = ns.sql
 
-        if sql.confirm(sql_caluse):
-            result = sql.execute(sql_caluse)
+        if sqldbg.confirm(sql_query):
+            result = sqldbg.execute(sql_query)
             print(result)
         sys.exit(0)
 

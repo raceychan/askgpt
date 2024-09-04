@@ -9,7 +9,7 @@ from typing import Any
 
 from redis import asyncio as aioredis
 
-from src.helpers.nameutils import KeySpace
+from backend.src.helpers.string import KeySpace
 
 type RedisBool = ty.Literal[0, 1]
 

@@ -1,0 +1,49 @@
+RUNTIME_ENV = "dev"
+
+[actor_refs]
+EVENTLOG = "eventlog"
+JOURNAL = "journal"
+SYSTEM = "system"
+
+[security]
+ALGORITHM = "HS256"
+CORS_ORIGINS = [""]
+SECRET_KEY = ''
+
+[event_record]
+EVENT_FETCH_INTERVAL = 0.1
+
+[openai_client]
+TIMEOUT = 10
+
+[api]
+API_VERSION = ""
+HOST = ""
+PORT = 0
+
+[redis]
+DB = 0
+HOST = ""
+PORT = 7379
+SOCKET_TIMEOUT = 5
+
+[redis.keyspaces]
+APP = "askgpt"
+
+[throttling]
+USER_MAX_REQUEST_DURATION_MINUTE = 1
+USER_MAX_REQUEST_PER_MINUTE = 500
+
+[db]
+DATABASE = "askgpt" # dev.db
+DIALECT = "postgresql" # sqlite
+DRIVER = "asyncpg" # aiosqlite
+ENGINE_ECHO = false
+HOST = ""
+ISOLATION_LEVEL = "SERIALIZABLE"
+PASSWORD = ""
+PORT = 5709
+USER = "askgptapp"
+
+[db.connect_args.server_settings]
+statement_timeout = "30s" # milliseconds

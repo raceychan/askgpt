@@ -4,9 +4,9 @@ import typing as ty
 from pydantic import BaseModel, ConfigDict, computed_field, field_validator
 from src.domain.base import TimeScale
 from src.domain.interface import SQL_ISOLATIONLEVEL, EventLogRef, JournalRef, SystemRef
-from src.helpers.fileutil import FileUtil
-from src.helpers.funcutils import freeze, simplecache
-from src.helpers.nameutils import KeySpace
+from backend.src.helpers.file import FileUtil
+from backend.src.helpers.functions import freeze, simplecache
+from backend.src.helpers.string import KeySpace
 
 UNIT = MINUTE = 1
 HOUR = 60 * MINUTE

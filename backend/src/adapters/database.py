@@ -6,7 +6,7 @@ from sqlalchemy.engine.cursor import CursorResult
 from sqlalchemy.ext.asyncio import AsyncConnection, AsyncEngine
 from sqlalchemy.sql import Executable, text
 from src.helpers.extratypes import StrDict
-from src.helpers.timeutils import timeit
+from backend.src.helpers.time import timeit
 
 
 class AsyncDatabase:

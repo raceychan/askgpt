@@ -17,7 +17,7 @@ from src.domain.config import Settings
 from src.domain.interface import ActorRef, ICommand
 from src.domain.model.base import Command, Event, Message
 from src.infra import eventstore
-from src.helpers.fmtutils import async_receiver
+from backend.src.helpers.fmt import async_receiver
 
 
 class SystemStarted(Event):

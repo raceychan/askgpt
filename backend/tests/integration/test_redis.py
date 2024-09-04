@@ -4,7 +4,8 @@ import pytest
 from src.adapters.cache import RedisBool, RedisCache, ScriptFunc
 from src.adapters.tokenbucket import TokenBucket
 from src.domain.config import Settings
-from src.helpers.fileutil import FileUtil
+
+from backend.src.helpers.file import FileUtil
 
 
 @pytest.fixture(scope="module")
@@ -19,7 +20,7 @@ async def token_bucket(
     redis_cache: RedisCache,
     tokenbucket_script: ScriptFunc[list[str], list[float | int], RedisBool],
 ):
-    bucket_key = settings.redis.keyspaces.APP.generate_for_cls(TokenBucket)
+    bucket_key = settings.redis.keyspaces.APP.add_cls(TokenBucket)
     bucket = TokenBucket(
         redis_cache,
         bucket_script=tokenbucket_script,  # type: ignore

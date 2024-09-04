@@ -5,7 +5,7 @@ import pytest
 from src.domain.config import Settings
 from src.domain.model.test_default import TestDefaults
 from src.infra import security
-from src.helpers.fileutil import FileLoader, FileUtil
+from backend.src.helpers.file import FileLoader, FileUtil
 
 
 @pytest.fixture(scope="session")

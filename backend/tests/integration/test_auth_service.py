@@ -1,7 +1,6 @@
 import typing as ty
 
 import pytest
-
 from src.adapters.cache import MemoryCache
 from src.adapters.database import AsyncDatabase
 from src.adapters.queue import MessageProducer
@@ -21,7 +20,7 @@ async def auth_service(
     token_encrypt: Encrypt,
     producer: MessageProducer[ty.Any],
 ):
-    keyspace = settings.redis.keyspaces.APP.generate_for_cls(TokenRegistry)
+    keyspace = settings.redis.keyspaces.APP.add_cls(TokenRegistry)
 
     return AuthService(
         user_repo=UserRepository(aiodb),

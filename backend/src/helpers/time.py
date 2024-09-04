@@ -71,15 +71,6 @@ class ExecInfo:
         return self.format_repr()
 
 
-# TODO: rewrite overloads
-
-
-class Sentinel_: ...
-
-
-SENTINEL = Sentinel_()
-
-
 @ty.overload
 def timeit[R, **P](func: ty.Callable[P, R]) -> ty.Callable[P, R]: ...
 
