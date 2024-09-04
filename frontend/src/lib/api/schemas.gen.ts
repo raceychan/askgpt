@@ -530,8 +530,8 @@ export const $UserAuth = {
             ],
             default: 'user'
         },
-        user_info: {
-            '$ref': '#/components/schemas/UserInfo'
+        credential: {
+            '$ref': '#/components/schemas/UserCredential'
         },
         last_login: {
             type: 'string',
@@ -545,11 +545,11 @@ export const $UserAuth = {
         }
     },
     type: 'object',
-    required: ['user_id', 'user_info', 'last_login'],
+    required: ['user_id', 'credential', 'last_login'],
     title: 'UserAuth'
 } as const;
 
-export const $UserInfo = {
+export const $UserCredential = {
     properties: {
         user_name: {
             type: 'string',
@@ -568,7 +568,7 @@ export const $UserInfo = {
     },
     type: 'object',
     required: ['user_email', 'hash_password'],
-    title: 'UserInfo'
+    title: 'UserCredential'
 } as const;
 
 export const $UserRoles = {

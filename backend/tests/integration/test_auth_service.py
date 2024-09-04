@@ -40,8 +40,8 @@ async def test_create_user(test_defaults: TestDefaults, auth_service: AuthServic
     )
     user = await auth_service.find_user(email=test_defaults.USER_EMAIL)
     assert user
-    assert user.user_info.user_name == test_defaults.USER_NAME
-    assert user.user_info.user_email == test_defaults.USER_EMAIL
+    assert user.credential.user_name == test_defaults.USER_NAME
+    assert user.credential.user_email == test_defaults.USER_EMAIL
     assert user.role == "user"
 
 

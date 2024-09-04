@@ -72,7 +72,7 @@ class AuthService:
         if user is None:
             raise errors.UserNotFoundError(user_id=email)
 
-        if not user.user_info.verify_password(password):
+        if not user.credential.verify_password(password):
             raise errors.InvalidPasswordError("Invalid password")
 
         if not user.is_active:
@@ -93,12 +93,12 @@ class AuthService:
             raise errors.UserAlreadyExistError(f"user {email} already exist")
 
         hash_password = security.hash_password(password.encode())
-        user_info = model.UserInfo(
+        user_info = model.UserCredential(
             user_name=user_name, user_email=email, hash_password=hash_password
         )
         user_signed_up = model.UserSignedUp(
             user_id=uuid_factory(),
-            user_info=user_info,
+            credential=user_info,
             last_login=datetime.utcnow(),
         )
         user_auth = model.UserAuth.apply(user_signed_up)
@@ -142,17 +142,9 @@ class AuthService:
     async def get_user(self, user_id: str) -> model.UserAuth | None:
         return await self._user_repo.get(user_id)
 
-    async def get_current_user(self, token: str)->model.UserAuth:
-        try:
-            payload = self._token_encrypt.decrypt_jwt(token)
-            data = model.AccessToken.model_validate(payload)
-        except (security.JWTError, security.ValidationError):
-            raise errors.InvalidCredentialError
-
-        user_id = data.sub
+    async def get_current_user(self, token: model.AccessToken) -> model.UserAuth:
+        user_id = token.sub
         user = await self.get_user(user_id)
         if not user:
             raise errors.UserNotFoundError(user_id=user_id)
         return user
-
-            

@@ -1,20 +1,27 @@
 import React, { createContext, useContext } from "react";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Config } from "@/config/config";
+import { useNavigate } from "@tanstack/react-router";
+import { AxiosError } from "axios";
+import { useState } from "react";
 
-import { AuthService, AuthLoginError } from "@/lib/api";
+import {
+  AuthService,
+  UserService,
+  PublicUserInfo,
+  AuthLoginError,
+} from "@/lib/api";
 
 interface AuthContextType {
-  login: (email: string, password: string) => Promise<void>;
+  login: (email: string, password: string) => void;
   loginWithGoogle: () => Promise<void>;
-  logout: (token: string) => Promise<void>;
+  logout: () => void;
+  user: PublicUserInfo;
+  isLoading: boolean;
 }
-
-// interface User {
-//   id: string;
-//   email: string;
-//   name: string;
-// }
+const isLoggedIn = () => {
+  return localStorage.getItem("access_token") !== null;
+};
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
@@ -22,31 +29,39 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
   children,
 }) => {
   const queryClient = useQueryClient();
+  const navigate = useNavigate();
+  const [error, setError] = useState<string | null>(null);
+
+  const { data: user, isLoading } = useQuery<PublicUserInfo | null, Error>({
+    queryKey: ["currentUser"],
+    queryFn: UserService.userGetPublicUser,
+    enabled: isLoggedIn(),
+  });
 
   const login = async (email: string, password: string) => {
-    await loginMutation.mutateAsync({ email, password });
+    const response = await AuthService.authLogin({
+      body: { username: email, password: password },
+    });
+    localStorage.setItem("access_token", response.data.access_token);
   };
 
   const loginMutation = useMutation({
-    mutationFn: ({ email, password }: { email: string; password: string }) => {
-      return AuthService.authLogin({
-        body: {
-          username: email,
-          password: password,
-        },
-      });
+    mutationFn: login,
+    onSuccess: () => {
+      navigate({ to: "/" });
     },
-    onSuccess: (response) => {
-      const { access_token, token_type } = response.data!;
-      localStorage.setItem("token", access_token);
-    },
-    onError: (error: unknown) => {
-      console.error("Login failed:", error);
-      let errorMessage = "An error occurred during login. Please try again.";
-      // if (axios.isAxiosError(error) && error.response) {
-      //   errorMessage = error.response.data.message || errorMessage;
-      // }
-      throw error;
+    onError: (error: AuthLoginError) => {
+      let errDetail = error.detail as any;
+
+      if (error instanceof AxiosError) {
+        errDetail = error.message;
+      }
+
+      if (Array.isArray(errDetail)) {
+        errDetail = "Something went wrong";
+      }
+
+      setError(errDetail);
     },
   });
 
@@ -56,10 +71,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
 
   const logout = () => {
     localStorage.removeItem("access_token");
+    navigate({ to: "/login" });
   };
 
   return (
-    <AuthContext.Provider value={{ login, loginWithGoogle, logout }}>
+    <AuthContext.Provider
+      value={{ login, loginWithGoogle, logout, user, isLoading }}
+    >
       {children}
     </AuthContext.Provider>
   );

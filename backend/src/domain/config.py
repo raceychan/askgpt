@@ -4,9 +4,9 @@ import typing as ty
 from pydantic import BaseModel, ConfigDict, computed_field, field_validator
 from src.domain.base import TimeScale
 from src.domain.interface import SQL_ISOLATIONLEVEL, EventLogRef, JournalRef, SystemRef
-from backend.src.helpers.file import FileUtil
-from backend.src.helpers.functions import freeze, simplecache
-from backend.src.helpers.string import KeySpace
+from src.helpers.file import FileUtil
+from src.helpers.functions import freeze, simplecache
+from src.helpers.string import KeySpace
 
 UNIT = MINUTE = 1
 HOUR = 60 * MINUTE
@@ -140,8 +140,6 @@ class Settings(SettingsBase):
             if isinstance(v, list):
                 return v
             return v.split(",")
-
-        
 
     security: Security
 

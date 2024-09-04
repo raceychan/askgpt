@@ -6,7 +6,7 @@ from src.adapters.factory import adapter_locator, make_database
 from src.app.api import route_id_factory
 from src.app.api.middleware import add_middlewares
 from src.app.api.routers import api_router
-from src.app.factory import app_service_locator
+from src.app.factory import service_locator
 from src.domain import config
 from src.domain._log import logger, prod_sink, update_sink
 from src.domain.config import Settings
@@ -30,22 +30,23 @@ async def bootstrap(settings: Settings):
         logger.success(f"db host: {settings.db.HOST}")
         logger.success(f"redis host: {settings.redis.HOST}")
 
+
 @asynccontextmanager
 async def lifespan(app: FastAPI | None = None, *, settings: config.Settings):
     await bootstrap(settings)
     adapters = adapter_locator(settings)
-    app_services = app_service_locator(settings)
+    app_services = service_locator(settings)
 
     event_record = event_record_factory()
     adapters.register(event_record)  # type: ignore
 
     await app_services.gpt_service.start()
 
-
     async with adapters:
         yield
 
     await app_services.gpt_service.stop()
+
 
 def app_factory(
     lifespan=lifespan,  # type: ignore
@@ -76,4 +77,3 @@ def app_factory(
         version=f"{settings.api.API_VERSION_STR}",
     )
     return app
-

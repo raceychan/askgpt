@@ -183,12 +183,12 @@ export type UserAddAPIRequest = {
 export type UserAuth = {
     user_id: string;
     role?: (UserRoles);
-    user_info: UserInfo;
+    credential: UserCredential;
     last_login: string;
     is_active?: boolean;
 };
 
-export type UserInfo = {
+export type UserCredential = {
     user_name?: string;
     user_email: string;
     hash_password: string;
@@ -228,15 +228,19 @@ export type UserFindUserByEmailResponse = ((PublicUserInfo | null));
 
 export type UserFindUserByEmailError = (HTTPValidationError);
 
-export type UserUserDetailData = {
+export type UserGetPublicUserResponse = (unknown);
+
+export type UserGetPublicUserError = unknown;
+
+export type UserGetUserDetailData = {
     path: {
         user_id: string;
     };
 };
 
-export type UserUserDetailResponse = ((UserAuth | null));
+export type UserGetUserDetailResponse = ((UserAuth | null));
 
-export type UserUserDetailError = (HTTPValidationError);
+export type UserGetUserDetailError = (HTTPValidationError);
 
 export type UserDeleteUserData = {
     path: {

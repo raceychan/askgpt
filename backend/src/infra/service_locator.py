@@ -4,7 +4,7 @@ from contextlib import AsyncExitStack
 
 from src.domain.config import Settings, SettingsFactory
 from src.domain.interface import Closable, LiveService
-from backend.src.helpers.functions import attribute
+from src.helpers.functions import attribute
 
 # TODO: move this module to helpers
 
@@ -58,8 +58,7 @@ def resource_check(obj: ty.Any) -> bool:
 
 
 class ResourceManager:
-    def __init__(self, settings: Settings):
-        self.settings = settings
+    def __init__(self):
         self._stack = AsyncExitStack()
         self._resources: list[Resource] = []
 
@@ -178,9 +177,9 @@ class DependencyRegistry[Registee: ty.Any]:
         for _, dep in cls.__dict__.items():
             if not isinstance(dep, Dependency):
                 continue
-            cls._dependencies[dep.dependency] = dep  # type: ignore
+            cls._dependencies[dep.dependency] = dep
 
-        cls._singleton = None  # init attribute '__singleton' for subclass
+        cls._singleton = None
 
     def __new__(cls, settings: Settings) -> ty.Self:
         if cls._singleton is None:
@@ -225,7 +224,7 @@ class ResourceRegistry[Registee: Resource](DependencyRegistry[Registee]):
 
     def __init__(self, settings: Settings):
         super().__init__(settings)
-        self._resource_manager = ResourceManager(settings)
+        self._resource_manager = ResourceManager()
 
     async def __aenter__(self) -> ty.Self:
         for dep in self._dependencies.values():

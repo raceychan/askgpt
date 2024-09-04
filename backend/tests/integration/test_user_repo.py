@@ -33,5 +33,5 @@ async def test_user_unique_email(user_auth: UserAuth, user_repo: UserRepository)
 
 
 async def test_search_user_by_email(user_auth: UserAuth, user_repo: UserRepository):
-    user = await user_repo.search_user_by_email(user_auth.user_info.user_email)
+    user = await user_repo.search_user_by_email(user_auth.credential.user_email)
     assert user == user_auth

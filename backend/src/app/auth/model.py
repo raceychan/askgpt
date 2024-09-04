@@ -15,7 +15,7 @@ from src.domain.model.base import (  # uuid_factory,
     utcts_factory,
 )
 from src.domain.model.token import JWTBase
-from src.domain.model.user import UserInfo
+from src.domain.model.user import UserCredential
 
 
 class UserLoggedIn(Event):
@@ -42,7 +42,7 @@ class UserRoles(enum.StrEnum):
 class UserSignedUp(Event):
     entity_id: str = Field(alias="user_id")
     last_login: datetime
-    user_info: UserInfo
+    credential: UserCredential
 
     @field_serializer("last_login")
     def serialize_last_login(self, last_login: datetime) -> str:
@@ -58,7 +58,7 @@ class UserAPIKeyAdded(Event):
 class UserAuth(Entity):
     entity_id: str = Field(alias="user_id")
     role: UserRoles = UserRoles.user
-    user_info: UserInfo
+    credential: UserCredential
     last_login: datetime
     is_active: bool = True
 
@@ -88,7 +88,7 @@ class UserAuth(Entity):
     def _(cls, event: UserSignedUp) -> ty.Self:
         return cls(
             user_id=event.entity_id,
-            user_info=event.user_info,
+            credential=event.credential,
             last_login=event.last_login,
         )
 
@@ -99,28 +99,21 @@ class UserAuth(Entity):
 
 
 class IUserRepository(IRepository[UserAuth]):
-    async def add(self, entity: UserAuth) -> None:
-        ...
+    async def add(self, entity: UserAuth) -> None: ...
 
-    async def update(self, entity: UserAuth) -> None:
-        ...
+    async def update(self, entity: UserAuth) -> None: ...
 
-    async def get(self, entity_id: str) -> UserAuth | None:
-        ...
+    async def get(self, entity_id: str) -> UserAuth | None: ...
 
-    async def remove(self, entity_id: str) -> None:
-        ...
+    async def remove(self, entity_id: str) -> None: ...
 
-    async def list_all(self) -> list[UserAuth]:
-        ...
+    async def list_all(self) -> list[UserAuth]: ...
 
-    async def search_user_by_email(self, useremail: str) -> UserAuth | None:
-        ...
+    async def search_user_by_email(self, useremail: str) -> UserAuth | None: ...
 
 
 class AccessPayload(ValueObject):
     role: UserRoles
 
 
-class AccessToken(JWTBase, AccessPayload):
-    ...
+class AccessToken(JWTBase, AccessPayload): ...

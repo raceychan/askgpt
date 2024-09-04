@@ -1,6 +1,6 @@
 import pathlib
 
-from backend.src.helpers.file import FileUtil
+from src.helpers.file import FileUtil
 
 
 def test_read_config(fileutil: FileUtil, tmp_path: pathlib.Path):

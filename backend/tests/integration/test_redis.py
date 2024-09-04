@@ -5,7 +5,7 @@ from src.adapters.cache import RedisBool, RedisCache, ScriptFunc
 from src.adapters.tokenbucket import TokenBucket
 from src.domain.config import Settings
 
-from backend.src.helpers.file import FileUtil
+from src.helpers.file import FileUtil
 
 
 @pytest.fixture(scope="module")

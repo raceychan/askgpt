@@ -11,7 +11,7 @@ from src.domain.model.base import (
 from src.infra import security
 
 
-class UserInfo(ValueObject):
+class UserCredential(ValueObject):
     version: ty.ClassVar[str] = "1.0.0"
 
     user_name: str = ""
