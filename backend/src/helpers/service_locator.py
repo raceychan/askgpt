@@ -1,22 +1,49 @@
+import inspect
 import types
 import typing as ty
-from contextlib import AsyncExitStack
+from contextlib import AsyncExitStack, asynccontextmanager
+from weakref import WeakKeyDictionary
 
-from src.domain.config import Settings, SettingsFactory
-from src.domain.interface import Closable, LiveService
 from src.helpers.functions import attribute
 
-# TODO: move this module to helpers
+"""
+some might argue that service locator pattern is an anti-pattern,
+but we improve it and remove many drawbacks the original version has
+https://www.codeproject.com/Articles/5337102/Service-Locator-Pattern-in-Csharp
+Disadvantages of this pattern(after our improvements) are:
+
+- Implementing the service locator as a singleton can create scalability problems in highly concurrent environments.
+- Testability problems might arise since all tests need to use the same global ServiceLocator (singleton).
+- During unit testing, you need to mock both the ServiceLocator and the services it locates.
+
+from martin fowler:
+https://martinfowler.com/articles/injection.html#UsingAServiceLocator
+
+The key difference is that with a Service Locator every user of a service has a dependency to the locator.
+The locator can hide dependencies to other implementations, but you do need to see the locator.
+So the decision between locator and injector depends on whether that dependency is a problem.
+"""
+
+
+@ty.runtime_checkable
+class LiveService(ty.Protocol):
+    @asynccontextmanager
+    async def lifespan(self) -> ty.AsyncGenerator[ty.Self, ty.Any]: ...
+
+
+@ty.runtime_checkable
+class Closable(ty.Protocol):
+    async def close(self) -> None: ...
+
 
 type Resource = ty.AsyncContextManager[ty.Any] | ty.ContextManager[
     ty.Any
 ] | LiveService | Closable
 
+type DepFactory[T] = ty.Callable[[ty.Any], T]
+
 
 def solve_dependency(service: type):
-    import inspect
-    import types
-
     sub_deps = inspect.get_annotations(service.__init__)
     for _, dep_annt in sub_deps.items():
         if not isinstance(dep_annt, types.GenericAlias):
@@ -96,7 +123,7 @@ class Dependency[TDep: ty.Any]:
     def __init__(
         self,
         dependency: type[TDep],
-        factory: SettingsFactory[TDep] | None = None,
+        factory: DepFactory[TDep] | None = None,
         reuse: bool = True,
     ):
         self._dependency = dependency
@@ -137,7 +164,7 @@ class Dependency[TDep: ty.Any]:
         registry_cls.registry[self._dependency] = dep
         return dep
 
-    def solve_dependency(self, settings: Settings) -> TDep:
+    def solve_dependency(self, settings) -> TDep:
         # TODO: add dependency graph, support contextmanager
         if self._factory is None:
             return self._dependency()
@@ -145,35 +172,18 @@ class Dependency[TDep: ty.Any]:
         service = self._factory(settings)
         return service
 
-    def override_factory(self, factory: ty.Callable[[ty.Any], TDep]) -> None:
+    def override_factory(self, factory: DepFactory[TDep]) -> None:
         self._factory = factory
 
 
 class DependencyRegistry[Registee: ty.Any]:
-    """
-    some might argue that service locator pattern is an anti-pattern,
-    but we improve it and remove many drawbacks the original version has
-    https://www.codeproject.com/Articles/5337102/Service-Locator-Pattern-in-Csharp
-    Disadvantages of this pattern(after our improvements) are:
 
-    - Implementing the service locator as a singleton can create scalability problems in highly concurrent environments.
-    - Testability problems might arise since all tests need to use the same global ServiceLocator (singleton).
-    - During unit testing, you need to mock both the ServiceLocator and the services it locates.
-
-    from martin fowler:
-    https://martinfowler.com/articles/injection.html#UsingAServiceLocator
-
-    The key difference is that with a Service Locator every user of a service has a dependency to the locator.
-    The locator can hide dependencies to other implementations, but you do need to see the locator.
-    So the decision between locator and injector depends on whether that dependency is a problem.
-    """
-
-    _registry: dict[type[Registee], Registee]
-    _dependencies: dict[type[Registee], Dependency[Registee]]
+    _registry: WeakKeyDictionary[type[Registee], Registee]
+    _dependencies: WeakKeyDictionary[type[Registee], Dependency[Registee]]
     _singleton: ty.ClassVar["ty.Self | None"]
 
     def __init_subclass__(cls) -> None:
-        cls._dependencies = dict()
+        cls._dependencies = WeakKeyDictionary()
         for _, dep in cls.__dict__.items():
             if not isinstance(dep, Dependency):
                 continue
@@ -181,21 +191,23 @@ class DependencyRegistry[Registee: ty.Any]:
 
         cls._singleton = None
 
-    def __new__(cls, settings: Settings) -> ty.Self:
+    def __new__(cls, settings) -> ty.Self:
         if cls._singleton is None:
             cls._singleton = super().__new__(cls)
-            cls._registry: dict[type[Registee], Registee] = dict()
+            cls._registry: WeakKeyDictionary[type[Registee], Registee] = (
+                WeakKeyDictionary()
+            )
             return cls._singleton
 
-        if cls._singleton._settings != settings:
+        if cls._singleton._settings is not settings:
             raise ServiceReinitializationError
         return cls._singleton
 
-    def __init__(self, settings: Settings) -> None:
+    def __init__(self, settings) -> None:
         self._settings = settings
 
     @attribute
-    def settings(self) -> Settings:
+    def settings(self):
         if self._singleton is None:
             raise RegistryUninitializedError(self.__class__)
         return self._singleton._settings
@@ -207,22 +219,25 @@ class DependencyRegistry[Registee: ty.Any]:
         return self._singleton
 
     @attribute
-    def registry(self) -> dict[type[Registee], Registee]:
+    def registry(self) -> WeakKeyDictionary[type[Registee], Registee]:
         return self._registry
 
-    def override(
-        self, registee: type[Registee], factory: ty.Callable[[ty.Any], Registee]
-    ) -> None:
-        self._dependencies[registee].override_factory(factory)
+    @classmethod
+    def override(cls, registee: type[Registee], factory: DepFactory[Registee]) -> None:
+        """
+        for dep in self._dependencies:
+            mro = dep._dependency.__origin__.__mro__
+        """
+        cls._dependencies[registee].override_factory(factory)
 
 
 class ResourceRegistry[Registee: Resource](DependencyRegistry[Registee]):
     "Provide extra lifetime management based upon registrybase"
-    _registry: dict[type[Registee], Registee]
-    _dependencies: dict[type[Registee], Dependency[Registee]]
+    _registry: WeakKeyDictionary[type[Registee], Registee]
+    _dependencies: WeakKeyDictionary[type[Registee], Dependency[Registee]]
     _singleton: ty.ClassVar["ty.Self | None"]
 
-    def __init__(self, settings: Settings):
+    def __init__(self, settings):
         super().__init__(settings)
         self._resource_manager = ResourceManager()
 
@@ -243,14 +258,14 @@ class ResourceRegistry[Registee: Resource](DependencyRegistry[Registee]):
         return self._resource_manager
 
     @attribute
-    def dependencies(self) -> dict[type[Registee], Dependency[Registee]]:
+    def dependencies(self) -> WeakKeyDictionary[type[Registee], Dependency[Registee]]:
         return self._dependencies
 
     def register(self, service: Registee) -> None:
         self._resource_manager.register(service)
 
 
-class ServiceLocator[TService: object](DependencyRegistry[TService]): ...
+# class ServiceLocator[TService: object](DependencyRegistry[TService]): ...
 
 
 class InfraLocator(ResourceRegistry[ty.Any]): ...

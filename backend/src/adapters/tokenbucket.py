@@ -79,7 +79,7 @@ class TokenBucketFactory:
         script: TokenBucketScript,
         keyspace: KeySpace | None = None,
     ):
-        self.redis = redis
+        self.cache = redis
         self.script = script
         self.keyspace = keyspace
 
@@ -88,7 +88,7 @@ class TokenBucketFactory:
     ) -> TokenBucket:
         key_ = self.keyspace(bucket_key) if self.keyspace else KeySpace(bucket_key)
         return TokenBucket(
-            self.redis,
+            self.cache,
             self.script,
             bucket_key=key_,
             max_tokens=max_tokens,

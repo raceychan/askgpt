@@ -27,3 +27,7 @@ def redirect(
     url = UrllibURL(url=u, query=urlencode(query) if query else "")
     rere = RedirectResponse(urlunsplit(url), status_code=status_code)
     return rere
+
+
+class URLRouter:
+    ...

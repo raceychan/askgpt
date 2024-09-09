@@ -1,4 +1,5 @@
 # type: ignore
+import asyncio
 import inspect
 import signal
 import types
@@ -156,10 +157,41 @@ class Timeout:
     ):
         signal.alarm(0)
 
+# def timeout(max_seconds: int):
+#     timer = Timeout(max_seconds)
+
+#     def sync_timeout(func: AnyCallable) -> AnyCallable:
+#         @wraps(func)
+#         def wrapper(*args, **kwargs):
+#             with timer:
+#                 return func(*args, **kwargs)
+#         return wrapper
+
+#     async def async_timeout(func: AnyCallable) -> AnyCallable:
+#         @wraps(func)
+#         async def awrapper(*args, **kwargs):
+#             async with timer:
+#                 return await func(*args, **kwargs)
+#         return awrapper
+
+#     def decorator(func: AnyCallable) -> AnyCallable:
+#         if inspect.iscoroutinefunction(func):
+#             return async_timeout(func)
+#         return sync_timeout(func)
+
+#     return decorator
+
+def timeout(seconds: int):
+    def inner(func):
+        async def _(*args, **kwargs):
+            coro = func(*args, **kwargs)
+            res = await asyncio.wait_for(coro, seconds)
+            return res
+        return _
+    return inner
 
 """
 requirements:
-1. log the time cost of a function call
 2. can be applied to both sync and async functions
 3. can be applied to both methods and functions
 """

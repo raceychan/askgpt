@@ -26,7 +26,7 @@ def snake_to_pascal(snake_string: str) -> str:
     return pascal_string
 
 
-class KeySpace(ty.NamedTuple):  # use namedtuple for memory efficiency
+class KeySpace(ty.NamedTuple):  # use namedtuple for memory efficiency, can use __slots__ instead
     """Organize key to create redis key namespace
     >>> KeySpace("base")("new").key
     'base:new'

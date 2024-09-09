@@ -1,12 +1,13 @@
+import datetime
 import typing as ty
 from functools import lru_cache
 
 import bcrypt
 from cryptography.fernet import Fernet
 from jose import jwt
-from jose.exceptions import JWTError as JWTError 
-from src.domain.model.token import JWTBase
+from jose.exceptions import JWTError as JWTError
 from pydantic import ValidationError as ValidationError
+from src.domain.model.base import ValueObject
 
 SALT = bcrypt.gensalt()
 
@@ -42,6 +43,29 @@ def decrypt_string(string: bytes, security_key: bytes) -> str:
     fernet = get_fernet(security_key)
     return fernet.decrypt(string).decode()
 
+
+
+
+class JWTBase(ValueObject):
+    # reff: https://en.wikipedia.org/wiki/JSON_Web_Token
+    """
+    | Code | Name | Description |
+    | ---- | ---- | ----------- |
+    | iss  | Issuer |	principal that issued the JWT.|
+    | sub  | Subject | the subject of the JWT.|
+    | aud  | Audience |  the recipients that the JWT is intended for. |
+    | exp | Expiration Time |	the expiration time on and after which the JWT must not be accepted for processing.|
+    | nbf |	Not Before | the time on which the JWT will start to be accepted for processing. The value must be a NumericDate.|
+    | iat | Issued at |	 the time at which the JWT was issued. The value must be a NumericDate.|
+    | jti | JWT ID | Case-sensitive unique identifier of the token even among different issuers.|
+    """
+    sub: str
+    exp: datetime.datetime
+    nbf: datetime.datetime
+    iat: datetime.datetime
+    iss: str | None = None
+    aud: str | None = None
+    jti: str | None = None
 
 class Encrypt:
     def __init__(self, secret_key: str, algorithm: str):

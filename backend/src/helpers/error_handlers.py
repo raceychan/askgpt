@@ -2,7 +2,6 @@ import inspect
 import types
 import typing as ty
 from dataclasses import asdict, dataclass, field
-from datetime import datetime
 
 from fastapi import FastAPI, Request
 from src.helpers.time import iso_now

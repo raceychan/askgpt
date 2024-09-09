@@ -27,7 +27,7 @@ def simplecache(max_size: int | AnyCallable = 1, *, size_check: bool = False):
             if len(cache) >= _max_size:
                 if size_check:
                     raise RuntimeError("Cache is full")
-                (k__ := next(iter(cache)), cache.pop(k__))  # type: ignore pop first inserted item
+                (k__ := next(iter(cache)), cache.pop(k__))  # type: ignore , pop first inserted item
             cache[key_val] = res = user_func(*args, **kwargs)
             return res
 
@@ -37,7 +37,7 @@ def simplecache(max_size: int | AnyCallable = 1, *, size_check: bool = False):
 
 
 class hashabledict[TKey, TVal](dict[TKey, TVal]):
-    def __hash__(self):  # type: ignore
+    def __hash__(self):
         return hash(frozenset(self))
 
 
@@ -48,12 +48,20 @@ FREEZER_MAP: dict[type, ty.Callable[[ty.Any], ty.Any]] = {
 }
 
 
+class UnhashableError(Exception): ...
+
+
 def freeze(
     obj: object, convert_map: dict[type, ty.Callable[[ty.Any], ty.Any]] | None = None
 ) -> object:
     mapper = {**FREEZER_MAP, **(convert_map or {})}
     frozen_type = mapper.get(type(obj), None)
+
     if frozen_type is None:
+        try:
+            hash(obj)
+        except TypeError as te:  # not hashable exception
+            raise UnhashableError from te
         return obj
     return frozen_type(obj)
 
@@ -139,7 +147,6 @@ class attribute[TOwner: ty.Any, TField: ty.Any]:
         return type(self)(self.fget, fset)
 
 
-# TODO: cached_attribute
 class cached_attribute[TOwner: ty.Any, TField: ty.Any](attribute[TOwner, TField]):
     """
     Cached version of attribute that stores the value after the first access.
@@ -160,3 +167,6 @@ class cached_attribute[TOwner: ty.Any, TField: ty.Any](attribute[TOwner, TField]
             raise AttributeError("can't set attribute")
         self.fset(instance, value)
         setattr(instance, self._attrname, value)  # Cache the value
+
+
+# add retry

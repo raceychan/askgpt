@@ -1,4 +1,3 @@
-import typing as ty
 
 from src.adapters.factory import adapter_locator
 from src.app.api.throttler import UserRequestThrottler
@@ -6,7 +5,6 @@ from src.app.auth.service import AuthService
 from src.app.gpt.service import GPTService, GPTSystem, QueueBox
 from src.domain.config import Settings
 from src.infra import factory as infra_factory
-from src.infra.service_locator import Dependency, ServiceLocator
 
 
 def user_request_throttler_factory():
@@ -20,7 +18,8 @@ def user_request_throttler_factory():
     return throttler
 
 
-def auth_service_factory(settings: Settings):
+def auth_service_factory(settings: Settings | None = None):
+    settings = adapter_locator.settings
     auth_service = AuthService(
         user_repo=infra_factory.user_repo_factory(),
         token_registry=infra_factory.token_registry_factory(),
@@ -31,7 +30,8 @@ def auth_service_factory(settings: Settings):
     return auth_service
 
 
-def gpt_service_factory(settings: Settings):
+def gpt_service_factory(settings: Settings | None = None):
+    settings = settings or adapter_locator.settings
     system = GPTSystem(
         settings=settings,
         ref=settings.actor_refs.SYSTEM,
@@ -53,7 +53,9 @@ def gpt_service_factory(settings: Settings):
     return service
 
 
-class service_locator(ServiceLocator[ty.Any]):
-    "singleton class for service locator"
-    auth_service = Dependency(AuthService, auth_service_factory)
-    gpt_service = Dependency(GPTService, gpt_service_factory)
+# class service_locator(ServiceLocator[ty.Any]):
+#     "singleton class for service locator"
+
+#     # auth_service: Dependency[AuthService] = auth_servie_factory
+#     auth_service = Dependency(AuthService, auth_service_factory)
+#     gpt_service = Dependency(GPTService, gpt_service_factory)

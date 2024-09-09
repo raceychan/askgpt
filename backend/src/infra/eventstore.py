@@ -48,9 +48,10 @@ def load_event(row_mapping: sa.RowMapping | dict[str, ty.Any]) -> IEvent:
 
 
 class EventStore(IEventStore):
-    def __init__(self, aiodb: AsyncDatabase, table: sa.TableClause = EVENT_TABLE):
+    table: sa.TableClause = EVENT_TABLE
+
+    def __init__(self, aiodb: AsyncDatabase):
         self._aiodb = aiodb
-        self.table = table
 
     async def add(self, event: IEvent) -> None:
         value = dump_event(event)

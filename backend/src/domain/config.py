@@ -79,7 +79,7 @@ class Settings(SettingsBase):
         USER: str
         PASSWORD: str
         HOST: str
-        PORT: int
+        PORT: int = -1
 
         @property
         def DB_URL(self) -> str:

@@ -31,8 +31,8 @@ def session_repo_factory():
 
 def token_registry_factory():
     token_registry = TokenRegistry(
-        token_cache=adapter_factory.adapter_locator.redis_cache,
-        keyspace=adapter_factory.adapter_locator.redis_cache.keyspace.add_cls(
+        token_cache=adapter_factory.adapter_locator.aiocache,
+        keyspace=adapter_factory.adapter_locator.aiocache.keyspace.add_cls(
             TokenRegistry
         ),
     )
@@ -52,4 +52,4 @@ def producer_factory():
 
 
 def cache_factory():
-    return adapter_factory.adapter_locator.redis_cache
+    return adapter_factory.adapter_locator.aiocache

@@ -202,114 +202,114 @@ export type ValidationError = {
     type: string;
 };
 
-export type AuthLoginData = {
+export type LoginData = {
     body: Body_auth_login;
 };
 
-export type AuthLoginResponse = (TokenResponse);
+export type LoginResponse = (TokenResponse);
 
-export type AuthLoginError = (HTTPValidationError);
+export type LoginError = (HTTPValidationError);
 
-export type AuthSignupUserData = {
+export type SignupUserData = {
     body: CreateUserRequest;
 };
 
-export type AuthSignupUserResponse = (unknown);
+export type SignupUserResponse = (unknown);
 
-export type AuthSignupUserError = (HTTPValidationError);
+export type SignupUserError = (HTTPValidationError);
 
-export type UserFindUserByEmailData = {
+export type FindUserByEmailData = {
     query: {
         email: string;
     };
 };
 
-export type UserFindUserByEmailResponse = ((PublicUserInfo | null));
+export type FindUserByEmailResponse = ((PublicUserInfo | null));
 
-export type UserFindUserByEmailError = (HTTPValidationError);
+export type FindUserByEmailError = (HTTPValidationError);
 
-export type UserGetPublicUserResponse = (unknown);
+export type GetPublicUserResponse = (unknown);
 
-export type UserGetPublicUserError = unknown;
+export type GetPublicUserError = unknown;
 
-export type UserGetUserDetailData = {
+export type GetUserDetailData = {
     path: {
         user_id: string;
     };
 };
 
-export type UserGetUserDetailResponse = ((UserAuth | null));
+export type GetUserDetailResponse = ((UserAuth | null));
 
-export type UserGetUserDetailError = (HTTPValidationError);
+export type GetUserDetailError = (HTTPValidationError);
 
-export type UserDeleteUserData = {
+export type DeleteUserData = {
     path: {
         user_id: string;
     };
 };
 
-export type UserDeleteUserResponse = (unknown);
+export type DeleteUserResponse = (unknown);
 
-export type UserDeleteUserError = (HTTPValidationError);
+export type DeleteUserError = (HTTPValidationError);
 
-export type UserAddApiKeyData = {
+export type AddApiKeyData = {
     body: UserAddAPIRequest;
 };
 
-export type UserAddApiKeyResponse = (unknown);
+export type AddApiKeyResponse = (unknown);
 
-export type UserAddApiKeyError = (HTTPValidationError);
+export type AddApiKeyError = (HTTPValidationError);
 
-export type GptListSessionsResponse = (Array<PulibcSessionInfo>);
+export type ListSessionsResponse = (Array<PulibcSessionInfo>);
 
-export type GptListSessionsError = unknown;
+export type ListSessionsError = unknown;
 
-export type GptCreateSessionResponse = (unknown);
+export type CreateSessionResponse = (unknown);
 
-export type GptCreateSessionError = unknown;
+export type CreateSessionError = unknown;
 
-export type GptGetSessionData = {
+export type GetSessionData = {
     path: {
         session_id: string;
     };
 };
 
-export type GptGetSessionResponse = (unknown);
+export type GetSessionResponse = (unknown);
 
-export type GptGetSessionError = (HTTPValidationError);
+export type GetSessionError = (HTTPValidationError);
 
-export type GptRenameSessionData = {
+export type RenameSessionData = {
     body: SessionRenameRequest;
     path: {
         session_id: string;
     };
 };
 
-export type GptRenameSessionResponse = (unknown);
+export type RenameSessionResponse = (unknown);
 
-export type GptRenameSessionError = (HTTPValidationError);
+export type RenameSessionError = (HTTPValidationError);
 
-export type GptDeleteSessionData = {
+export type DeleteSessionData = {
     path: {
         session_id: string;
     };
 };
 
-export type GptDeleteSessionResponse = (unknown);
+export type DeleteSessionResponse = (unknown);
 
-export type GptDeleteSessionError = (HTTPValidationError);
+export type DeleteSessionError = (HTTPValidationError);
 
-export type GptChatData = {
+export type ChatData = {
     body: ChatCompletionRequest;
     path: {
         session_id: string;
     };
 };
 
-export type GptChatResponse = (unknown);
+export type ChatResponse = (unknown);
 
-export type GptChatError = (HTTPValidationError);
+export type ChatError = (HTTPValidationError);
 
-export type HealthCheckLambdaResponse = (unknown);
+export type LambdaResponse = (unknown);
 
-export type HealthCheckLambdaError = unknown;
+export type LambdaError = unknown;

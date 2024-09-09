@@ -1,4 +1,4 @@
-version: 4
+version: 5
 environments:
   default:
     channels:
@@ -30,7 +30,7 @@ environments:
       - conda: https://conda.anaconda.org/conda-forge/noarch/email-validator-2.1.0.post1-pyhd8ed1ab_0.conda
       - conda: https://conda.anaconda.org/conda-forge/noarch/exceptiongroup-1.2.0-pyhd8ed1ab_0.conda
       - conda: https://conda.anaconda.org/conda-forge/noarch/executing-2.0.1-pyhd8ed1ab_0.conda
-      - conda: https://conda.anaconda.org/conda-forge/noarch/fastapi-0.104.1-pyhd8ed1ab_0.conda
+      - conda: https://conda.anaconda.org/conda-forge/noarch/fastapi-0.110.3-pyhd8ed1ab_0.conda
       - conda: https://conda.anaconda.org/conda-forge/linux-64/greenlet-3.0.1-py312h30efb56_0.conda
       - conda: https://conda.anaconda.org/conda-forge/linux-64/gunicorn-21.2.0-py312h7900ff3_1.conda
       - conda: https://conda.anaconda.org/conda-forge/noarch/h11-0.14.0-pyhd8ed1ab_0.tar.bz2
@@ -112,7 +112,7 @@ environments:
       - conda: https://conda.anaconda.org/conda-forge/noarch/sniffio-1.3.0-pyhd8ed1ab_0.tar.bz2
       - conda: https://conda.anaconda.org/conda-forge/linux-64/sqlalchemy-2.0.23-py312h98912ed_0.conda
       - conda: https://conda.anaconda.org/conda-forge/noarch/stack_data-0.6.2-pyhd8ed1ab_0.conda
-      - conda: https://conda.anaconda.org/conda-forge/noarch/starlette-0.27.0-pyhd8ed1ab_0.conda
+      - conda: https://conda.anaconda.org/conda-forge/noarch/starlette-0.37.2-pyhd8ed1ab_0.conda
       - conda: https://conda.anaconda.org/conda-forge/linux-64/tk-8.6.13-noxft_h4845f30_101.conda
       - conda: https://conda.anaconda.org/conda-forge/noarch/toml-0.10.2-pyhd8ed1ab_0.tar.bz2
       - conda: https://conda.anaconda.org/conda-forge/noarch/tomli-2.0.1-pyhd8ed1ab_0.tar.bz2
@@ -590,25 +590,22 @@ packages:
   timestamp: 1698580072627
 - kind: conda
   name: fastapi
-  version: 0.104.1
+  version: 0.110.3
   build: pyhd8ed1ab_0
-  subdir: linux-64
+  subdir: noarch
   noarch: python
-  url: https://conda.anaconda.org/conda-forge/noarch/fastapi-0.104.1-pyhd8ed1ab_0.conda
-  sha256: e067f3da3466f310ff47fe8dc5310dc7c57fcc17094efde0374fd3e91138dc7f
-  md5: 60f34cd9f2b7eeb22ccf1f93ed973138
+  url: https://conda.anaconda.org/conda-forge/noarch/fastapi-0.110.3-pyhd8ed1ab_0.conda
+  sha256: b3873dd710559590281dd247a7b8b8f856a2ba8792fe27db8f81ab9d916c0c95
+  md5: cb96bd86d974f1603c42a3a5b87167bf
   depends:
-  - anyio >=3.7.1,<4.0.0
   - pydantic >=1.7.4,!=1.8,!=1.8.1,!=2.0.0,!=2.0.1,!=2.1.0,<3.0.0
   - python >=3.8
-  - starlette >=0.27.0,<0.28.0
+  - starlette >=0.37.2,<0.38.0
   - typing-extensions >=4.8.0
-  arch: x86_64
-  platform: linux
   license: MIT
   license_family: MIT
-  size: 70958
-  timestamp: 1698674807133
+  size: 70445
+  timestamp: 1714446933858
 - kind: conda
   name: greenlet
   version: 3.0.1
@@ -2131,23 +2128,21 @@ packages:
   timestamp: 1669632203115
 - kind: conda
   name: starlette
-  version: 0.27.0
+  version: 0.37.2
   build: pyhd8ed1ab_0
-  subdir: linux-64
+  subdir: noarch
   noarch: python
-  url: https://conda.anaconda.org/conda-forge/noarch/starlette-0.27.0-pyhd8ed1ab_0.conda
-  sha256: d155b6be8071b5c29c2056dd9e7ba8fee1ce38f977450d99a925918c1af12521
-  md5: 6facb6fc201d334257db8004439705d3
+  url: https://conda.anaconda.org/conda-forge/noarch/starlette-0.37.2-pyhd8ed1ab_0.conda
+  sha256: de3c43075fdc33c90cd8034e440638904268c46023dc2b14921a8355415dc40e
+  md5: 7e5550dfa3ed2c2019988cbb9f8302ea
   depends:
   - anyio <5,>=3.4.0
-  - python >=3.7
+  - python >=3.8
   - typing_extensions >=3.10.0
-  arch: x86_64
-  platform: linux
   license: BSD-3-Clause
   license_family: BSD
-  size: 54786
-  timestamp: 1684245223878
+  size: 57620
+  timestamp: 1709667193131
 - kind: conda
   name: tk
   version: 8.6.13

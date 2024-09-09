@@ -9,9 +9,7 @@ import loguru
 import orjson
 from loguru import logger
 from rich.console import Console
-
 from src.domain.config import Settings
-from src.domain.interface import Closable
 
 __all__ = ["logger"]
 
@@ -91,4 +89,3 @@ def update_sink(sink: ty.Callable[[loguru.Message], None]) -> loguru.Logger:
 
 
 update_sink(debug_sink)
-

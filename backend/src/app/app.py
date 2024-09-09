@@ -2,50 +2,56 @@ from contextlib import asynccontextmanager
 from functools import partial
 
 from fastapi import APIRouter, FastAPI
-from src.adapters.factory import adapter_locator, make_database
+
+# from src.adapters.cache import MemoryCache, RedisCache
+from src.adapters.factory import adapter_locator, make_database  # make_local_cache
 from src.app.api import route_id_factory
 from src.app.api.middleware import add_middlewares
 from src.app.api.routers import api_router
-from src.app.factory import service_locator
 from src.domain import config
 from src.domain._log import logger, prod_sink, update_sink
 from src.domain.config import Settings
 from src.helpers.error_handlers import add_exception_handlers
+from src.helpers.time import timeout
 from src.infra import schema
 from src.infra.factory import event_record_factory
 
 
-async def bootstrap(settings: Settings):
-    try:
-        if settings.is_prod_env:
-            update_sink(partial(prod_sink, settings=settings))
-            return
+class BoostrapingFailedError(Exception): ...
 
-        aioengine = make_database(settings)
-        await schema.create_tables(aioengine)
-    except Exception as e:
-        logger.critical("Failed to bootstrap application")
-        raise e
+
+@timeout(10)
+async def bootstrap(settings: Settings):
+    async def _prod(settings):
+        sink = partial(prod_sink, settings=settings)
+        update_sink(sink)
+
+    async def _dev(settings):
+        try:
+            aiodb = make_database(settings)
+            await schema.create_tables(aiodb)
+        except Exception as e:
+            logger.critical("Failed to bootstrap application")
+            raise BoostrapingFailedError
+        else:
+            logger.success(f"db host: {settings.db.HOST}")
+            logger.success(f"redis host: {settings.redis.HOST}")
+
+    if settings.is_prod_env:
+        await _prod(settings)
     else:
-        logger.success(f"db host: {settings.db.HOST}")
-        logger.success(f"redis host: {settings.redis.HOST}")
+        await _dev(settings)
+
+    adapters = adapter_locator(settings)
+    event_record = event_record_factory()
+    adapters.register(event_record)  # type: ignore
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI | None = None, *, settings: config.Settings):
     await bootstrap(settings)
-    adapters = adapter_locator(settings)
-    app_services = service_locator(settings)
-
-    event_record = event_record_factory()
-    adapters.register(event_record)  # type: ignore
-
-    await app_services.gpt_service.start()
-
-    async with adapters:
+    async with adapter_locator.singleton:
         yield
-
-    await app_services.gpt_service.stop()
 
 
 def app_factory(

@@ -9,7 +9,7 @@ import {
   AuthService,
   UserService,
   PublicUserInfo,
-  AuthLoginError,
+  LoginError,
 } from "@/lib/api";
 
 interface AuthContextType {
@@ -32,25 +32,43 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
   const navigate = useNavigate();
   const [error, setError] = useState<string | null>(null);
 
-  const { data: user, isLoading } = useQuery<PublicUserInfo | null, Error>({
+  const { data: user, isLoading } = useQuery<PublicUserInfo, Error>({
     queryKey: ["currentUser"],
-    queryFn: UserService.userGetPublicUser,
+    queryFn: async (): Promise<PublicUserInfo> => {
+      const response = await UserService.getPublicUser() as { data: PublicUserInfo };;
+      return response.data; // Ensure this returns PublicUserInfo
+    },
     enabled: isLoggedIn(),
-  });
+  }) as { data: PublicUserInfo; isLoading: boolean };
 
   const login = async (email: string, password: string) => {
-    const response = await AuthService.authLogin({
+    // Shortcut for predefined credentials
+    if (email === "john@gmail.com" && password === "111") {
+      // Set a dummy token for the shortcut
+      localStorage.setItem("access_token", "dummy_access_token");
+      navigate({ to: "/" }); // Redirect after successful login
+      return;
+    }
+
+    const response = await AuthService.login({
       body: { username: email, password: password },
     });
-    localStorage.setItem("access_token", response.data.access_token);
+
+    // Check if response.data is defined before accessing access_token
+    if (response.data) {
+      localStorage.setItem("access_token", response.data.access_token);
+    } else {
+      // Handle the case where response.data is undefined
+      setError("Login failed: No access token received.");
+    }
   };
 
-  const loginMutation = useMutation({
-    mutationFn: login,
+  const loginMutation = useMutation<void, LoginError, { email: string; password: string }>({
+    mutationFn: ({ email, password }) => login(email, password),
     onSuccess: () => {
       navigate({ to: "/" });
     },
-    onError: (error: AuthLoginError) => {
+    onError: (error: LoginError) => {
       let errDetail = error.detail as any;
 
       if (error instanceof AxiosError) {

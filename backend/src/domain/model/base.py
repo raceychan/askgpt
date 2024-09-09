@@ -164,11 +164,11 @@ class Query(Message): ...
 
 class Event(Message):
     _event_registry: ty.ClassVar[dict[str, type[ty.Self]]] = dict()
+    version: ty.ClassVar[str] = "1.0.0"
 
     entity_id: str
-    version: ty.ClassVar[str] = "1.0.0"
-    timestamp: utc_datetime = Field(default_factory=utcts_factory)
     event_id: str = Field(default_factory=uuid_factory, alias="id")
+    timestamp: utc_datetime = Field(default_factory=utcts_factory)
 
     def __init_subclass__(cls, **kwargs: ty.Any):
         cls_id = f"{str_to_snake(cls.__name__)}"

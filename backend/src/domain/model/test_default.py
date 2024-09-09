@@ -1,5 +1,4 @@
-from src.app.auth.model import UserRoles
-from src.domain.model.user import UserCredential
+from src.app.auth.model import UserCredential, UserRoles
 from src.infra import security
 
 

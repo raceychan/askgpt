@@ -16,7 +16,6 @@ async def grease(gap: float = 0.1):
 
 
 class EventRecord:
-    # TODO: this should replcae Actor.EventLog and Actor.Journal at somepoint in the future
     def __init__(
         self,
         consumer: MessageConsumer[IEvent],

@@ -7,16 +7,29 @@ from pydantic import field_serializer
 from src.domain.interface import IRepository
 from src.domain.model.base import (  # uuid_factory,
     Command,
-    DataStruct,
+    EmailStr,
     Entity,
     Event,
     Field,
     ValueObject,
     utcts_factory,
 )
-from src.domain.model.token import JWTBase
-from src.domain.model.user import UserCredential
+from src.infra import security
 
+
+class UserCredential(ValueObject):
+    version: ty.ClassVar[str] = "1.0.0"
+
+    user_name: str = ""
+    user_email: EmailStr
+    hash_password: bytes
+
+    @field_serializer("hash_password")
+    def decode_password(self, hash_password: bytes) -> str:
+        return hash_password.decode()
+
+    def verify_password(self, password: str) -> bool:
+        return security.verify_password(password.encode(), self.hash_password)
 
 class UserLoggedIn(Event):
     entity_id: str = Field(alias="user_id")
@@ -116,4 +129,4 @@ class AccessPayload(ValueObject):
     role: UserRoles
 
 
-class AccessToken(JWTBase, AccessPayload): ...
+class AccessToken(security.JWTBase, AccessPayload): ...

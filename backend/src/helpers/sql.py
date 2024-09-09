@@ -1,4 +1,3 @@
-# type: ignore
 import typing as ty
 from contextlib import contextmanager
 
@@ -138,22 +137,29 @@ class SQLDebugger:
         return cls.from_url(url)
 
 
-def sqlcli():
-    import sys
+def parser():
     from argparse import ArgumentParser
-
-    from src.domain.config import get_setting
-    from src.infra.factory import get_sqldbg
 
     parser = ArgumentParser()
     parser.add_argument("sql", nargs="?")
     parser.add_argument("-i", "--interactive", action="store_true")
     ns = parser.parse_args()
+    return ns
+
+
+def sqlcli():
+    import os
+    import sys
+
+    ns = parser()
     if not ns.sql and not ns.interactive:
         print(f"sql or interactive mode required")
         sys.exit(0)
 
-    sqldbg = get_sqldbg(get_setting())
+    url = os.environ["db_url"]
+
+    engine = engine_factory(url)
+    sqldbg = SQLDebugger(engine)
     with sqldbg.lifespan() as sqldbg:
         if ns.interactive:
             sqldbg.interactive()

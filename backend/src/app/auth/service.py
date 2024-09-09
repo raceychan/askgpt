@@ -102,6 +102,7 @@ class AuthService:
             last_login=datetime.utcnow(),
         )
         user_auth = model.UserAuth.apply(user_signed_up)
+        # TODO, persist event to eventstore along with user_auth, in a transaction.
         await self._user_repo.add(user_auth)
         await self._producer.publish(user_signed_up)
         return user_auth.entity_id

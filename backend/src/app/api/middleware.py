@@ -26,6 +26,23 @@ class TraceMiddleware:
         await self.app(scope, receive, send)
 
 
+def log_request(request: Request, status_code: int, duration: float):
+    client_host, client_port = request.client or UnknownAddress()
+    url_parts = request.url.components
+    path_query = quote(
+        "{}?{}".format(url_parts.path, url_parts.query)
+        if url_parts.query
+        else url_parts.path
+    )
+
+    msg = f'{client_host}:{client_port} - "{request.method} {path_query} HTTP/{request.scope["http_version"]}" {status_code}'
+
+    if status_code >= 400:
+        logger.error(msg, duration=duration)
+    else:
+        logger.info(msg, duration=duration)
+
+
 class LoggingMiddleware(BaseHTTPMiddleware):
     """
     NOTE: we might want to implement our own ExceptionMiddleware here
@@ -34,14 +51,6 @@ class LoggingMiddleware(BaseHTTPMiddleware):
     """
 
     async def dispatch(self, request: Request, call_next: RequestResponseEndpoint):
-        client_host, client_port = request.client or UnknownAddress()
-        url_parts = request.url.components
-        path_query = quote(
-            "{}?{}".format(url_parts.path, url_parts.query)
-            if url_parts.query
-            else url_parts.path
-        )
-
         request_id = request.headers[XHeaders.REQUEST_ID.value]
         with logger.contextualize(request_id=request_id):
             status_code = 500
@@ -49,24 +58,15 @@ class LoggingMiddleware(BaseHTTPMiddleware):
             try:
                 response = await call_next(request)
                 status_code = response.status_code
-                if status_code >= 400:
-                    logger.error(
-                        f'{client_host}:{client_port} - "{request.method} {path_query} HTTP/{request.scope["http_version"]}" {status_code}',
-                        duration=TIME_EPSILON_S,
-                    )
             except Exception as e:
-                logger.exception("Internal exception occurred")
+                logger.exception(f"Internal exception {e} occurred")
                 raise e
             finally:
                 post_process = perf_counter()
                 duration = max(round(post_process - pre_process, 3), TIME_EPSILON_S)
-                logger.info(
-                    f'{client_host}:{client_port} - "{request.method} {path_query} HTTP/{request.scope["http_version"]}" {status_code}',
-                    duration=duration,
-                )
-
-            response.headers[XHeaders.REQUEST_ID.value] = request_id
-            response.headers[XHeaders.PROCESS_TIME.value] = str(duration)
+                response.headers[XHeaders.REQUEST_ID.value] = request_id
+                response.headers[XHeaders.PROCESS_TIME.value] = str(duration)
+                log_request(request, status_code, duration)
             return response
 
 
@@ -77,10 +77,9 @@ def add_middlewares(app: FastAPI, *, settings: Settings) -> None:
     app.add_middleware(LoggingMiddleware)
     app.add_middleware(TraceMiddleware)
     app.add_middleware(
-        CORSMiddleware, 
+        CORSMiddleware,
         allow_origins=settings.security.CORS_ORIGINS,
         allow_credentials=True,
         allow_methods=["*"],
         allow_headers=["*"],
     )
-

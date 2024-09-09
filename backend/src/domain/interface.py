@@ -30,15 +30,3 @@ type SQL_ISOLATIONLEVEL = ty.Literal[
 class AbstractActorRef(ty.Protocol):
     ...
 
-
-@ty.runtime_checkable
-class LiveService(ty.Protocol):
-    @contextlib.asynccontextmanager
-    async def lifespan(self):
-        yield self
-
-
-@ty.runtime_checkable
-class Closable(ty.Protocol):
-    async def close(self) -> None:
-        ...

@@ -9,8 +9,7 @@ from src.app.api.errors import (
 from src.app.api.xheaders import XHeaders
 from src.app.auth.errors import AuthenticationError, UserNotFoundError
 from src.app.gpt.errors import OrphanSessionError
-from src.helpers.error_handlers import registry
-from src.helpers.error_handlers.handler_registry import ErrorDetail
+from src.helpers.error_handlers import ErrorDetail, registry
 from starlette import status
 from starlette.background import BackgroundTask
 from starlette.responses import Response

@@ -9,5 +9,4 @@ they are good for:
 
 
 this is not part of the onion architecture or ddd
-
 """

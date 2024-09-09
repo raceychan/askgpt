@@ -1,4 +1,5 @@
-import { createClient } from "@hey-api/client-axios";
+import { client } from '@/lib/api/services.gen';
+
 
 export const Config = {
   API_NETLOC: "http://localhost:5000",
@@ -9,7 +10,13 @@ export const Config = {
   },
 };
 
-const client = createClient({
-  baseURL: Config.API_NETLOC, 
+client.setConfig({
+  baseURL: Config.API_NETLOC,
   timeout: Config.REQUEST.TIMEOUT,
+});
+
+client.instance.interceptors.request.use((config) => {
+  const accessToken = localStorage.getItem('access_token') || "";
+  config.headers.set('Authorization', `Bearer ${accessToken}`);
+  return config;
 });

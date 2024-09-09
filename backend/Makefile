@@ -43,7 +43,11 @@ stop:
 docker-clean:
 	docker image prune -a -f
 
-.PHONY:
+.PHONY: clean
 clean:
 	rm -rf .pytest_cache .mypy_cache .coverage .coverage.* .coverage* .pytest_cache .pyt
 
+
+.PHONY: openapi
+openapi:
+	pixi run python -m scripts.modify_openapi

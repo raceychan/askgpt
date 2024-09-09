@@ -1,6 +1,6 @@
 import typing as ty
 
-from src.helpers.error_handlers.handler_registry import ErrorDetail
+from src.helpers.error_handlers import ErrorDetail
 
 ErrorSource = ty.Literal["server", "client"]
 

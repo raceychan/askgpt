@@ -5,8 +5,8 @@ from src.adapters import cache, database, gptclient, queue, tokenbucket
 from src.domain.config import Settings, settingfactory
 from src.domain.interface import IEvent
 from src.helpers import sql
+from src.helpers.service_locator import Dependency, InfraLocator
 from src.infra import eventstore
-from src.infra.service_locator import Dependency, InfraLocator
 
 
 @settingfactory
@@ -95,18 +95,17 @@ def make_request_client(settings: Settings):
 
 
 class adapter_locator(InfraLocator):
-    # aiodb: Dependency[database.AsyncDatabase]
     aiodb = Dependency(database.AsyncDatabase, make_database)
-    redis_cache = Dependency(cache.RedisCache[str], make_cache)
+    aiocache = Dependency(cache.RedisCache[str], make_cache)
     consumer = Dependency(queue.BaseConsumer[ty.Any], make_consumer)
     producer = Dependency(queue.BaseProducer[ty.Any], make_producer)
 
     @classmethod
     def build_token_bucket(cls, keyspace: cache.KeySpace):
         script = cls.settings.redis.TOKEN_BUCKET_SCRIPT
-        script_func = cls.redis_cache.load_script(script)
+        script_func = cls.aiocache.load_script(script)
         return tokenbucket.TokenBucketFactory(
-            redis=cls.redis_cache,
+            redis=cls.aiocache,
             script=script_func,
             keyspace=keyspace,
         )
