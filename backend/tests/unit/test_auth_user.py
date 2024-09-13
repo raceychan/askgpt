@@ -1,7 +1,7 @@
 import pytest
 from src.app.auth.model import UserAuth
 from src.domain.model.base import utcts_factory
-from src.domain.model.test_default import TestDefaults
+from tests.conftest import TestDefaults
 
 
 @pytest.fixture(scope="function")

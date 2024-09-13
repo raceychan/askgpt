@@ -69,3 +69,4 @@ async def add_api_key(service: Service, req: UserAddAPIRequest, token: ParsedTok
     await service.add_api_key(
         user_id=token.sub, api_key=req.api_key, api_type=req.api_type
     )
+

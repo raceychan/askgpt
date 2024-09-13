@@ -1,7 +1,7 @@
 import pytest
-from src.domain.model.test_default import TestDefaults
-from src.domain.model.user import UserCredential
+from src.app.auth.model import UserCredential
 from src.infra import security
+from tests.conftest import TestDefaults
 
 password = TestDefaults.USER_PASSWORD
 

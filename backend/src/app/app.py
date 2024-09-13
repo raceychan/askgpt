@@ -55,9 +55,7 @@ async def lifespan(app: FastAPI | None = None, *, settings: config.Settings):
 
 
 def app_factory(
-    lifespan=lifespan,  # type: ignore
-    *,
-    settings: config.Settings = config.get_setting("settings.toml"),
+    lifespan=lifespan, *, settings: config.Settings  # type: ignore
 ) -> FastAPI:
     app = FastAPI(
         title=settings.PROJECT_NAME,

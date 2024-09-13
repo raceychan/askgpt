@@ -1,6 +1,6 @@
 import pytest
 from src.app.gpt import model
-from src.domain.model.test_default import TestDefaults
+from tests.conftest import TestDefaults
 
 # from src.infra import encrypt
 

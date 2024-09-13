@@ -1,3 +1,4 @@
+import functools
 
 from src.app.app import app_factory
 from src.domain import config
@@ -6,9 +7,9 @@ from src.domain import config
 def server() -> None:
     config.sys_finetune()
     settings = config.get_setting("settings.toml")
-    modulename = settings.get_modulename(__file__)
+    factory = functools.partial(app_factory, settings)
     uvicorn.run(  # type: ignore
-        f"{modulename}:{app_factory.__name__}",
+        factory,
         host=settings.api.HOST,
         port=settings.api.PORT,
         factory=True,
@@ -20,5 +21,5 @@ def server() -> None:
 
 if __name__ == "__main__":
     import uvicorn
-    server()
 
+    server()

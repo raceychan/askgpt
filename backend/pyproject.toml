@@ -20,15 +20,16 @@ filterwarnings = ["ignore::DeprecationWarning"]
 
 
 [tool.pyright]
+python_version = "3.12"
 include = ["src/*.py"]
 typeCheckingMode = "strict"
 exclude = ["tests"]
 
-[tool.mypy]
-python_version = "3.12"
-mypy_path = "src/*.py"
-strict = true
-exclude = ["tests"]
+# [tool.mypy]
+# python_version = "3.12"
+# mypy_path = "src/*.py"
+# strict = true
+# exclude = ["tests"]
 
 [[tool.mypy.overrides]]
 module = "src/*"

@@ -32,15 +32,14 @@ USER_OPENAI_KEYS_TABLE: ty.Final[sa.TableClause] = sa.table(
 
 
 def dump_userauth(user: UserAuth) -> dict[str, ty.Any]:
-    data = user.asdict(by_alias=False)
     return dict(
-        id=data["entity_id"],
-        username=data["user_info"]["user_name"],
-        email=data["user_info"]["user_email"],
-        role=data["role"],
-        password_hash=data["user_info"]["hash_password"],
-        last_login=data["last_login"],
-        is_active=data["is_active"],
+        id=user.entity_id,
+        username=user.credential.user_name,
+        email=user.credential.user_email,
+        role=user.role,
+        password_hash=user.credential.hash_password.decode(),
+        last_login=user.last_login,
+        is_active=user.is_active,
     )
 
 

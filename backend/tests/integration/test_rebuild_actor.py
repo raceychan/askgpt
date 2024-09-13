@@ -3,7 +3,7 @@ from src.adapters import cache, gptclient
 from src.app.actor import QueueBox
 from src.app.gpt import model, service
 from src.domain import config
-from src.domain.model.test_default import TestDefaults
+from tests.conftest import TestDefaults
 from src.infra import factory
 from src.infra.eventstore import EventStore
 

@@ -4,8 +4,8 @@ import pytest
 from src.app.auth.model import AccessToken
 from src.domain.config import Settings
 from src.domain.model.base import utcts_factory
-from src.domain.model.test_default import TestDefaults
 from src.infra import security
+from tests.conftest import TestDefaults
 
 
 @pytest.fixture(scope="module")

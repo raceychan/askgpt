@@ -1,7 +1,6 @@
 import pytest
-
 from src.app.gpt import model
-from src.domain.model.test_default import TestDefaults
+from tests.conftest import TestDefaults
 
 
 @pytest.fixture(scope="module")
@@ -12,7 +11,8 @@ def chat_message(test_defaults: TestDefaults):
 @pytest.fixture(scope="module")
 def session_created():
     return model.SessionCreated(
-        session_id=TestDefaults.SESSION_ID, user_id=TestDefaults.USER_ID,
+        session_id=TestDefaults.SESSION_ID,
+        user_id=TestDefaults.USER_ID,
         session_name="New Session",
     )
 

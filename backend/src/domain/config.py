@@ -1,6 +1,7 @@
 import pathlib
 import typing as ty
 
+from jose.constants import Algorithms
 from pydantic import BaseModel, ConfigDict, computed_field, field_validator
 from src.domain.base import TimeScale
 from src.domain.interface import SQL_ISOLATIONLEVEL, EventLogRef, JournalRef, SystemRef
@@ -73,13 +74,21 @@ class Settings(SettingsBase):
         return self.RUNTIME_ENV == "prod"
 
     class DB(SettingsBase):
+        """
+        Perhaps separate this for PGDB, SqliteDB, MysqlDB etc.
+        """
+
         DIALECT: str
         DRIVER: str
 
         USER: str
         PASSWORD: str
         HOST: str
-        PORT: int = -1
+        PORT: int
+        DATABASE: pathlib.Path | ty.Literal[":memory:"]
+
+        ISOLATION_LEVEL: SQL_ISOLATIONLEVEL
+        ENGINE_ECHO: bool = False
 
         @property
         def DB_URL(self) -> str:
@@ -100,9 +109,20 @@ class Settings(SettingsBase):
                 base += f"/{self.DATABASE}"
             return base
 
-        DATABASE: pathlib.Path
-        ISOLATION_LEVEL: SQL_ISOLATIONLEVEL
-        ENGINE_ECHO: bool = False
+    class SqliteDB(DB):
+        DIALECT: ty.Literal["sqlite"] = "sqlite"
+        DRIVER: ty.Literal["aiosqlite"] = "aiosqlite"
+        HOST: ty.Literal[""] = ""
+        PORT: ty.Literal[-1] = -1
+        USER: str = ""
+        PASSWORD: str = ""
+
+        DATABASE: pathlib.Path | ty.Literal[":memory:"]
+        ISOLATION_LEVEL: ty.Literal["SERIALIZABLE"] = "SERIALIZABLE"
+
+    class Postgres(DB):
+        DIALECT: ty.Literal["postgres"] = "postgres"
+        DRIVER: ty.Literal["aiopg"] = "aiopg"
 
         class CONNECT_ARGS(SettingsBase):
             """
@@ -174,10 +194,8 @@ class Settings(SettingsBase):
         TOKEN_BUCKET_SCRIPT: pathlib.Path = pathlib.Path("src/script/tokenbucket.lua")
         MAX_CONNECTIONS: int = 10
         DECODE_RESPONSES: bool = True
-        SOCKET_TIMEOUT: int
+        SOCKET_TIMEOUT: int =10
         SOCKET_CONNECT_TIMEOUT: int = 2
-
-        # KEY_SPACE: KeySpace
 
         @property
         def URL(self) -> str:

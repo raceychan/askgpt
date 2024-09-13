@@ -33,8 +33,6 @@ class ErrorResponse(JSONResponse):
     ) -> None:
         content = dict(detail=detail.asdict())
 
-        # content["detail"]["request_id"] = request_id
-
         super().__init__(
             content=content,
             status_code=status_code,

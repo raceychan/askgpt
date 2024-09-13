@@ -1,11 +1,13 @@
 import pytest
 from src.adapters.cache import MemoryCache
 from src.app.actor import MailBox, QueueBox
+from src.app.factory import gpt_service_factory
+
 # from src.app.factory import get_gpt_service
 from src.app.gpt import errors, gptsystem, model, service
 from src.domain import config
-from src.domain.model.test_default import TestDefaults
 from src.infra.eventstore import EventStore
+from tests.conftest import TestDefaults
 
 
 class EchoMailbox(MailBox):
@@ -144,8 +146,7 @@ async def test_create_session_by_event(session_created: model.SessionCreated):
 
 async def test_send_message_receive_response(
     gpt_system: service.GPTSystem, send_chat_message: model.SendChatMessage
-):
-    ...
+): ...
 
 
 async def test_event_unduplicate(
@@ -195,7 +196,7 @@ def test_service_state_stop():
 
 @pytest.fixture(scope="module")
 async def gpt_service(settings: config.Settings):
-    gpt = get_gpt_service(settings)
+    gpt = gpt_service_factory(settings)
     async with gpt.lifespan():
         yield gpt
 

@@ -1,9 +1,8 @@
 import pytest
-
 from src.app.gpt import model
 from src.domain.config import Settings
-from src.domain.model.test_default import TestDefaults
 from src.infra.eventstore import EventStore, dump_event, load_event
+from tests.conftest import TestDefaults
 
 
 def test_settins(settings: Settings):
