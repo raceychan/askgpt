@@ -139,4 +139,3 @@ def _(request: Request, exc: QuotaExceededError):
         code=status.HTTP_429_TOO_MANY_REQUESTS,
         request_id=request_id,
     )
-

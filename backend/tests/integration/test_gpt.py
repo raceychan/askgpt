@@ -146,7 +146,8 @@ async def test_create_session_by_event(session_created: model.SessionCreated):
 
 async def test_send_message_receive_response(
     gpt_system: service.GPTSystem, send_chat_message: model.SendChatMessage
-): ...
+):
+    ...
 
 
 async def test_event_unduplicate(

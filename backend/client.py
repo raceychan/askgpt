@@ -3,8 +3,6 @@ from askgpt.domain.config import get_setting
 import sysconfig
 
 
-
-
 def client_factory() -> httpx.AsyncClient:
     return httpx.AsyncClient(base_url="http://192.168.50.22:5000")
 

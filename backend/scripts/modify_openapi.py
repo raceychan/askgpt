@@ -21,10 +21,9 @@ def modify_openapi():
     content = json.dumps(_procecss_openapi(openapi))
     frontend_dir = Path.cwd().parent / "frontend"
 
-    filepath = frontend_dir/ "openapi.json"
+    filepath = frontend_dir / "openapi.json"
     filepath.touch(exist_ok=True)
     filepath.write_text(content)
-    
 
 
 if __name__ == "__main__":

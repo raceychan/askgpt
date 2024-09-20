@@ -156,10 +156,12 @@ class DataStruct(DomainModel):
     "Pure Data object, no logic, no behavior, use to reduce code repetition"
 
 
-class Command(Message): ...
+class Command(Message):
+    ...
 
 
-class Query(Message): ...
+class Query(Message):
+    ...
 
 
 class Event(Message):

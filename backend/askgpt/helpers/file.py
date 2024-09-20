@@ -10,10 +10,12 @@ def relative_path(file: str) -> str:
     return str(file_path).replace("/", ".")[:-3]
 
 
-class EndOfChainError(Exception): ...
+class EndOfChainError(Exception):
+    ...
 
 
-class NotDutyError(Exception): ...
+class NotDutyError(Exception):
+    ...
 
 
 class UnsupportedFileFormatError(Exception):

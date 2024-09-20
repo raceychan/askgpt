@@ -4,6 +4,5 @@ class GeneralDomainError(Exception):
     pass
 
 
-class SystemNotSetError(GeneralDomainError): ...
-
-
+class SystemNotSetError(GeneralDomainError):
+    ...

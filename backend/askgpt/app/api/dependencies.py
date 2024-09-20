@@ -31,3 +31,6 @@ async def throttle_user_request(
     wait_time = await throttler.validate(access_token.sub)
     if wait_time:
         raise QuotaExceededError(throttler.max_tokens, wait_time)
+
+
+ParsedToken = ty.Annotated[AccessToken, Depends(parse_access_token)]

@@ -25,7 +25,8 @@ class TestSettings(Settings):
         USER: str | None = None
         PASSWORD: str | None = None
 
-    class ActorRefs(Settings.ActorRefs): ...
+    class ActorRefs(Settings.ActorRefs):
+        ...
 
     db: DB = DB(ISOLATION_LEVEL="SERIALIZABLE")
 

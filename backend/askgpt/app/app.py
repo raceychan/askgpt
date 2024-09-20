@@ -36,7 +36,8 @@ def get_ops():
     return Options.parse(parser_factory())
 
 
-class BoostrapingFailedError(Exception): ...
+class BoostrapingFailedError(Exception):
+    ...
 
 
 @timeout(10)

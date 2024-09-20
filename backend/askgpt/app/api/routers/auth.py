@@ -17,7 +17,7 @@ LoginForm = ty.Annotated[OAuth2PasswordRequestForm, Depends()]
 
 class TokenResponse(ty.TypedDict):
     access_token: str
-    token_type: str
+    token_type: ty.Literal["bearer"] = "bearer"
 
 
 class CreateUserRequest(RequestBody):
@@ -29,7 +29,7 @@ class CreateUserRequest(RequestBody):
 @auth_router.post("/login")
 async def login(service: Service, login_form: LoginForm) -> TokenResponse:
     token = await service.login(email=login_form.username, password=login_form.password)
-    return TokenResponse(access_token=token, token_type="bearer")
+    return TokenResponse(access_token=token)
 
 
 @auth_router.post("/signup")

@@ -53,5 +53,3 @@ class IEvent(IMessage, ty.Protocol):
 
 class IQuery(IMessage, ty.Protocol):
     entity_id: str
-
-

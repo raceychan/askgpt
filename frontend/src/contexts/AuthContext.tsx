@@ -25,6 +25,8 @@ const isLoggedIn = () => {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
+type Status = "idle" | "loading" | "error" | "success";
+
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
   children,
 }) => {
@@ -33,9 +35,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
   const [error, setError] = useState<string | null>(null);
 
   const { data: user, isLoading } = useQuery<PublicUserInfo, Error>({
-    queryKey: ["currentUser"],
+    queryKey: ["user"],
     queryFn: async (): Promise<PublicUserInfo> => {
-      const response = await UserService.getPublicUser() as { data: PublicUserInfo };;
+      if (localStorage.getItem("access_token" || "") === "dummy_access_token") {
+        return { email: "john@gmail.com", user_name: "john" } as PublicUserInfo;
+      }
+      const response = (await UserService.getPublicUser()) as {
+        data: PublicUserInfo;
+      };
       return response.data; // Ensure this returns PublicUserInfo
     },
     enabled: isLoggedIn(),
@@ -47,7 +54,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
       // Set a dummy token for the shortcut
       localStorage.setItem("access_token", "dummy_access_token");
       navigate({ to: "/" }); // Redirect after successful login
-      return;
     }
 
     const response = await AuthService.login({
@@ -56,6 +62,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
 
     // Check if response.data is defined before accessing access_token
     if (response.data) {
+      console.log("Login successful");
       localStorage.setItem("access_token", response.data.access_token);
     } else {
       // Handle the case where response.data is undefined
@@ -63,7 +70,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
     }
   };
 
-  const loginMutation = useMutation<void, LoginError, { email: string; password: string }>({
+  const loginMutation = useMutation<
+    void,
+    LoginError,
+    { email: string; password: string }
+  >({
     mutationFn: ({ email, password }) => login(email, password),
     onSuccess: () => {
       navigate({ to: "/" });

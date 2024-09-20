@@ -1,4 +1,3 @@
-
 from askgpt.adapters.factory import adapter_locator
 from askgpt.app.api.throttler import UserRequestThrottler
 from askgpt.app.auth.service import AuthService

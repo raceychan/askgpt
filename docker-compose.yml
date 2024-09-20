@@ -13,7 +13,7 @@ services:
       - gunicorn
 
     command:
-      - "src.server:app_factory"
+      - "askgpt.server:app_factory"
       - "--workers"
       - "1"
       - "-k"
@@ -27,10 +27,16 @@ services:
       dockerfile: Dockerfile
 
     volumes:
-      - ./backend/src/settings.toml:/app/settings.toml
+      - ./backend/askgpt/settings.toml:/app/settings.toml
     labels:
       - "traefik.enable=true"
       - "traefik.http.services.askgpt.loadbalancer.server.port=5000"
+
+  redis:
+    image: redis:latest  # Use the official Redis image
+    ports:
+      - "6379:6379"      # Map port 6379 on the host to port 6379 in the container
+    command: ["redis-server", "--bind", "0.0.0.0"]  # Bind Redis to all interfaces  
 
   # frontend:
   #   ports:

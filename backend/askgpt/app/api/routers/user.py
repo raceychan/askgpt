@@ -1,8 +1,8 @@
 import typing as ty
 
 from fastapi import APIRouter, Depends
-from askgpt.app.api.dependencies import AccessToken, parse_access_token
-from askgpt.app.api.model import RequestBody
+from askgpt.app.api.dependencies import ParsedToken
+from askgpt.app.api.model import RequestBody, ResponseData
 from askgpt.app.auth.errors import InvalidCredentialError, UserNotFoundError
 from askgpt.app.auth.model import UserAuth
 from askgpt.app.factory import AuthService, auth_service_factory
@@ -11,21 +11,20 @@ from askgpt.domain.base import SupportedGPTs
 user_router = APIRouter(prefix="/users")
 
 Service = ty.Annotated[AuthService, Depends(auth_service_factory)]
-ParsedToken = ty.Annotated[AccessToken, Depends(parse_access_token)]
 
 
-class PublicUserInfo(ty.TypedDict):
+class PublicUserInfo(ResponseData):
     user_id: str
     user_name: str
     email: str
 
-
-def auth_to_public(auth: UserAuth) -> PublicUserInfo:
-    return PublicUserInfo(
-        user_id=auth.entity_id,
-        user_name=auth.credential.user_name,
-        email=auth.credential.user_email,
-    )
+    @classmethod
+    def from_auth(cls, auth: UserAuth) -> ty.Self:
+        return cls(
+            user_id=auth.entity_id,
+            user_name=auth.credential.user_name,
+            email=auth.credential.user_email,
+        )
 
 
 class UserAddAPIRequest(RequestBody):
@@ -34,18 +33,18 @@ class UserAddAPIRequest(RequestBody):
 
 
 @user_router.get("/")
-async def find_user_by_email(service: Service, email: str) -> PublicUserInfo | None:
+async def find_user_by_email(service: Service, email: str) -> PublicUserInfo:
     user = await service.find_user(email)
     if not user:
         raise UserNotFoundError(user_id=email)
 
-    return auth_to_public(user)
+    return PublicUserInfo.from_auth(user)
 
 
 @user_router.get("/me")
-async def get_public_user(service: Service, token: ParsedToken):
+async def get_public_user(service: Service, token: ParsedToken) -> PublicUserInfo:
     user = await service.get_current_user(token)
-    return auth_to_public(user)
+    return PublicUserInfo.from_auth(user)
 
 
 @user_router.get("/{user_id}")
@@ -69,4 +68,3 @@ async def add_api_key(service: Service, req: UserAddAPIRequest, token: ParsedTok
     await service.add_api_key(
         user_id=token.sub, api_key=req.api_key, api_type=req.api_type
     )
-
