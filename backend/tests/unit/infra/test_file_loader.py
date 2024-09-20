@@ -1,7 +1,7 @@
 import pathlib
 
 import pytest
-from src.helpers.file import FileLoader  # , value_parser
+from askgpt.helpers.file import FileLoader  # , value_parser
 
 
 def test_load_env(fileloader: FileLoader, tmp_path: pathlib.Path):

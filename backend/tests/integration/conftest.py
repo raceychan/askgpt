@@ -3,18 +3,18 @@ import typing as ty
 
 import pytest
 from sqlalchemy.ext import asyncio as sa_aio
-from src.adapters.cache import MemoryCache, RedisCache
-from src.adapters.database import AsyncDatabase
-from src.adapters.gptclient import ClientRegistry, OpenAIClient
-from src.adapters.queue import BaseConsumer, BaseProducer, QueueBroker
-from src.app.actor import MailBox
-from src.app.auth.model import UserAuth
-from src.app.auth.repository import UserAuth
-from src.app.gpt.params import ChatResponse
-from src.domain.config import Settings
-from src.infra import schema
-from src.infra.eventrecord import EventRecord
-from src.infra.eventstore import EventStore
+from askgpt.adapters.cache import MemoryCache, RedisCache
+from askgpt.adapters.database import AsyncDatabase
+from askgpt.adapters.gptclient import ClientRegistry, OpenAIClient
+from askgpt.adapters.queue import BaseConsumer, BaseProducer, QueueBroker
+from askgpt.app.actor import MailBox
+from askgpt.app.auth.model import UserAuth
+from askgpt.app.auth.repository import UserAuth
+from askgpt.app.gpt.params import ChatResponse
+from askgpt.domain.config import Settings
+from askgpt.infra import schema
+from askgpt.infra.eventrecord import EventRecord
+from askgpt.infra.eventstore import EventStore
 from tests.conftest import TestDefaults
 
 

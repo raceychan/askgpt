@@ -1,6 +1,6 @@
 import pytest
-from src.domain.model import user
-from src.infra import security
+from askgpt.domain.model import user
+from askgpt.infra import security
 from tests.conftest import TestDefaults
 
 

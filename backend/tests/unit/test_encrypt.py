@@ -1,6 +1,6 @@
 import pytest
-from src.app.auth.model import UserCredential
-from src.infra import security
+from askgpt.app.auth.model import UserCredential
+from askgpt.infra import security
 from tests.conftest import TestDefaults
 
 password = TestDefaults.USER_PASSWORD

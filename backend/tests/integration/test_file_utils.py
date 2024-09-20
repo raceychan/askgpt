@@ -1,6 +1,6 @@
 import pathlib
 
-from src.helpers.file import FileUtil
+from askgpt.helpers.file import FileUtil
 
 
 def test_read_config(fileutil: FileUtil, tmp_path: pathlib.Path):

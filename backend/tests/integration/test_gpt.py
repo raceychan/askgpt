@@ -1,12 +1,12 @@
 import pytest
-from src.adapters.cache import MemoryCache
-from src.app.actor import MailBox, QueueBox
-from src.app.factory import gpt_service_factory
+from askgpt.adapters.cache import MemoryCache
+from askgpt.app.actor import MailBox, QueueBox
+from askgpt.app.factory import gpt_service_factory
 
-# from src.app.factory import get_gpt_service
-from src.app.gpt import errors, gptsystem, model, service
-from src.domain import config
-from src.infra.eventstore import EventStore
+# from askgpt.app.factory import get_gpt_service
+from askgpt.app.gpt import errors, gptsystem, model, service
+from askgpt.domain import config
+from askgpt.infra.eventstore import EventStore
 from tests.conftest import TestDefaults
 
 

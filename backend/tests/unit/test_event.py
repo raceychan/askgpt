@@ -1,5 +1,5 @@
-from src.app.gpt.model import UserCreated
-from src.domain.model.base import Event
+from askgpt.app.gpt.model import UserCreated
+from askgpt.domain.model.base import Event
 
 
 def test_rebuild_event(user_created: UserCreated):

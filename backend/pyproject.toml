@@ -1,46 +1,75 @@
-[tool.poetry]
+[project]
+authors = [{ name = "raceychan", email = "raceychan@gmail.com" }]
+dependencies = []
+description = "Add a short description here"
 name = "askgpt"
+requires-python = ">= 3.12"
 version = "0.1.0"
-description = ""
-authors = ["raceychan <raceychan@gmail.com>"]
-license = "GPL"
-readme = "README.md"
+
+
+[build-system]
+build-backend = "hatchling.build"
+requires = ["hatchling"]
 
 
 [tool.pytest.ini_options]
 asyncio_mode = "auto"
 testpaths = ["tests"]
-# addopts = "--strict-markers --maxfail=1 --pdbcls=IPython.terminal.debugger:Pdb"
 addopts = "--strict-markers --maxfail=1"
 markers = [
-    "integration_test: marks tests as slow integration tests (deselect with '-m \"not integration_test\"')",
+  "integration_test: marks tests as slow integration tests (deselect with '-m \"not integration_test\"')",
 ]
 
 filterwarnings = ["ignore::DeprecationWarning"]
 
-
 [tool.pyright]
-python_version = "3.12"
-include = ["src/*.py"]
-typeCheckingMode = "strict"
 exclude = ["tests"]
+include = ["askgpt/*.py"]
+python_version = "3.12"
+typeCheckingMode = "strict"
 
-# [tool.mypy]
-# python_version = "3.12"
-# mypy_path = "src/*.py"
-# strict = true
-# exclude = ["tests"]
+[tool.pixi.project]
+channels = ["conda-forge"]
+platforms = ["linux-64"]
 
-[[tool.mypy.overrides]]
-module = "src/*"
-implicit_reexport = true
-# enable-incomplete-feature = "Unpack"
 
-[[tool.mypy.overrides]]
-module = "src.domain.fileutil"
-warn_unused_ignores = false
-ignore_missing_imports = true
+[tool.pixi.environments]
+default = { solve-group = "default" }
+test = { features = ["test"], solve-group = "default" }
 
-[build-system]
-requires = ["poetry-core"]
-build-backend = "poetry.core.masonry.api"
+[tool.pixi.pypi-dependencies]
+askgpt = { path = ".", editable = true }
+[tool.pixi.tasks]
+
+[tool.pixi.dependencies]
+aiosqlite = ">=0.19.0"
+openai = "1.1"
+pydantic = ">=2.4.2"
+python = ">=3.12"
+sqlalchemy = ">=2.0.21"
+# TODO: replace pydantic with msgspec
+asyncpg = ">=0.29.0,<0.30"
+bcrypt = ">=4.0.1"
+email-validator = "2.1.0.post1.*"
+fastapi = ">=0.104.1"
+gunicorn = ">=21.2.0"
+loguru = ">=0.7.2"
+msgspec = ">=0.18.6,<0.19"
+orjson = ">=3.9.10,<3.10"
+pulsar-client = "3.3.0.*"
+python-jose = "3.3.0.*"
+python-multipart = ">=0.0.6,<0.1"
+redis-py = ">=5.0.1"
+uvicorn-standard = "0.24.0.*"
+
+
+[tool.pixi.feature.test.pypi-dependencies]
+ipython = ">=8.18.1"
+pyright = ">=1.1.327"
+pytest = "*"
+pytest-asyncio = ">=0.21.1"
+pytest-cov = ">=4.1.0"
+rich = ">=13.7.0"
+
+# [tool.pixi.feature.test.tasks]
+# test = "pytest"

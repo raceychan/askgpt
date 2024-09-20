@@ -1,4 +1,4 @@
-from src.adapters.database import AsyncDatabase
+from askgpt.adapters.database import AsyncDatabase
 
 
 async def test_table_exist(aiodb: AsyncDatabase):

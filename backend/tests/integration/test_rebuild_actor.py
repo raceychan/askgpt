@@ -1,13 +1,13 @@
 import pytest
-from src.adapters import cache, gptclient
-from src.app.actor import QueueBox
-from src.app.gpt import model, service
-from src.domain import config
+from askgpt.adapters import cache, gptclient
+from askgpt.app.actor import QueueBox
+from askgpt.app.gpt import model, service
+from askgpt.domain import config
 from tests.conftest import TestDefaults
-from src.infra import factory
-from src.infra.eventstore import EventStore
+from askgpt.infra import factory
+from askgpt.infra.eventstore import EventStore
 
-# from src.infra.cache import Cache, MemoryCache, RedisCache
+# from askgpt.infra.cache import Cache, MemoryCache, RedisCache
 
 
 @pytest.fixture(scope="module")

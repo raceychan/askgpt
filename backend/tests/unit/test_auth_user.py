@@ -1,6 +1,6 @@
 import pytest
-from src.app.auth.model import UserAuth
-from src.domain.model.base import utcts_factory
+from askgpt.app.auth.model import UserAuth
+from askgpt.domain.model.base import utcts_factory
 from tests.conftest import TestDefaults
 
 

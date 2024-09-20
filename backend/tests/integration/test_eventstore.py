@@ -1,7 +1,7 @@
 import pytest
-from src.app.gpt import model
-from src.domain.config import Settings
-from src.infra.eventstore import EventStore, dump_event, load_event
+from askgpt.app.gpt import model
+from askgpt.domain.config import Settings
+from askgpt.infra.eventstore import EventStore, dump_event, load_event
 from tests.conftest import TestDefaults
 
 

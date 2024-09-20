@@ -1,31 +1,38 @@
-.PHONY: gitlog
-gitlog:
-	git log --graph --oneline --decorate
-
-.PHONY: test
-test:
-	pytest -sv --cov-report term-missing --cov=src tests/
-
-.PHONY: debug
-debug:
-	pytest -svx --pdb tests/
-
-.PHONY: typecheck
-typecheck:
-	mypy src/ --explicit-package-bases --enable-incomplete-feature=Unpack
+run := pixi run
 
 .PHONY: install
 install:
 	curl -fsSL https://pixi.sh/install.sh | bash
 	pixi install
 
-.PHONY: shell
-shell:
-	pixi shell
 
-.PHONY: server
-server:
-	pixi run python -m src.server
+.PHONY: dev
+dev:
+	$(run) python -m askgpt.server --config dev.settings.toml
+
+.PHONY: test
+test:
+	$(run) -e test pytest -sv --cov-report term-missing --cov=askgpt tests/
+
+.PHONY: debug
+debug:
+	$(run) pytest -svx --pdb tests/
+
+.PHONY: openapi
+openapi:
+	$(run) python -m scripts.modify_openapi
+
+# DEVOPS 
+
+.PHONY: gitlog
+gitlog:
+	git log --graph --oneline --decorate
+
+
+.PHONY: typecheck
+typecheck:
+	mypy askgpt/ --explicit-package-bases --enable-incomplete-feature=Unpack
+
 
 .PHONY: build
 build:
@@ -48,6 +55,4 @@ clean:
 	rm -rf .pytest_cache .mypy_cache .coverage .coverage.* .coverage* .pytest_cache .pyt
 
 
-.PHONY: openapi
-openapi:
-	pixi run python -m scripts.modify_openapi
+

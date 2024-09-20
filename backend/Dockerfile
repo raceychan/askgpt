@@ -17,4 +17,4 @@ COPY pixi.toml ./
 # # Install dependencies using Pixi
 RUN pixi install
 
-COPY src ./src
+COPY askgpt ./askgpt

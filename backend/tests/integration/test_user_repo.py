@@ -1,6 +1,6 @@
 import pytest
-from src.adapters.database import AsyncDatabase
-from src.app.auth.repository import (
+from askgpt.adapters.database import AsyncDatabase
+from askgpt.app.auth.repository import (
     UserAuth,
     UserRepository,
     dump_userauth,

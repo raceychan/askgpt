@@ -2,11 +2,11 @@ import dotenv
 import pytest
 from fastapi import FastAPI
 from httpx import AsyncClient
-from src.adapters.factory import adapter_locator
-from src.adapters.gptclient import ClientRegistry
-from src.domain.config import Settings
-from src.server import app_factory  # type: ignore
-from src.helpers.file import fileutil
+from askgpt.adapters.factory import adapter_locator
+from askgpt.adapters.gptclient import ClientRegistry
+from askgpt.domain.config import Settings
+from askgpt.server import app_factory  # type: ignore
+from askgpt.helpers.file import fileutil
 
 
 @pytest.fixture

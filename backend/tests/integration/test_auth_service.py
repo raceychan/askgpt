@@ -1,14 +1,14 @@
 import typing as ty
 
 import pytest
-from src.adapters.cache import MemoryCache
-from src.adapters.database import AsyncDatabase
-from src.adapters.queue import MessageProducer
-from src.app.auth.errors import UserAlreadyExistError
-from src.app.auth.repository import UserRepository
-from src.app.auth.service import AuthService, TokenRegistry
-from src.domain.config import Settings
-from src.infra.security import Encrypt
+from askgpt.adapters.cache import MemoryCache
+from askgpt.adapters.database import AsyncDatabase
+from askgpt.adapters.queue import MessageProducer
+from askgpt.app.auth.errors import UserAlreadyExistError
+from askgpt.app.auth.repository import UserRepository
+from askgpt.app.auth.service import AuthService, TokenRegistry
+from askgpt.domain.config import Settings
+from askgpt.infra.security import Encrypt
 from tests.conftest import TestDefaults
 
 

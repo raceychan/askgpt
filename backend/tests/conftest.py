@@ -1,11 +1,10 @@
 import asyncio
-import pathlib
 
 import pytest
-from src.app.auth.model import UserCredential, UserRoles
-from src.domain.config import Settings
-from src.helpers.file import FileLoader, FileUtil
-from src.infra import security
+from askgpt.app.auth.model import UserCredential, UserRoles
+from askgpt.domain.config import Settings
+from askgpt.helpers.file import FileLoader, FileUtil
+from askgpt.infra import security
 
 
 @pytest.fixture(scope="session")

@@ -1,4 +1,4 @@
-from src.domain._log import debug_sink, prod_sink, update_sink
+from askgpt.domain._log import debug_sink, prod_sink, update_sink
 
 
 def test_logger():

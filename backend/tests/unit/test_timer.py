@@ -1,6 +1,6 @@
 import time
 
-from src.helpers.time import FuncInfo, timeit
+from askgpt.helpers.time import FuncInfo, timeit
 
 
 @timeit

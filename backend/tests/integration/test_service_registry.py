@@ -1,6 +1,6 @@
 # import pytest
 # from rich import print
-# from src.infra.service_registry import Dependency, ServiceRegistryBase
+# from askgpt.infra.service_registry import Dependency, ServiceRegistryBase
 
 
 # class ServiceMock:

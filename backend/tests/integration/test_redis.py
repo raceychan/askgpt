@@ -1,11 +1,11 @@
 import asyncio
 
 import pytest
-from src.adapters.cache import RedisBool, RedisCache, ScriptFunc
-from src.adapters.tokenbucket import TokenBucket
-from src.domain.config import Settings
+from askgpt.adapters.cache import RedisBool, RedisCache, ScriptFunc
+from askgpt.adapters.tokenbucket import TokenBucket
+from askgpt.domain.config import Settings
 
-from src.helpers.file import FileUtil
+from askgpt.helpers.file import FileUtil
 
 
 @pytest.fixture(scope="module")

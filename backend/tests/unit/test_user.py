@@ -1,8 +1,8 @@
 import pytest
-from src.app.gpt import model
+from askgpt.app.gpt import model
 from tests.conftest import TestDefaults
 
-# from src.infra import encrypt
+# from askgpt.infra import encrypt
 
 
 @pytest.fixture(scope="module")

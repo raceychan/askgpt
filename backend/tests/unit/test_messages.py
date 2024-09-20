@@ -1,5 +1,5 @@
 import pytest
-from src.app.gpt import model
+from askgpt.app.gpt import model
 from tests.conftest import TestDefaults
 
 

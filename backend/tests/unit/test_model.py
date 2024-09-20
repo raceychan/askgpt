@@ -1,6 +1,6 @@
 import pytest
 
-from src.domain.model.base import DomainModel
+from askgpt.domain.model.base import DomainModel
 
 
 @pytest.fixture

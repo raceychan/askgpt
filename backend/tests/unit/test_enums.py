@@ -1,6 +1,6 @@
 from enum import auto
 
-from src.domain import enums
+from askgpt.helpers import enums
 
 
 def test_enum_generator():

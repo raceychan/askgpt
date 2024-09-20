@@ -1,7 +1,7 @@
 import json
 from pathlib import Path
 
-from src.app.app import app_factory
+from askgpt.app.app import app_factory
 
 
 def modify_openapi():

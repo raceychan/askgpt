@@ -1,4 +1,4 @@
-from src.helpers.string import snake_to_pascal, str_to_snake
+from askgpt.helpers.string import snake_to_pascal, str_to_snake
 
 
 def test_str_to_snake():

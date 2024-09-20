@@ -1,10 +1,10 @@
 import datetime
 
 import pytest
-from src.app.auth.model import AccessToken
-from src.domain.config import Settings
-from src.domain.model.base import utcts_factory
-from src.infra import security
+from askgpt.app.auth.model import AccessToken
+from askgpt.domain.config import Settings
+from askgpt.domain.model.base import utcts_factory
+from askgpt.infra import security
 from tests.conftest import TestDefaults
 
 

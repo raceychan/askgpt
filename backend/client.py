@@ -1,5 +1,5 @@
 import httpx
-from src.domain.config import get_setting
+from askgpt.domain.config import get_setting
 import sysconfig
 
 
