@@ -1,6 +1,7 @@
 import asyncio
 
 import pytest
+
 from askgpt.app.auth.model import UserCredential, UserRoles
 from askgpt.domain.config import Settings
 from askgpt.helpers.file import FileLoader, FileUtil
@@ -31,22 +32,6 @@ class TestDefaults:
     )
 
 
-# class TestSettings(Settings):
-#     __test__ = False
-
-#     class DB(Settings.DB):
-#         DATABASE: pathlib.Path
-#         ENGINE_ECHO: bool = False
-#         HOST: str | None = None
-#         PORT: int | None = -1
-#         USER: str | None = None
-#         PASSWORD: str | None = None
-
-#     class ActorRefs(Settings.ActorRefs): ...
-
-#     db: DB
-
-
 @pytest.fixture(scope="session")
 def settings() -> Settings:
     ss = Settings(
@@ -60,10 +45,15 @@ def settings() -> Settings:
             ENGINE_ECHO=False,
         ),
         redis=Settings.Redis(
-            HOST="", PORT=-1, DB="", keyspaces=Settings.Redis.KeySpaces(APP="test")
+            HOST="localhost",
+            PORT=0,
+            DB="",
+            keyspaces=Settings.Redis.KeySpaces(APP="test"),
         ),
         security=Settings.Security(
-            SECRET_KEY="test_security", ALGORITHM="HSA", CORS_ORIGINS=["localhost:5732"]
+            SECRET_KEY="test_security",
+            ALGORITHM="HS256",
+            CORS_ORIGINS=["localhost:5732"],
         ),
         api=Settings.API(HOST="localhost", PORT=5000),
         throttling=Settings.Throttling(

@@ -41,7 +41,7 @@ def format_record(record: loguru.Record) -> dict[str, ty.Any]:
         "thread_name": record["thread"].name,
         "thread_id": record["thread"].id,
         "utcdatetime": record_time_utc.strftime("%Y-%m-%d %H:%M:%S"),
-        "utctimestamp": record_time_utc.timestamp(),
+      "utmestamp": record_time_utc.timestamp(),
         "exception": traceback.format_exc() if record["exception"] else None,
     } | record["extra"]
     return custom_record

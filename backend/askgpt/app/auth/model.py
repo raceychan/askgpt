@@ -4,8 +4,9 @@ from datetime import datetime
 from functools import singledispatchmethod
 
 from pydantic import field_serializer
+
 from askgpt.domain.interface import IRepository
-from askgpt.domain.model.base import (  # uuid_factory,
+from askgpt.domain.model.base import (
     Command,
     EmailStr,
     Entity,
@@ -113,28 +114,21 @@ class UserAuth(Entity):
 
 
 class IUserRepository(IRepository[UserAuth]):
-    async def add(self, entity: UserAuth) -> None:
-        ...
+    async def add(self, entity: UserAuth) -> None: ...
 
-    async def update(self, entity: UserAuth) -> None:
-        ...
+    async def update(self, entity: UserAuth) -> None: ...
 
-    async def get(self, entity_id: str) -> UserAuth | None:
-        ...
+    async def get(self, entity_id: str) -> UserAuth | None: ...
 
-    async def remove(self, entity_id: str) -> None:
-        ...
+    async def remove(self, entity_id: str) -> None: ...
 
-    async def list_all(self) -> list[UserAuth]:
-        ...
+    async def list_all(self) -> list[UserAuth]: ...
 
-    async def search_user_by_email(self, useremail: str) -> UserAuth | None:
-        ...
+    async def search_user_by_email(self, useremail: str) -> UserAuth | None: ...
 
 
 class AccessPayload(ValueObject):
     role: UserRoles
 
 
-class AccessToken(security.JWTBase, AccessPayload):
-    ...
+class AccessToken(security.JWTBase, AccessPayload): ...

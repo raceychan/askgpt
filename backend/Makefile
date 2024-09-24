@@ -1,4 +1,5 @@
 run := pixi run
+app := askgpt
 
 .PHONY: install
 install:
@@ -8,15 +9,16 @@ install:
 
 .PHONY: dev
 dev:
-	$(run) python -m askgpt.server --config dev.settings.toml
+	$(run) python -m $(app).server --config $(app)/dev.settings.toml
 
 .PHONY: test
 test:
-	$(run) -e test pytest -sv --cov-report term-missing --cov=askgpt tests/
+	$(run) -e test pytest 
+# tests/ --cov=askgpt --cov-report term-missing 
 
 .PHONY: debug
 debug:
-	$(run) pytest -svx --pdb tests/
+	$(run) pytest -vx --pdb tests/
 
 .PHONY: openapi
 openapi:
@@ -31,20 +33,20 @@ gitlog:
 
 .PHONY: typecheck
 typecheck:
-	mypy askgpt/ --explicit-package-bases --enable-incomplete-feature=Unpack
+	mypy $(app)/ --explicit-package-bases --enable-incomplete-feature=Unpack
 
 
 .PHONY: build
 build:
-	docker build -t askgpt .
+	docker build -t $(app) .
 
 .PHONY: run
 run:
-	docker run -p 8000:8000 askgpt
+	docker run -p 8000:8000 $(app)
 
 .PHONY: stop
 stop:
-	docker stop askgpt
+	docker stop $(app)
 
 .PHONY: docker-clean
 docker-clean:

@@ -5,6 +5,7 @@ archive
 *.vscode
 database
 *data.json
+*.db
 
 # Byte-compiled / optimized / DLL files
 __pycache__/

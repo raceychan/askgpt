@@ -16,7 +16,7 @@ class UserRequestThrottler:
         self._refill_rate = max_requests / refill_duration_s
 
     @property
-    def max_tokens(self):
+    def max_tokens(self) -> int:
         return self._max_tokens
 
     async def validate(self, user_id: str) -> float:
@@ -28,20 +28,20 @@ class UserRequestThrottler:
         return await bucket.acquire(1)
 
 
-def user_request_throttler(
-    bucket_factory: TokenBucketFactory, max_requests: int, refill_duration_s: int
-):
-    """
-    should we use function or class?
-    function is simpler, but it does not provide good typing support
-    """
+# def user_request_throttler(
+#     bucket_factory: TokenBucketFactory, max_requests: int, refill_duration_s: int
+# ):
+# """
+# should we use function or class?
+# function is simpler, but it does not provide good typing support
+# """
 
-    def validator(user_id: str):
-        bucket = bucket_factory.create_bucket(
-            bucket_key=user_id,
-            max_tokens=max_requests,
-            refill_rate_s=refill_duration_s,
-        )
-        return bucket.acquire(1)
+# def validator(user_id: str):
+#     bucket = bucket_factory.create_bucket(
+#         bucket_key=user_id,
+#         max_tokens=max_requests,
+#         refill_rate_s=refill_duration_s,
+#     )
+#     return bucket.acquire(1)
 
-    return validator
+# return validator

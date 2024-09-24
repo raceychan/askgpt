@@ -1,43 +1,34 @@
 import argparse
 import pathlib
 from contextlib import asynccontextmanager
-from functools import partial
 
 from fastapi import APIRouter, FastAPI
 
 from askgpt.adapters.factory import adapter_locator, make_database  # make_local_cache
-from askgpt.app.api import route_id_factory
-from askgpt.app.api.middleware import add_middlewares
+from askgpt.app.api import add_exception_handlers, add_middlewares, route_id_factory
 from askgpt.app.api.routers import api_router
-from askgpt.domain import config
-from askgpt.domain._log import logger, prod_sink, update_sink
-from askgpt.domain.config import Settings
-from askgpt.helpers.error_handlers import add_exception_handlers
+from askgpt.domain.config import Settings, settings_context
 from askgpt.helpers.time import timeout
 from askgpt.infra import schema
+from askgpt.infra._log import logger, prod_sink, update_sink
 from askgpt.infra.factory import event_record_factory
 
 
 def parser_factory() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser()
-    parser.add_argument("--config", action="store")
+    parser.add_argument("--config_path", action="store")
     return parser
 
 
 class Options(argparse.Namespace):
-    config_path: pathlib.Path = pathlib.Path("askgpt/dev.settings.toml")
+    config_path: pathlib.Path = pathlib.Path("settings.toml")
 
     @classmethod
     def parse(cls, parser: argparse.ArgumentParser):
         return parser.parse_args(namespace=cls)
 
 
-def get_ops():
-    return Options.parse(parser_factory())
-
-
-class BoostrapingFailedError(Exception):
-    ...
+class BoostrapingFailedError(Exception): ...
 
 
 @timeout(10)
@@ -68,27 +59,27 @@ async def bootstrap(settings: Settings):
 
 
 @asynccontextmanager
-async def lifespan(app: FastAPI | None = None, *, settings: config.Settings):
+async def lifespan(app: FastAPI | None = None):
+    settings = settings_context.get()
     await bootstrap(settings)
     async with adapter_locator.singleton:
         yield
 
 
-def app_factory(
-    lifespan=lifespan, *, settings: config.Settings | None = None
-) -> FastAPI:
-    ops = get_ops()
-    settings = config.get_setting(ops.config_path)
-    config.settings_context.set(settings)
-    # settings = settings or config.settings_context.get()
+def app_factory(lifespan=lifespan, *, settings: Settings | None = None) -> FastAPI:
+    settings = settings or Settings.from_file(
+        Options.parse(parser_factory()).config_path
+    )
+    settings_context.set(settings)
+
     app = FastAPI(
         title=settings.PROJECT_NAME,
-        description="distributed gpt client built with love",
+        description="Distributed GPT client built with love",
         version=settings.api.API_VERSION,
         openapi_url=settings.api.OPEN_API,
         docs_url=settings.api.DOCS,
         redoc_url=settings.api.REDOC,
-        lifespan=partial(lifespan, settings=settings),  # type: ignore
+        lifespan=lifespan,
         generate_unique_id_function=route_id_factory,
     )
 

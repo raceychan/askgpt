@@ -135,7 +135,9 @@ class attribute[TOwner, TField]:
         if name != self._attrname:
             raise TypeError("cannot assign the same attribute name twice")
 
-    def __get__(self, owner_obj: TOwner, owner_type: type[TOwner]) -> TField:
+    def __get__(
+        self, owner_obj: TOwner, owner_type: type[TOwner] | None = None
+    ) -> TField:
         if not self.fget:
             raise AttributeError("unreadable attribute")
 

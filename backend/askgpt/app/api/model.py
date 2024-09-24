@@ -31,4 +31,8 @@ class RequestBody(DTO):
 
 
 class ResponseData(DTO):
+    """
+    Isolating the changes happen on domain object
+    """
+
     ...

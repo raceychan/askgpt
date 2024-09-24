@@ -2,6 +2,7 @@ import asyncio
 import pathlib
 
 import pytest
+
 from askgpt.domain.config import Settings
 
 
@@ -25,8 +26,7 @@ class TestSettings(Settings):
         USER: str | None = None
         PASSWORD: str | None = None
 
-    class ActorRefs(Settings.ActorRefs):
-        ...
+    class ActorRefs(Settings.ActorRefs): ...
 
     db: DB = DB(ISOLATION_LEVEL="SERIALIZABLE")
 
@@ -37,7 +37,9 @@ def settings() -> TestSettings:
         actor_refs=TestSettings.ActorRefs(),
         RUNTIME_ENV="test",
         api=TestSettings.API(HOST="localhost", PORT=8000, API_VERSION="0.1.0"),
-        security=TestSettings.Security(SECRET_KEY="test", ALGORITHM="HS256"),
+        security=TestSettings.Security(
+            SECRET_KEY="test", ALGORITHM="HS256", CORS_ORIGINS=[""]
+        ),
         redis=TestSettings.Redis(
             HOST="localhost",
             PORT=6379,
@@ -46,5 +48,9 @@ def settings() -> TestSettings:
             keyspaces=TestSettings.Redis.KeySpaces(APP="test"),
         ),
         event_record=TestSettings.EventRecord(),
+        throttling=TestSettings.Throttling(
+            USER_MAX_REQUEST_DURATION_MINUTE=1, USER_MAX_REQUEST_PER_MINUTE=3
+        ),
+        openai_client=TestSettings.OpenAIClient(),
     )
     return ss

@@ -85,33 +85,41 @@ class HandlerRegistry[Exc: Exception]:
     Add error handler to fastapi according to their signature
     """
 
-    __registry: dict[type[Exc] | int, ExceptionHandler[Exc]]
+    _handlers: dict[type[Exc] | int, ExceptionHandler[Exc]]
 
     def __init__(self):
-        self.__registry = {}
+        self._handlers = {}
 
     def __iter__(
         self,
     ) -> ty.Iterator[tuple[type[Exc] | int, ExceptionHandler[Exc]]]:
-        return iter(self.__registry.items())
+        return iter(self._handlers.items())
+
+    @property
+    def handlers(self):
+        return self._handlers
 
     def register(self, handler: ExceptionHandler[Exc]) -> None:
         """\
         >>> @HandlerRegistry.register
         def any_error_handler(request: Request, exc: Exception | ty.Literal[500]) -> ErrorResponse:
         """
-        exc_type = self.extract_exception(handler)
+        exc_type = self._extract_exception(handler)
         exc_types = ty.get_args(exc_type)
 
         if exc_types:
             for exctype in exc_types:
-                self.__registry[exctype] = handler
+                self._handlers[exctype] = handler
         else:
             exc_type = ty.cast(type[Exc] | int, exc_type)
-            self.__registry[exc_type] = handler
+            self._handlers[exc_type] = handler
+
+    def inject_handlers(self, app: FastAPI) -> None:
+        for exc, handler in self:
+            app.add_exception_handler(exc, handler)  # type: ignore
 
     @classmethod
-    def extract_exception(
+    def _extract_exception(
         cls, handler: ExceptionHandler[Exc]
     ) -> type[Exc] | int | types.UnionType | int:
         sig = inspect.signature(handler)
@@ -121,14 +129,5 @@ class HandlerRegistry[Exc: Exception]:
             raise ValueError(f"handler {handler} has no annotation for {exc.name}")
         return exc_type
 
-    def inject_handlers(self, app: FastAPI) -> None:
-        for exc, handler in self:
-            app.add_exception_handler(exc, handler)  # type: ignore
 
-
-registry = HandlerRegistry[Exception]()
-
-
-def add_exception_handlers(app: "FastAPI") -> None:
-    registry: HandlerRegistry[Exception] = HandlerRegistry()
-    registry.inject_handlers(app)
+registry: ty.Final[HandlerRegistry] = HandlerRegistry[Exception]()

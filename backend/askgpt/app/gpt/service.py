@@ -8,7 +8,7 @@ from askgpt.app.gpt import errors, model, params
 from askgpt.app.gpt import repository as gpt_repo
 from askgpt.app.gpt import request
 from askgpt.app.gpt.gptsystem import GPTSystem, SessionActor, SystemState, UserActor
-from askgpt.domain._log import logger
+from askgpt.infra._log import logger
 from askgpt.domain.base import SupportedGPTs
 from askgpt.domain.interface import IEvent
 from askgpt.infra import eventstore, security

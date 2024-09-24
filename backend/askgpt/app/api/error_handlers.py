@@ -1,4 +1,4 @@
-from fastapi import Request
+from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
 from starlette import status
 from starlette.background import BackgroundTask
@@ -13,7 +13,7 @@ from askgpt.app.api.errors import (
 from askgpt.app.api.xheaders import XHeaders
 from askgpt.app.auth.errors import AuthenticationError, UserNotFoundError
 from askgpt.app.gpt.errors import OrphanSessionError
-from askgpt.helpers.error_handlers import ErrorDetail, registry
+from askgpt.helpers.error_registry import ErrorDetail, HandlerRegistry, registry
 
 
 class ServerResponse(Response):
@@ -139,3 +139,9 @@ def _(request: Request, exc: QuotaExceededError):
         code=status.HTTP_429_TOO_MANY_REQUESTS,
         request_id=request_id,
     )
+
+
+def add_exception_handlers(app: "FastAPI") -> None:
+    if not registry._handlers:
+        raise Exception("Empty error handler registry")
+    registry.inject_handlers(app)

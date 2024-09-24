@@ -9,7 +9,7 @@ from datetime import datetime
 from functools import wraps
 from time import perf_counter
 
-from askgpt.domain._log import logger
+from askgpt.infra._log import logger
 from askgpt.helpers.extratypes import AnyCallable
 
 

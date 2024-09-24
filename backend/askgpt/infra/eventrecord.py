@@ -3,7 +3,7 @@ import typing as ty
 from contextlib import asynccontextmanager
 
 from askgpt.adapters.queue import MessageConsumer
-from askgpt.domain._log import logger
+from askgpt.infra._log import logger
 from askgpt.domain.interface import IEvent
 from askgpt.infra.eventstore import EventStore
 

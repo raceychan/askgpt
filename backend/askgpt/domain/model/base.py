@@ -14,10 +14,17 @@ from pydantic import SerializeAsAny as SerializeAsAny
 from pydantic import computed_field as computed_field
 from pydantic import field_serializer as field_serializer
 from pydantic import validator as validator
+
 from askgpt.domain.model.interface import ICommand, IEvent, utc_datetime
 from askgpt.helpers.string import str_to_snake
 
 frozen = dataclass(frozen=True, slots=True, kw_only=True)
+
+
+"""
+TODO: replace pydantic with bao's Struct, 
+as we do not need data validation in domain layer
+"""
 
 
 def uuid_factory() -> str:
@@ -156,12 +163,10 @@ class DataStruct(DomainModel):
     "Pure Data object, no logic, no behavior, use to reduce code repetition"
 
 
-class Command(Message):
-    ...
+class Command(Message): ...
 
 
-class Query(Message):
-    ...
+class Query(Message): ...
 
 
 class Event(Message):

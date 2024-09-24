@@ -1,6 +1,5 @@
 import httpx
-from askgpt.domain.config import get_setting
-import sysconfig
+from askgpt.domain.config import Settings
 
 
 def client_factory() -> httpx.AsyncClient:
@@ -15,7 +14,7 @@ async def login(test_client: httpx.AsyncClient) -> str:
 
 
 async def main():
-    settings = get_setting("setitngs.toml")
+    settings = Settings.from_file("setitngs.toml")
 
 
 if __name__ == "__main__":

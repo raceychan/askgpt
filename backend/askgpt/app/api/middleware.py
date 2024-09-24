@@ -2,28 +2,14 @@ from time import perf_counter
 from urllib.parse import quote
 
 from fastapi import FastAPI, Request
-from askgpt.app.api.xheaders import XHeaders
-from askgpt.domain._log import logger
-from askgpt.domain.config import TIME_EPSILON_S, Settings, UnknownAddress
-from askgpt.domain.model.base import request_id_factory
 from starlette.middleware.base import BaseHTTPMiddleware, RequestResponseEndpoint
 from starlette.middleware.cors import CORSMiddleware as CORSMiddleware
 from starlette.types import ASGIApp, Receive, Scope, Send
 
-
-class TraceMiddleware:
-    def __init__(self, app: ASGIApp):
-        self.app = app
-
-    async def __call__(self, scope: Scope, receive: Receive, send: Send):
-        # NOTE: remove follow three lines would break lifespan
-        if scope["type"] != "http":
-            await self.app(scope, receive, send)
-            return
-        x_request_id = XHeaders.REQUEST_ID.encoded
-        request_id = dict(scope["headers"]).get(x_request_id, request_id_factory())
-        scope["headers"].append((x_request_id, request_id))
-        await self.app(scope, receive, send)
+from askgpt.app.api.xheaders import XHeaders
+from askgpt.domain.config import TIME_EPSILON_S, Settings, UnknownAddress
+from askgpt.domain.model.base import request_id_factory
+from askgpt.infra._log import logger
 
 
 def log_request(request: Request, status_code: int, duration: float):
@@ -43,6 +29,22 @@ def log_request(request: Request, status_code: int, duration: float):
         logger.info(msg, duration=duration)
 
 
+class TraceMiddleware:
+    def __init__(self, app: ASGIApp):
+        self.app = app
+
+    async def __call__(self, scope: Scope, receive: Receive, send: Send):
+        # NOTE: remove follow three lines would break lifespan
+        if scope["type"] != "http":
+            await self.app(scope, receive, send)
+            return
+        x_request_id = XHeaders.REQUEST_ID.encoded
+        if not (request_id := dict(scope["headers"]).get(x_request_id)):
+            request_id = request_id_factory()
+            scope["headers"].append((x_request_id, request_id))
+        await self.app(scope, receive, send)
+
+
 class LoggingMiddleware(BaseHTTPMiddleware):
     """
     NOTE: we might want to implement our own ExceptionMiddleware here
@@ -59,6 +61,7 @@ class LoggingMiddleware(BaseHTTPMiddleware):
                 response = await call_next(request)
                 status_code = response.status_code
             except Exception as e:
+                # TODO: reponse = ErrorResponse
                 logger.exception(f"Internal exception {e} occurred")
                 raise e
             finally:

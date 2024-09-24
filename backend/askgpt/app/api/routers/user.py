@@ -1,6 +1,7 @@
 import typing as ty
 
 from fastapi import APIRouter, Depends
+
 from askgpt.app.api.dependencies import ParsedToken
 from askgpt.app.api.model import RequestBody, ResponseData
 from askgpt.app.auth.errors import InvalidCredentialError, UserNotFoundError
@@ -25,11 +26,6 @@ class PublicUserInfo(ResponseData):
             user_name=auth.credential.user_name,
             email=auth.credential.user_email,
         )
-
-
-class UserAddAPIRequest(RequestBody):
-    api_key: str
-    api_type: SupportedGPTs = "openai"
 
 
 @user_router.get("/")
@@ -63,8 +59,11 @@ async def delete_user(service: Service, token: ParsedToken):
     await service.deactivate_user(token.sub)
 
 
+class CreateNewKey(RequestBody):
+    api_key: str
+    api_type: SupportedGPTs = "openai"
+
+
 @user_router.post("/apikeys")
-async def add_api_key(service: Service, req: UserAddAPIRequest, token: ParsedToken):
-    await service.add_api_key(
-        user_id=token.sub, api_key=req.api_key, api_type=req.api_type
-    )
+async def create_new_key(service: Service, r: CreateNewKey, token: ParsedToken):
+    await service.add_api_key(user_id=token.sub, api_key=r.api_key, api_type=r.api_type)

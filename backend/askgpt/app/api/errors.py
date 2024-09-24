@@ -1,6 +1,6 @@
 import typing as ty
 
-from askgpt.helpers.error_handlers import ErrorDetail
+from askgpt.helpers.error_registry import ErrorDetail
 
 ErrorSource = ty.Literal["server", "client"]
 

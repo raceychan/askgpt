@@ -2,6 +2,7 @@ import pathlib
 import typing as ty
 from contextvars import ContextVar
 
+import jose.constants
 from pydantic import BaseModel, ConfigDict, computed_field, field_validator
 
 from askgpt.domain.base import TimeScale
@@ -23,6 +24,9 @@ WEEK = 7 * DAY
 
 
 TIME_EPSILON_S = 0.001  # 1ms
+
+
+type SUPPORTED_ALGORITHMS = ty.Literal[tuple(jose.constants.ALGORITHMS.SUPPORTED)]  # type: ignore
 
 
 def sys_finetune():
@@ -69,15 +73,6 @@ class SettingsBase(BaseModel):
     def __hash__(self) -> int:
         vals = tuple(freeze(v) for v in self.__dict__.values())
         return hash(self.__class__) + hash(vals)
-
-
-@simplecache
-def get_setting(filename: str | pathlib.Path) -> "Settings":
-    """
-    offcial factory of settings with default filename
-    """
-    settings = Settings.from_file(filename=filename)
-    return settings
 
 
 class Settings(SettingsBase):
@@ -167,7 +162,7 @@ class Settings(SettingsBase):
 
     class Security(SettingsBase):
         SECRET_KEY: str  # 32 bytes url safe string
-        ALGORITHM: str  # jose.constants.ALGORITHMS
+        ALGORITHM: SUPPORTED_ALGORITHMS  # jose.constants.ALGORITHMS
         ACCESS_TOKEN_EXPIRE_MINUTES: TimeScale.Minute = TimeScale.Minute(WEEK)
         CORS_ORIGINS: list[str]
 
@@ -277,3 +272,15 @@ class MissingConfigError(GeneralDomainError):
 
 
 settings_context: ContextVar[Settings] = ContextVar("settings")
+
+# class GlobalContext:
+#     """
+#     for attribute defined in this class
+
+#     settings: Settings = useContext(Settings)
+
+#     would be automatically transformed to
+#     ContextVar[Settings]("settings)
+#     """
+
+#     ...
