@@ -18,3 +18,6 @@ COPY pixi.toml ./
 RUN pixi install
 
 COPY askgpt ./askgpt
+
+ENTRYPOINT ["pixi", "run", "uvicorn"]
+CMD ["askgpt.app.app:app_factory"]

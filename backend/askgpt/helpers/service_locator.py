@@ -75,6 +75,12 @@ class ServiceReinitializationError(Exception):
         super().__init__("ServiceRegistry is already initialized")
 
 
+class ResourceIntializationError(Exception):
+    def __init__(self, resource: Resource, exc: Exception):
+        msg = f"Failed to initialize {type(resource)}, \n {exc.__class__.__name__}:{str(exc)}"
+        super().__init__(msg)
+
+
 def resource_check(obj: ty.Any) -> bool:
     ResourceTypes = ty.get_args(Resource.__value__)  # type: ignore
     for tp in ResourceTypes:
@@ -98,14 +104,17 @@ class ResourceManager:
         await self._stack.__aenter__()
 
         for resource in self._resources:
-            if isinstance(resource, LiveService):
-                await self._stack.enter_async_context(resource.lifespan())
-            elif isinstance(resource, Closable):
-                self._stack.push_async_callback(resource.close)
-            elif isinstance(resource, ty.AsyncContextManager):
-                await self._stack.enter_async_context(resource)
-            else:
-                self._stack.enter_context(resource)
+            try:
+                if isinstance(resource, LiveService):
+                    await self._stack.enter_async_context(resource.lifespan())
+                elif isinstance(resource, Closable):
+                    self._stack.push_async_callback(resource.close)
+                elif isinstance(resource, ty.AsyncContextManager):
+                    await self._stack.enter_async_context(resource)
+                else:
+                    self._stack.enter_context(resource)
+            except Exception as e:
+                raise ResourceIntializationError(resource, e) from e
 
     async def __aexit__(
         self,
@@ -263,9 +272,6 @@ class ResourceRegistry[Registee: Resource](DependencyRegistry[Registee]):
 
     def register(self, service: Registee) -> None:
         self._resource_manager.register(service)
-
-
-# class ServiceLocator[TService: object](DependencyRegistry[TService]): ...
 
 
 class InfraLocator(ResourceRegistry[ty.Any]): ...

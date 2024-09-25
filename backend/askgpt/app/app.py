@@ -7,25 +7,11 @@ from fastapi import APIRouter, FastAPI
 from askgpt.adapters.factory import adapter_locator, make_database  # make_local_cache
 from askgpt.app.api import add_exception_handlers, add_middlewares, route_id_factory
 from askgpt.app.api.routers import api_router
-from askgpt.domain.config import Settings, settings_context
+from askgpt.domain.config import Settings, detect_settings, settings_context
 from askgpt.helpers.time import timeout
 from askgpt.infra import schema
 from askgpt.infra._log import logger, prod_sink, update_sink
 from askgpt.infra.factory import event_record_factory
-
-
-def parser_factory() -> argparse.ArgumentParser:
-    parser = argparse.ArgumentParser()
-    parser.add_argument("--config_path", action="store")
-    return parser
-
-
-class Options(argparse.Namespace):
-    config_path: pathlib.Path = pathlib.Path("settings.toml")
-
-    @classmethod
-    def parse(cls, parser: argparse.ArgumentParser):
-        return parser.parse_args(namespace=cls)
 
 
 class BoostrapingFailedError(Exception): ...
@@ -66,10 +52,10 @@ async def lifespan(app: FastAPI | None = None):
         yield
 
 
-def app_factory(lifespan=lifespan, *, settings: Settings | None = None) -> FastAPI:
-    settings = settings or Settings.from_file(
-        Options.parse(parser_factory()).config_path
-    )
+def app_factory(
+    lifespan=lifespan, start_response=None, *, settings: Settings | None = None
+) -> FastAPI:
+    settings = settings or detect_settings()
     settings_context.set(settings)
 
     app = FastAPI(

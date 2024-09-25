@@ -1,25 +1,23 @@
 import abc
-import pathlib
 import typing as ty
+from pathlib import Path
 
 from askgpt.helpers.functions import simplecache
 
 
 def relative_path(file: str) -> str:
-    file_path = pathlib.Path(file).relative_to(pathlib.Path.cwd())
+    file_path = Path(file).relative_to(Path.cwd())
     return str(file_path).replace("/", ".")[:-3]
 
 
-class EndOfChainError(Exception):
-    ...
+class EndOfChainError(Exception): ...
 
 
-class NotDutyError(Exception):
-    ...
+class NotDutyError(Exception): ...
 
 
 class UnsupportedFileFormatError(Exception):
-    def __init__(self, file: pathlib.Path):
+    def __init__(self, file: Path):
         super().__init__(
             f"File of format {file.suffix} is not supported, as dependency is not installed"
         )
@@ -27,11 +25,11 @@ class UnsupportedFileFormatError(Exception):
 
 class LoaderNode(abc.ABC):
     @abc.abstractmethod
-    def _validate(self, file: pathlib.Path) -> bool:
+    def _validate(self, file: Path) -> bool:
         raise NotImplementedError
 
     @abc.abstractmethod
-    def loads(self, file: pathlib.Path) -> dict[str, ty.Any]:
+    def loads(self, file: Path) -> dict[str, ty.Any]:
         raise NotImplementedError
 
 
@@ -59,18 +57,18 @@ class FileLoader(LoaderNode):
     def next(self, handler: "FileLoader | None") -> None:
         self._next = handler
 
-    def validate(self, file: pathlib.Path) -> bool:
+    def validate(self, file: Path) -> bool:
         if not file.is_file() or not file.exists():
-            raise FileNotFoundError(f"File {file} not found at {pathlib.Path.cwd()}")
+            raise FileNotFoundError(f"File {file} not found at {Path.cwd()}")
         return self._validate(file)
 
-    def _validate(self, file: pathlib.Path) -> bool:
+    def _validate(self, file: Path) -> bool:
         supported = self.supported_formats
         if isinstance(supported, str):
             supported = {supported}
         return file.suffix in supported or file.name in supported
 
-    def handle(self, file: pathlib.Path) -> dict[str, ty.Any]:
+    def handle(self, file: Path) -> dict[str, ty.Any]:
         if self.validate(file):
             return self.loads(file)
 
@@ -124,7 +122,7 @@ class FileLoader(LoaderNode):
 class ENVFileLoader(FileLoader):
     supported_formats = ".env"
 
-    def loads(self, file: pathlib.Path) -> dict[str, ty.Any]:
+    def loads(self, file: Path) -> dict[str, ty.Any]:
         try:
             import dotenv
         except ImportError as ie:
@@ -136,7 +134,7 @@ class ENVFileLoader(FileLoader):
 class TOMLFileLoader(FileLoader):
     supported_formats = ".toml"
 
-    def loads(self, file: pathlib.Path) -> dict[str, ty.Any]:
+    def loads(self, file: Path) -> dict[str, ty.Any]:
         try:
             import tomllib as tomli  # tomllib available ^3.11
         except ImportError as ie:
@@ -149,7 +147,7 @@ class TOMLFileLoader(FileLoader):
 class YAMLFileLoader(FileLoader):
     supported_formats = {".yml", ".yaml"}
 
-    def loads(self, file: pathlib.Path) -> dict[str, ty.Any]:
+    def loads(self, file: Path) -> dict[str, ty.Any]:
         try:
             import yaml
         except ImportError as ie:
@@ -162,7 +160,7 @@ class YAMLFileLoader(FileLoader):
 class JsonFileLoader(FileLoader):
     supported_formats = ".json"
 
-    def loads(self, file: pathlib.Path) -> dict[str, ty.Any]:
+    def loads(self, file: Path) -> dict[str, ty.Any]:
         try:
             import json
         except ImportError as ie:
@@ -175,7 +173,8 @@ class JsonFileLoader(FileLoader):
 class FileUtil:
     def __init__(
         self,
-        work_dir: pathlib.Path = pathlib.Path.cwd(),
+        work_dir: Path,
+        *,
         file_loader: FileLoader = FileLoader.from_chain(),
     ):
         self.work_dir = work_dir
@@ -184,19 +183,38 @@ class FileUtil:
     def __repr__(self):
         return f"{self.__class__.__name__}(work_dir={self.work_dir})"
 
-    def find(self, filename: str, dir: str | None = None) -> pathlib.Path:
-        work_dir = pathlib.Path(dir) if dir is not None else self.work_dir
+    def search(
+        self, pattern: str, *, dir: str | Path | None = None, recursive: bool = True
+    ) -> Path | None:
+        work_dir = Path(dir) if dir else self.work_dir
 
-        rg = work_dir.rglob(filename)
+        if recursive:
+            rg = work_dir.rglob(pattern)
+        else:
+            rg = work_dir.glob(pattern)
         try:
             file = next(rg)
         except StopIteration as se:
-            raise FileNotFoundError(
-                f"File '{filename}' not found in current directory {work_dir}"
-            ) from se
+            return None
         return file
 
-    def read_file(self, file: str | pathlib.Path) -> dict[str, ty.Any]:
+    def find(
+        self, pattern: str, *, dir: str | Path | None = None, recursive: bool = True
+    ) -> Path:
+        work_dir = Path(dir) if dir else self.work_dir
+        if recursive is True:
+            for file in work_dir.rglob(pattern):
+                return file
+        else:
+            files = work_dir.iterdir()
+            for file in files:
+                if file == pattern:
+                    return work_dir / file
+        raise FileNotFoundError(
+            f"File '{pattern}' not found in current directory {work_dir}"
+        )
+
+    def read_file(self, file: str | Path) -> dict[str, ty.Any]:
         if isinstance(file, str):
             file = self.find(file)
         try:
@@ -208,7 +226,7 @@ class FileUtil:
     @classmethod
     @simplecache
     def from_cwd(cls) -> ty.Self:
-        return cls(work_dir=pathlib.Path.cwd(), file_loader=FileLoader.from_chain())
+        return cls(work_dir=Path.cwd(), file_loader=FileLoader.from_chain())
 
 
 fileutil = FileUtil.from_cwd()

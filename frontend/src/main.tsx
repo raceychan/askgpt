@@ -1,5 +1,4 @@
 import { StrictMode } from "react";
-import { createRoot } from "react-dom/client";
 import {
   Link,
   RouterProvider,
@@ -13,7 +12,8 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 
 import App from "@/app/App.tsx";
 import HomePage from "@/pages/HomePage.tsx";
-import AuthenticationPage from "@/pages/AuthentificationPage.tsx";
+import LoginPage from "@/pages/LoginPage.tsx";
+import SignupPage from "@/pages/SignUpPage";
 import { TanStackRouterDevtools } from "@tanstack/router-devtools";
 
 // import ErrorPage from "@/pages/ErrorPage.tsx";
@@ -49,11 +49,17 @@ const homeRoute = createRoute({
 const loginRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "/login",
-  component: AuthenticationPage,
+  component: LoginPage,
+});
+
+const signupRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/signup",
+  component: SignupPage,
 });
 
 // Create the router
-const routeTree = rootRoute.addChildren([homeRoute, loginRoute]);
+const routeTree = rootRoute.addChildren([homeRoute, loginRoute, signupRoute]);
 const router = createRouter({ routeTree });
 declare module "@tanstack/react-router" {
   interface Register {

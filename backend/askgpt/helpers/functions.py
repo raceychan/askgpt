@@ -106,7 +106,7 @@ class attribute[TOwner, TField]:
     @ty.overload
     def __init__(
         self,
-        fget: ObjGet[TOwner, TField] | None = None,
+        fget: ObjGet[TOwner, TField],
         fset: ObjSet[TOwner, TField] | None = None,
     ) -> None: ...
 
@@ -135,16 +135,23 @@ class attribute[TOwner, TField]:
         if name != self._attrname:
             raise TypeError("cannot assign the same attribute name twice")
 
-    def __get__(
-        self, owner_obj: TOwner, owner_type: type[TOwner] | None = None
-    ) -> TField:
+    def __get__(self, owner_obj: TOwner | None, owner_type: type[TOwner]) -> TField:
         if not self.fget:
             raise AttributeError("unreadable attribute")
 
-        owner = owner_obj or owner_type
-        return self.fget(owner)
+        if owner_obj is None:
+            self.fget = ty.cast(ClsGet[TOwner, TField], self.fget)
+            return self.fget(owner_type)
+        self.fget = ty.cast(ObjGet[TOwner, TField], self.fget)
+        return self.fget(owner_obj)
 
     def __set__(self, owner_obj: TOwner, value: TField) -> None:
+        """
+        BUG?
+        assigning value to attribute in a class won't trigger attribute.__set__"
+        T.name = 5 # won't trigger name.__set__
+        """
+        raise NotImplementedError
         if not self.fset:
             raise AttributeError("can't set attribute")
         self.fset(owner_obj, value)
@@ -160,21 +167,26 @@ class cached_attribute[TOwner, TField](attribute[TOwner, TField]):
     Cached version of attribute that stores the value after the first access.
     """
 
-    def __get__(self, owner_object: TOwner, owner_type: type[TOwner]) -> TField:
+    def __get__(self, owner_object: TOwner | None, owner_type: type[TOwner]) -> TField:
         if not self.fget:
             raise AttributeError("unreadable attribute")
 
-        owner = owner_object or owner_type
-        if not hasattr(owner, self._attrname):
-            value = self.fget(owner)
-            setattr(owner, self._attrname, value)
-        return getattr(owner, self._attrname)
+        if owner_object is None:
+            if not hasattr(owner_type, self._attrname):
+                self.fget = ty.cast(ClsGet[TOwner, TField], self.fget)
+                value = self.fget(owner_type)
+                setattr(owner_type, self._attrname, value)
+            return getattr(owner_type, self._attrname)
+        else:
+            if not hasattr(owner_object, self._attrname):
+                self.fget = ty.cast(ObjGet[TOwner, TField], self.fget)
+                value = self.fget(owner_object)
+                setattr(owner_object, self._attrname, value)
+            return getattr(owner_object, self._attrname)
 
     def __set__(self, instance: TOwner, value: TField) -> None:
+        raise NotImplementedError
         if not self.fset:
             raise AttributeError("can't set attribute")
         self.fset(instance, value)
         setattr(instance, self._attrname, value)  # Cache the value
-
-
-# add retry

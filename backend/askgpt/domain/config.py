@@ -28,6 +28,31 @@ TIME_EPSILON_S = 0.001  # 1ms
 
 type SUPPORTED_ALGORITHMS = ty.Literal[tuple(jose.constants.ALGORITHMS.SUPPORTED)]  # type: ignore
 
+SETTINGS_READ_ORDER: tuple[str, ...] = (
+    "test.settings.toml",
+    "dev.settings.toml",
+    "prod.settings.toml",
+    "settings.toml",
+    "test.env",
+    "dev.env",
+    "prod.env",
+    ".env",
+)
+
+
+def detect_settings() -> "Settings":
+    fileutil = FileUtil.from_cwd()
+    work_dir = pathlib.Path.cwd()
+    for candidate in SETTINGS_READ_ORDER:
+        try:
+            f = fileutil.find(candidate, dir=work_dir)
+        except FileNotFoundError:
+            continue
+        else:
+            settings = Settings.from_file(f)
+            return settings
+    raise FileNotFoundError(f"None of {SETTINGS_READ_ORDER} File exists in {work_dir}")
+
 
 def sys_finetune():
     import gc

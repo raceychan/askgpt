@@ -14,28 +14,19 @@ import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 
-const Login: React.FC = () => {
+const Signup: React.FC = () => {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
-  const { login, loginWithGoogle, isLoading } = useAuth();
+  const { signup, isLoading } = useAuth();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
     try {
-      await login(email, password);
+      await signup(email, password);
     } catch (error) {
-      setError("Please check your credentials and try again.");
-    }
-  };
-
-  const handleGoogleLogin = async () => {
-    setError(null);
-    try {
-      await loginWithGoogle();
-    } catch (error) {
-      setError("Google login failed. Please try again.");
+      setError("Signup failed. Please check your credentials and try again.");
     }
   };
 
@@ -43,9 +34,9 @@ const Login: React.FC = () => {
     <div className="flex justify-center items-center h-screen">
       <Card className="w-[350px]">
         <CardHeader>
-          <CardTitle>Login</CardTitle>
+          <CardTitle>Sign Up</CardTitle>
           <CardDescription>
-            Enter your credentials to access your account
+            Create an account to get started
           </CardDescription>
         </CardHeader>
         <form onSubmit={handleSubmit}>
@@ -78,39 +69,27 @@ const Login: React.FC = () => {
           <CardFooter className="flex flex-col gap-4">
             {error && (
               <Alert variant="destructive" className="mb-2">
-                <AlertTitle className="text-red-600">Login Failed</AlertTitle>
+                <AlertTitle className="text-red-600">Signup Failed</AlertTitle>
                 <AlertDescription className="text-red-600">
                   {error}
                 </AlertDescription>
               </Alert>
             )}
-            <div className="flex gap-2">
-              <Button
-                type="submit"
-                className="w-1/2 border-2 border-primary"
-                disabled={isLoading}
-              >
-                {isLoading ? "Logging in..." : "Sign In"}
-              </Button>
-              <Button
-                type="button"
-                className="w-1/2 border-2 border-secondary"
-                onClick={() => (window.location.href = "/signup")}
-              >
-                Sign Up
-              </Button>
-            </div>
-            <Separator className="flex-grow bg-black" />
-            <span className="px-2 text-sm text-gray-500">Or</span>
-            <span className="px-2 text-sm text-gray-500">Sign In With</span>
             <Button
-              type="button"
-              variant="outline"
-              className="w-30 text-sm text-gray-500"
-              onClick={handleGoogleLogin}
+              type="submit"
+              className="w-full border-2 border-primary"
               disabled={isLoading}
             >
-              Google
+              {isLoading ? "Signing up..." : "Sign Up"}
+            </Button>
+            <Separator className="flex-grow bg-black" />
+            <span className="px-2 text-sm text-gray-500">Already have an account?</span>
+            <Button
+              type="button"
+              className="w-full border-2 border-secondary"
+              onClick={() => (window.location.href = "/login")}
+            >
+              Sign In
             </Button>
           </CardFooter>
         </form>
@@ -119,4 +98,4 @@ const Login: React.FC = () => {
   );
 };
 
-export default Login;
+export default Signup;
