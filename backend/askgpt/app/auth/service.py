@@ -76,7 +76,7 @@ class AuthService:
             raise errors.InvalidPasswordError("Invalid password")
 
         if not user.is_active:
-            raise errors.UserNotFoundError(user_id=email)
+            raise errors.UserInactiveError(user_id=email)
 
         user.login()
 
@@ -90,7 +90,7 @@ class AuthService:
     async def signup_user(self, user_name: str, email: str, password: str) -> str:
         user = await self.find_user(email)
         if user is not None:
-            raise errors.UserAlreadyExistError(f"user {email} already exist")
+            raise errors.UserAlreadyExistError(email=email)
 
         hash_password = security.hash_password(password.encode())
         user_info = model.UserCredential(

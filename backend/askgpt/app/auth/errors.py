@@ -1,11 +1,10 @@
-from askgpt.app.api.errors import ClientSideError, EntityNotFoundError
+from askgpt.app.api.errors import APPErrorBase, EntityNotFoundError
 
 
-class AuthenticationError(ClientSideError):
+class AuthenticationError(APPErrorBase):
     """
     Failed to authenticate user
     """
-
     service: str = "auth"
 
 
@@ -39,6 +38,15 @@ class UserInactiveError(EntityNotFoundError, AuthenticationError):
         super().__init__(msg)
 
 
+class InvalidEmailAddressError(AuthenticationError):
+    """
+    User email is not a valid email address
+    """
+
+    def __init__(self, *, email: str):
+        super().__init__(f"{email} is not a valid email address")
+
+
 class InvalidPasswordError(AuthenticationError):
     """
     User email and password does not match
@@ -49,6 +57,9 @@ class UserAlreadyExistError(AuthenticationError):
     """
     User with the same email already exist
     """
+
+    def __init__(self, *, email: str):
+        super().__init__(f"User with {email=} already exist")
 
 
 class InvalidCredentialError(AuthenticationError):

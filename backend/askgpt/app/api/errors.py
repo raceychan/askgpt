@@ -5,11 +5,11 @@ from askgpt.helpers.error_registry import ErrorDetail
 ErrorSource = ty.Literal["server", "client"]
 
 
-class APPError(Exception):
-    "Uncaught domain error"
+class APPErrorBase(Exception):
+    "domain error"
 
     description: str = ""
-    source: ErrorSource
+    source: ErrorSource = "client"
     service: str = ""
 
     def __init__(self, message: str = ""):
@@ -35,19 +35,11 @@ class APPError(Exception):
         )
 
 
-class ServerSideError(APPError):
-    source = "server"  # status > 500
-
-
-class ClientSideError(APPError):
-    source = "client"  # 400 < status < 500
-
-
-class EntityNotFoundError(ClientSideError):
+class EntityNotFoundError(APPErrorBase):
     "Entity not found"
 
 
-class ThrottlingError(ClientSideError):
+class ThrottlingError(APPErrorBase):
     "Request throttled"
 
 

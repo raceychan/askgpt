@@ -3,8 +3,10 @@ import asyncio
 import pytest
 
 from askgpt.app.auth.model import UserCredential, UserRoles
-from askgpt.domain.config import Settings
+from askgpt.domain.config import SETTINGS_CONTEXT, Settings
 from askgpt.helpers.file import FileLoader, FileUtil
+from askgpt.helpers.security import generate_secrete
+from askgpt.helpers.string import KeySpace
 from askgpt.infra import security
 
 
@@ -48,10 +50,10 @@ def settings() -> Settings:
             HOST="localhost",
             PORT=0,
             DB="",
-            keyspaces=Settings.Redis.KeySpaces(APP="test"),
+            keyspaces=Settings.Redis.KeySpaces(APP="test"),  # type: ignore
         ),
         security=Settings.Security(
-            SECRET_KEY="test_security",
+            SECRET_KEY=generate_secrete().decode(),
             ALGORITHM="HS256",
             CORS_ORIGINS=["localhost:5732"],
         ),
@@ -62,7 +64,7 @@ def settings() -> Settings:
         event_record=Settings.EventRecord(),
         openai_client=Settings.OpenAIClient(),
     )
-
+    SETTINGS_CONTEXT.set(ss)
     return ss
 
 

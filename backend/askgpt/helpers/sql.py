@@ -19,7 +19,7 @@ def declarative[T](cls: type[T]) -> type[T]:
     return sa_orm.declarative_base(cls=cls)  # type: ignore
 
 
-def asyncengine(engine: sa.Engine) -> sa_aio.AsyncEngine:
+def async_engine(engine: sa.Engine) -> sa_aio.AsyncEngine:
     return sa_aio.AsyncEngine(engine)
 
 

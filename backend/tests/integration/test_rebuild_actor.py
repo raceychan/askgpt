@@ -1,13 +1,16 @@
+import typing as ty
+
 import pytest
-from askgpt.adapters import cache, gptclient
+from tests.conftest import TestDefaults
+
+# from askgpt.infra.cache import Cache, MemoryCache, RedisCache
+from askgpt.adapters.cache import Cache, MemoryCache, RedisCache
+from askgpt.adapters.gptclient import OpenAIClient
 from askgpt.app.actor import QueueBox
 from askgpt.app.gpt import model, service
 from askgpt.domain import config
-from tests.conftest import TestDefaults
 from askgpt.infra import factory
 from askgpt.infra.eventstore import EventStore
-
-# from askgpt.infra.cache import Cache, MemoryCache, RedisCache
 
 
 @pytest.fixture(scope="module")
@@ -25,13 +28,13 @@ def chat_messages(test_defaults: TestDefaults):
 async def gptsystem(
     settings: config.Settings,
     eventstore: EventStore,
-    redis_cache: cache.RedisCache[str],
+    cache: Cache[str, ty.Any],
 ):
     system = service.GPTSystem(
         boxfactory=QueueBox,
         ref=settings.actor_refs.SYSTEM,
         settings=settings,
-        cache=cache.MemoryCache(),  # redis_cache,
+        cache=cache,
     )
     await system.start(eventstore=eventstore)
     return system
@@ -55,7 +58,7 @@ async def session_actor(user_actor: service.UserActor):
     return session
 
 
-def test_user_add_key(settings: config.Settings, user_actor: service.UserActor):
+def test_user_add_key(user_actor: service.UserActor):
     api_key = factory.encrypt_facotry().encrypt_string("random").decode()
     cmd = model.UserAPIKeyAdded(
         user_id=user_actor.entity_id,
@@ -71,20 +74,20 @@ def sendchatmessage(chat_message: model.ChatMessage):
         user_id=TestDefaults.USER_ID,
         message_body=chat_message.content,
         role=chat_message.role,
-        client_type="test",
+        client_type="askgpt_test",
     )
 
 
 async def test_system_cache(gptsystem: service.GPTSystem):
     system_cache = gptsystem.cache
     assert system_cache is not None
-    assert isinstance(system_cache, cache.Cache)
+    assert isinstance(system_cache, Cache)
 
 
 async def test_ask_question(
     session_actor: service.SessionActor,
     chat_messages: list[model.ChatMessage],
-    openai_client: gptclient.OpenAIClient,
+    openai_client: OpenAIClient,
 ):
     pre_test_msg_cnt = session_actor.message_count
     prompt = chat_messages[0]  # type: ignore

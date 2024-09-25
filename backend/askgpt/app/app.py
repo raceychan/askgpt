@@ -5,9 +5,10 @@ from contextlib import asynccontextmanager
 from fastapi import APIRouter, FastAPI
 
 from askgpt.adapters.factory import adapter_locator, make_database  # make_local_cache
-from askgpt.app.api import add_exception_handlers, add_middlewares, route_id_factory
+from askgpt.app.api import add_middlewares, route_id_factory
+from askgpt.app.api.error_handlers import add_exception_handlers
 from askgpt.app.api.routers import api_router
-from askgpt.domain.config import Settings, detect_settings, settings_context
+from askgpt.domain.config import SETTINGS_CONTEXT, Settings, detect_settings
 from askgpt.helpers.time import timeout
 from askgpt.infra import schema
 from askgpt.infra._log import logger, prod_sink, update_sink
@@ -46,7 +47,7 @@ async def bootstrap(settings: Settings):
 
 @asynccontextmanager
 async def lifespan(app: FastAPI | None = None):
-    settings = settings_context.get()
+    settings = SETTINGS_CONTEXT.get()
     await bootstrap(settings)
     async with adapter_locator.singleton:
         yield
@@ -56,7 +57,7 @@ def app_factory(
     lifespan=lifespan, start_response=None, *, settings: Settings | None = None
 ) -> FastAPI:
     settings = settings or detect_settings()
-    settings_context.set(settings)
+    SETTINGS_CONTEXT.set(settings)
 
     app = FastAPI(
         title=settings.PROJECT_NAME,

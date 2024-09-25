@@ -3,6 +3,8 @@ import typing as ty
 
 import pytest
 from sqlalchemy.ext import asyncio as sa_aio
+from tests.conftest import TestDefaults
+
 from askgpt.adapters.cache import MemoryCache, RedisCache
 from askgpt.adapters.database import AsyncDatabase
 from askgpt.adapters.gptclient import ClientRegistry, OpenAIClient
@@ -15,7 +17,6 @@ from askgpt.domain.config import Settings
 from askgpt.infra import schema
 from askgpt.infra.eventrecord import EventRecord
 from askgpt.infra.eventstore import EventStore
-from tests.conftest import TestDefaults
 
 
 class EchoMailbox(MailBox):
@@ -82,18 +83,22 @@ async def eventrecord(consumer: BaseConsumer[ty.Any], eventstore: EventStore):
         yield es
 
 
-@pytest.fixture(scope="module", autouse=True)
-async def redis_cache(settings: Settings):
-    redis = RedisCache[str].build(
-        url=settings.redis.URL,
-        decode_responses=settings.redis.DECODE_RESPONSES,
-        max_connections=settings.redis.MAX_CONNECTIONS,
-        keyspace=settings.redis.keyspaces.APP,
-        socket_timeout=settings.redis.SOCKET_TIMEOUT,
-        socket_connect_timeout=settings.redis.SOCKET_CONNECT_TIMEOUT,
-    )
-    async with redis.lifespan():
-        yield redis
+# @pytest.fixture(scope="module", autouse=True)
+# async def redis_cache(settings: Settings):
+#     redis = RedisCache[str].build(
+#         url=settings.redis.URL,
+#         decode_responses=settings.redis.DECODE_RESPONSES,
+#         max_connections=settings.redis.MAX_CONNECTIONS,
+#         keyspace=settings.redis.keyspaces.APP,
+#         socket_timeout=settings.redis.SOCKET_TIMEOUT,
+#         socket_connect_timeout=settings.redis.SOCKET_CONNECT_TIMEOUT,
+#     )
+#     async with redis.lifespan():
+#         yield redis
+@pytest.fixture(scope="module")
+async def cache(settings: Settings):
+    return MemoryCache()
+
 
 
 @pytest.fixture(scope="module")
@@ -122,7 +127,7 @@ def openai_client(chat_response: ChatResponse):
     async def asyncresponse():
         return chat_response
 
-    @ClientRegistry.register("test")
+    @ClientRegistry.register("askgpt_test")
     class FakeClient(OpenAIClient):
         async def complete(  # type: ignore
             self, **kwargs  # type: ignore

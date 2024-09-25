@@ -1,9 +1,10 @@
 from askgpt.adapters.factory import adapter_locator
 from askgpt.app.api.throttler import UserRequestThrottler
+from askgpt.app.auth.repository import UserRepository
 from askgpt.app.auth.service import AuthService
+from askgpt.app.gpt.repository import SessionRepository
 from askgpt.app.gpt.service import GPTService, GPTSystem, QueueBox
-from askgpt.domain.config import Settings
-from askgpt.infra import factory as infra_factory
+from askgpt.infra.factory import encrypt_facotry, token_registry_factory
 
 
 def user_request_throttler_factory():
@@ -18,13 +19,12 @@ def user_request_throttler_factory():
 
 
 def auth_service_factory():
-    settings = adapter_locator.settings
     auth_service = AuthService(
-        user_repo=infra_factory.user_repo_factory(),
-        token_registry=infra_factory.token_registry_factory(),
-        token_encrypt=infra_factory.encrypt_facotry(),
-        producer=infra_factory.producer_factory(),
-        security_settings=settings.security,
+        user_repo=UserRepository(adapter_locator.aiodb),
+        token_registry=token_registry_factory(),
+        token_encrypt=encrypt_facotry(),
+        producer=adapter_locator.producer,
+        security_settings=adapter_locator.settings.security,
     )
     return auth_service
 
@@ -35,13 +35,13 @@ def gpt_service_factory():
         settings=settings,
         ref=settings.actor_refs.SYSTEM,
         boxfactory=QueueBox,
-        cache=infra_factory.cache_factory(),
+        cache=adapter_locator.aiocache,
     )
 
-    session_repo = infra_factory.session_repo_factory()
-    user_repo = infra_factory.user_repo_factory()
-    encryptor = infra_factory.encrypt_facotry()
-    producer = infra_factory.producer_factory()
+    session_repo = SessionRepository(adapter_locator.aiodb)
+    user_repo = UserRepository(adapter_locator.aiodb)
+    encryptor = encrypt_facotry()
+    producer = adapter_locator.producer
     service = GPTService(
         system=system,
         encryptor=encryptor,
@@ -50,11 +50,3 @@ def gpt_service_factory():
         producer=producer,
     )
     return service
-
-
-# class service_locator(ServiceLocator[ty.Any]):
-#     "singleton class for service locator"
-
-#     # auth_service: Dependency[AuthService] = auth_servie_factory
-#     auth_service = Dependency(AuthService, auth_service_factory)
-#     gpt_service = Dependency(GPTService, gpt_service_factory)

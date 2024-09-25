@@ -13,8 +13,7 @@ dev:
 
 .PHONY: test
 test:
-	$(run) -e test pytest 
-# tests/ --cov=askgpt --cov-report term-missing 
+	$(run) -e test pytest tests/ --cov=askgpt --cov-report term-missing 
 
 .PHONY: debug
 debug:

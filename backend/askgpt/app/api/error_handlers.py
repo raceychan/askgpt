@@ -5,7 +5,7 @@ from starlette.background import BackgroundTask
 from starlette.responses import Response
 
 from askgpt.app.api.errors import (
-    APPError,
+    APPErrorBase,
     EntityNotFoundError,
     ErrorDetail,
     QuotaExceededError,
@@ -13,7 +13,7 @@ from askgpt.app.api.errors import (
 from askgpt.app.api.xheaders import XHeaders
 from askgpt.app.auth.errors import AuthenticationError, UserNotFoundError
 from askgpt.app.gpt.errors import OrphanSessionError
-from askgpt.helpers.error_registry import ErrorDetail, HandlerRegistry, registry
+from askgpt.helpers.error_registry import ErrorDetail, registry
 
 
 class ServerResponse(Response):
@@ -79,7 +79,7 @@ def _(request: Request, exc: Exception) -> ErrorResponse:
 
 
 @registry.register
-def _(request: Request, exc: APPError) -> ErrorResponse:
+def _(request: Request, exc: APPErrorBase) -> ErrorResponse:
     request_id = request.headers[XHeaders.REQUEST_ID.value]
     return make_err_response(
         request_id=request_id,

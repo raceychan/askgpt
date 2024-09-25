@@ -11,7 +11,7 @@ from askgpt.infra import eventstore
 
 @settingfactory
 def make_async_engine(settings: Settings):
-    async_engine = sql.asyncengine(make_engine(settings))
+    async_engine = sql.async_engine(make_engine(settings))
     return async_engine
 
 
@@ -104,10 +104,9 @@ class adapter_locator(InfraLocator):
 
     @classmethod
     def build_token_bucket(cls, keyspace: cache.KeySpace):
-        settings = ty.cast(Settings, settings)
-        if not settings.redis:
+        if not cls.settings.redis:
             raise MissingConfigError(Settings.Redis)
-        script = settings.redis.TOKEN_BUCKET_SCRIPT
+        script = cls.settings.redis.TOKEN_BUCKET_SCRIPT
         script_func = cls.aiocache.load_script(script)
         return tokenbucket.TokenBucketFactory(
             redis=cls.aiocache,

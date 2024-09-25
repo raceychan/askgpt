@@ -139,14 +139,6 @@ class Settings(SettingsBase):
         @property
         def DB_URL(self) -> str:
             proto = f"{self.DIALECT}+{self.DRIVER}" if self.DRIVER else self.DIALECT
-            # url = AnyUrl.build(
-            #     scheme=proto,
-            #     username=self.USER,
-            #     password=str(self.PASSWORD) if self.PASSWORD else None,
-            #     host=str(self.HOST) if self.HOST else None,
-            #     port=self.PORT if self.PORT != -1 else None,
-            #     path=str(self.DATABASE),
-            # )
             url = f"{proto}://"
             if self.USER and self.PASSWORD:
                 url += f"{self.USER}:{self.PASSWORD}"
@@ -155,7 +147,7 @@ class Settings(SettingsBase):
             elif self.PASSWORD:
                 raise ValueError("Password without user is not allowed")
 
-            if self.HOST:
+            if self.HOST:  # host can be None if we use sqlite
                 url += f"@{self.HOST}"
             if self.PORT != -1:
                 url += f":{self.PORT}"
@@ -310,7 +302,7 @@ class Settings(SettingsBase):
         return cls.model_validate(config_data)
 
 
-settings_context: ContextVar[Settings] = ContextVar("settings")
+SETTINGS_CONTEXT: ContextVar[Settings] = ContextVar("settings")
 
 # class GlobalContext:
 #     """

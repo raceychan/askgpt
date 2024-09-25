@@ -100,7 +100,7 @@ class DomainModel(BaseModel):
     @classmethod
     def model_all_fields(cls) -> dict[str, type]:
         field_map: dict[str, ty.Any] = dict()
-        computed_fields = cls.model_computed_fields.fget(cls)  # type: ignore
+        computed_fields = cls.model_computed_fields
         for fname, finfo in computed_fields.items():
             ppt = finfo.wrapped_property
             getter = ppt.fget if isinstance(ppt, property) else ppt.func
@@ -127,12 +127,12 @@ class DomainModel(BaseModel):
             int: sa.Integer,
             datetime.datetime: sa.DateTime,
             bool: sa.Boolean,
-            float: sa.Float,  # type: ignore
+            float: sa.Float,
             list: sa.JSON,
             dict: sa.JSON,
-            uuid.UUID: sa.UUID,  # type: ignore
+            uuid.UUID: sa.UUID,
             None: sa.Null,
-            decimal.Decimal: sa.Numeric,  # type: ignore
+            decimal.Decimal: sa.Numeric,
         }
 
         tablename = table_name or str_to_snake(cls.__name__)

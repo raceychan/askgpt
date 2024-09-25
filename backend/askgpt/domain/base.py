@@ -1,11 +1,11 @@
 """
 Custom types and helpers, do not import any non-builtin here.
 """
+
 import typing as ty
 
 
-class _NotGiven:
-    ...
+class _NotGiven: ...
 
 
 NOT_GIVEN = _NotGiven()
@@ -16,7 +16,7 @@ EMPTY_STR: ty.Annotated[str, "EMPTY_STR"] = ""
 # Where None does not mean default value, but a valid value to be set
 type Nullable[T] = T | _NotGiven | None
 
-type SupportedGPTs = ty.Literal["openai"]
+type SupportedGPTs = ty.Literal["openai", "askgpt_test"]
 
 
 class TimeScale:

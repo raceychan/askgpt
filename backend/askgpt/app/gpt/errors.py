@@ -1,17 +1,15 @@
-from askgpt.app.api.errors import ClientSideError, EntityNotFoundError, ThrottlingError
+from askgpt.app.api.errors import APPErrorBase, EntityNotFoundError, ThrottlingError
 from askgpt.app.auth.errors import AuthenticationError
 
 
-class InvalidStateError(Exception):
-    ...
+class InvalidStateError(Exception): ...
 
 
-class GPTError(ClientSideError):
+class GPTError(APPErrorBase):
     service = "gpt"
 
 
-class UserNotRegisteredError(AuthenticationError):
-    ...
+class UserNotRegisteredError(AuthenticationError): ...
 
 
 class SessionNotFoundError(EntityNotFoundError, GPTError):

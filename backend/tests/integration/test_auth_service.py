@@ -1,6 +1,8 @@
 import typing as ty
 
 import pytest
+from tests.conftest import TestDefaults
+
 from askgpt.adapters.cache import MemoryCache
 from askgpt.adapters.database import AsyncDatabase
 from askgpt.adapters.queue import MessageProducer
@@ -9,7 +11,6 @@ from askgpt.app.auth.repository import UserRepository
 from askgpt.app.auth.service import AuthService, TokenRegistry
 from askgpt.domain.config import Settings
 from askgpt.infra.security import Encrypt
-from tests.conftest import TestDefaults
 
 
 @pytest.fixture(scope="module")
@@ -45,7 +46,7 @@ async def test_create_user(test_defaults: TestDefaults, auth_service: AuthServic
     assert user.role == "user"
 
 
-async def test_create_user_with_empty_email(
+async def test_create_user_with_existing_email(
     test_defaults: TestDefaults, auth_service: AuthService
 ):
     with pytest.raises(UserAlreadyExistError):

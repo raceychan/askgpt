@@ -4,6 +4,9 @@ from functools import lru_cache, update_wrapper
 AnyCallable = ty.Callable[..., ty.Any]
 
 
+class SimpleCacheFullError(Exception): ...
+
+
 @ty.overload
 def simplecache(max_size: int = 1, *, size_check: bool = False) -> AnyCallable: ...
 
@@ -13,6 +16,13 @@ def simplecache[**P, R](max_size: ty.Callable[P, R]) -> ty.Callable[P, R]: ...
 
 
 def simplecache(max_size: int | AnyCallable = 1, *, size_check: bool = False):
+    """
+    a simple cache that utilizes a dict instead of a double-linked list for caching
+
+    Args:
+        max_size : max number of result cached for the decorated function
+        size_check: wether raise error when number of chaced results reach max_szie
+    """
     _max_size = 1 if callable(max_size) else max_size
 
     def _simplecache[**P, R](user_func: ty.Callable[P, R]) -> ty.Callable[P, R]:
