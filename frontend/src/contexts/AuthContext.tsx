@@ -16,6 +16,7 @@ interface AuthContextType {
   login: (email: string, password: string) => void;
   loginWithGoogle: () => Promise<void>;
   logout: () => void;
+  signup: (email: string, password: string, userName?: string) => void;
   user: PublicUserInfo;
   isLoading: boolean;
 }
@@ -37,9 +38,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
   const { data: user, isLoading } = useQuery<PublicUserInfo, Error>({
     queryKey: ["user"],
     queryFn: async (): Promise<PublicUserInfo> => {
-      if (localStorage.getItem("access_token" || "") === "dummy_access_token") {
-        return { email: "john@gmail.com", user_name: "john" } as PublicUserInfo;
-      }
       const response = (await UserService.getPublicUser()) as {
         data: PublicUserInfo;
       };
@@ -49,13 +47,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
   }) as { data: PublicUserInfo; isLoading: boolean };
 
   const login = async (email: string, password: string) => {
-    // Shortcut for predefined credentials
-    if (email === "john@gmail.com" && password === "111") {
-      // Set a dummy token for the shortcut
-      localStorage.setItem("access_token", "dummy_access_token");
-      navigate({ to: "/" }); // Redirect after successful login
-    }
-
     const response = await AuthService.login({
       body: { username: email, password: password },
     });
@@ -64,6 +55,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
     if (response.data) {
       console.log("Login successful");
       localStorage.setItem("access_token", response.data.access_token);
+      navigate({ to: "/" });
     } else {
       // Handle the case where response.data is undefined
       setError("Login failed: No access token received.");
@@ -103,9 +95,21 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
     navigate({ to: "/login" });
   };
 
+  const signup = async (email: string, password: string, userName?: string) => {
+    try {
+      const response = await AuthService.signup({
+        body: { user_name: userName, email: email, password: password },
+      });
+      console.log("Signup successful", response);
+      navigate({ to: "/" }); // Redirect after successful signup
+    } catch (error) {
+      setError("Signup failed: " + (error as AxiosError).message);
+    }
+  };
+
   return (
     <AuthContext.Provider
-      value={{ login, loginWithGoogle, logout, user, isLoading }}
+      value={{ login, loginWithGoogle, logout, signup, user, isLoading }}
     >
       {children}
     </AuthContext.Provider>

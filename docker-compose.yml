@@ -19,7 +19,13 @@ services:
       - "-k"
       - "uvicorn.workers.UvicornWorker"
       - "--bind"
-      - "0.0.0.0:5000"
+      - "localhost:5000"
+
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://0.0.0.0:5000/v1/health/"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
 
     restart: unless-stopped
     build:
@@ -28,16 +34,15 @@ services:
 
     volumes:
       - ./backend/askgpt/settings.toml:/app/settings.toml
-    labels:
-      - "traefik.enable=true"
-      - "traefik.http.services.askgpt.loadbalancer.server.port=5000"
 
   redis:
     image: redis:latest # Use the official Redis image
     ports:
       - "6379:6379" # Map port 6379 on the host to port 6379 in the container
-    command: ["redis-server", "--bind", "0.0.0.0"] # Bind Redis to all interfaces
-
+    command:
+      - redis-server
+      - --bind
+      - 0.0.0.0
 
   # frontend:
   #   ports:

@@ -17,7 +17,7 @@ def user_request_throttler_factory():
     return throttler
 
 
-def auth_service_factory(settings: Settings | None = None):
+def auth_service_factory():
     settings = adapter_locator.settings
     auth_service = AuthService(
         user_repo=infra_factory.user_repo_factory(),
@@ -29,8 +29,8 @@ def auth_service_factory(settings: Settings | None = None):
     return auth_service
 
 
-def gpt_service_factory(settings: Settings | None = None):
-    settings = settings or adapter_locator.settings
+def gpt_service_factory():
+    settings = adapter_locator.settings
     system = GPTSystem(
         settings=settings,
         ref=settings.actor_refs.SYSTEM,

@@ -361,7 +361,7 @@ packages:
   name: askgpt
   version: 0.1.0
   path: .
-  sha256: 7f1b093d7fa968d4117dbb6c4e9ec9b732036998dbd2ea844b7cd4322f7280d0
+  sha256: e5cd1623308e747bd9a35eddce358561a50a2d5d4db07d8415e7283b62d77e32
   requires_python: '>=3.12'
   editable: true
 - kind: pypi

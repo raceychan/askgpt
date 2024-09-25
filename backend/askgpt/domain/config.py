@@ -3,7 +3,7 @@ import typing as ty
 from contextvars import ContextVar
 
 import jose.constants
-from pydantic import BaseModel, ConfigDict, computed_field, field_validator
+from pydantic import AnyUrl, BaseModel, ConfigDict, SecretStr, field_validator
 
 from askgpt.domain.base import TimeScale
 from askgpt.domain.errors import GeneralDomainError
@@ -86,6 +86,16 @@ def settingfactory[T: ty.Any](factory: SettingsFactory[T]) -> SettingsFactory[T]
     return simplecache(max_size=1, size_check=True)(factory)  # type: ignore
 
 
+class MissingConfigError(GeneralDomainError):
+    """
+    Essential config is missing for some components.
+    """
+
+    def __int__(self, config_type: type["SettingsBase"]):
+        msg = f"setting {config_type} is missing"
+        super().__init__(msg)
+
+
 class SettingsBase(BaseModel):
     model_config = ConfigDict(
         frozen=True,
@@ -118,7 +128,7 @@ class Settings(SettingsBase):
         DRIVER: str
 
         USER: str
-        PASSWORD: str
+        PASSWORD: SecretStr
         HOST: str = ""
         PORT: int = -1
         DATABASE: pathlib.Path | ty.Literal[":memory:"]
@@ -129,21 +139,29 @@ class Settings(SettingsBase):
         @property
         def DB_URL(self) -> str:
             proto = f"{self.DIALECT}+{self.DRIVER}" if self.DRIVER else self.DIALECT
-            base = f"{proto}://"
+            # url = AnyUrl.build(
+            #     scheme=proto,
+            #     username=self.USER,
+            #     password=str(self.PASSWORD) if self.PASSWORD else None,
+            #     host=str(self.HOST) if self.HOST else None,
+            #     port=self.PORT if self.PORT != -1 else None,
+            #     path=str(self.DATABASE),
+            # )
+            url = f"{proto}://"
             if self.USER and self.PASSWORD:
-                base += f"{self.USER}:{self.PASSWORD}"
+                url += f"{self.USER}:{self.PASSWORD}"
             elif self.USER:
-                base += self.USER
+                url += self.USER
             elif self.PASSWORD:
                 raise ValueError("Password without user is not allowed")
 
             if self.HOST:
-                base += f"@{self.HOST}"
+                url += f"@{self.HOST}"
             if self.PORT != -1:
-                base += f":{self.PORT}"
+                url += f":{self.PORT}"
             if self.DATABASE:
-                base += f"/{self.DATABASE}"
-            return base
+                url += f"/{self.DATABASE}"
+            return url
 
         class CONNECT_ARGS(SettingsBase):
             """
@@ -167,7 +185,7 @@ class Settings(SettingsBase):
         HOST: str = ""
         PORT: int = -1
         USER: str = ""
-        PASSWORD: str = ""
+        PASSWORD: SecretStr = SecretStr("")
 
         DATABASE: pathlib.Path | ty.Literal[":memory:"]
         ISOLATION_LEVEL: SQL_ISOLATIONLEVEL = "SERIALIZABLE"
@@ -226,6 +244,7 @@ class Settings(SettingsBase):
         SCHEME: ty.Literal["redis", "rediss", "unix"] = "redis"
         HOST: str
         PORT: int | str
+        PASSWORD: SecretStr | None = None
         DB: int | str
         TOKEN_BUCKET_SCRIPT: pathlib.Path = pathlib.Path(
             "askgpt/script/tokenbucket.lua"
@@ -237,22 +256,27 @@ class Settings(SettingsBase):
 
         @property
         def URL(self) -> str:
-            return f"{self.SCHEME}://{self.HOST}:{self.PORT}/{self.DB}"
+            url = AnyUrl.build(
+                scheme=self.SCHEME,
+                host=self.HOST,
+                port=int(self.PORT),
+                password=str(self.PASSWORD) if self.PASSWORD else None,
+                path=str(self.DB),
+            )
+            return str(url)
 
         class KeySpaces(SettingsBase):
             APP: KeySpace
 
-            @field_validator("APP", "THROTTLER", mode="before")
+            @field_validator("APP", mode="before")
             @classmethod
             def validate_key_space(cls, v: str) -> KeySpace:
                 return KeySpace(v)
 
-            @computed_field
             @property
             def THROTTLER(cls) -> KeySpace:
                 return cls.APP / "throttler"
 
-            @computed_field
             @property
             def API_POOL(cls) -> KeySpace:
                 return cls.APP / "apikeypool"
@@ -284,16 +308,6 @@ class Settings(SettingsBase):
         fileutil = FileUtil.from_cwd()
         config_data = fileutil.read_file(filename)
         return cls.model_validate(config_data)
-
-
-class MissingConfigError(GeneralDomainError):
-    """
-    Essential config is missing for some components.
-    """
-
-    def __int__(self, config_type: type[SettingsBase]):
-        msg = f"setting {config_type} is missing"
-        super().__init__(msg)
 
 
 settings_context: ContextVar[Settings] = ContextVar("settings")

@@ -30,9 +30,9 @@ async def bootstrap(settings: Settings):
             logger.critical("Failed to bootstrap application")
             raise BoostrapingFailedError(e) from e
         else:
-            logger.success(f"db host: {settings.db.HOST}")
+            logger.success(f"db@{settings.db.HOST}:{settings.db.PORT}")
             if settings.redis:
-                logger.success(f"redis host: {settings.redis.HOST}")
+                logger.success(f"redis@{settings.redis.HOST}:{settings.redis.PORT}")
 
     if settings.is_prod_env:
         await _prod(settings)
