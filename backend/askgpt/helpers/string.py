@@ -1,8 +1,28 @@
 import re
 import typing as ty
 
-pattern_uppercase = re.compile(r"([A-Z]+)([A-Z][a-z])")
-pattern_camel_case = re.compile(r"([a-z\d])([A-Z])")
+PATTERN_UPPERCASE = re.compile(r"([A-Z]+)([A-Z][a-z])")
+PATTERN_CAMEL_CASE = re.compile(r"([a-z\d])([A-Z])")
+
+# PUNCTUATION_PATTERN = re.compile(r"[?!.,\'\"]")
+# CAPITALS_PATTERN = re.compile(r"(?<!^)(?=[A-Z])")
+# UNDERSCORE_PATTERN = re.compile(r"_")
+# MULTISPACE_PATTERN = re.compile(r"\s+")
+# SPACES_PATTERN = re.compile(r" ")
+
+
+def str_to_kebab(string: str) -> str:
+    """
+    Examples:
+    -------
+    >>> str_to_kebab("myCamelName") == "my-camel-name"
+    assert str_to_kebab("AnotherExample123") == "another-example123"
+    assert str_to_kebab("PascalCase") == "pascal-case"
+    """
+    string = PATTERN_UPPERCASE.sub(r"\1_\2", string)
+    string = PATTERN_CAMEL_CASE.sub(r"\1_\2", string)
+    string = string.replace("_", "-")
+    return string.lower()
 
 
 def str_to_snake(string: str) -> str:
@@ -14,8 +34,8 @@ def str_to_snake(string: str) -> str:
     assert str_to_snake("AnotherExample123") == "another_example123"
     assert str_to_snake("PascalCase") == "pascal_case"
     """
-    string = pattern_uppercase.sub(r"\1_\2", string)
-    string = pattern_camel_case.sub(r"\1_\2", string)
+    string = PATTERN_UPPERCASE.sub(r"\1_\2", string)
+    string = PATTERN_CAMEL_CASE.sub(r"\1_\2", string)
     string = string.replace("-", "_")
     return string.lower()
 

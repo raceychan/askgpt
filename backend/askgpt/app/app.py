@@ -1,12 +1,15 @@
-import argparse
-import pathlib
 from contextlib import asynccontextmanager
 
 from fastapi import APIRouter, FastAPI
 
-from askgpt.adapters.factory import adapter_locator, make_database  # make_local_cache
+from askgpt.adapters.factory import adapter_locator, make_database
 from askgpt.app.api import add_middlewares, route_id_factory
-from askgpt.app.api.error_handlers import add_exception_handlers
+from askgpt.app.api.error_handlers import (
+    INTERNAL_ERROR_DETAIL,
+    ErrorResponse,
+    add_exception_handlers,
+    handler_registry,
+)
 from askgpt.app.api.routers import api_router
 from askgpt.domain.config import SETTINGS_CONTEXT, Settings, detect_settings
 from askgpt.helpers.time import timeout
@@ -70,11 +73,14 @@ def app_factory(
         generate_unique_id_function=route_id_factory,
     )
 
-    root_router = APIRouter()
+    error_route = handler_registry.build_error_route()
+
+    root_router = APIRouter(prefix=settings.api.API_VERSION_STR)
     root_router.include_router(api_router)
+    root_router.include_router(error_route)
     root_router.add_api_route("/health", lambda: "ok", tags=["health check"])
 
-    app.include_router(root_router, prefix=settings.api.API_VERSION_STR)
+    app.include_router(root_router)
     add_exception_handlers(app)
     add_middlewares(app, settings=settings)
 

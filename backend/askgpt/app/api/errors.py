@@ -1,38 +1,18 @@
 import typing as ty
 
-from askgpt.helpers.error_registry import ErrorDetail
+from askgpt.helpers.error_registry import RFC9457
 
 ErrorSource = ty.Literal["server", "client"]
 
 
-class APPErrorBase(Exception):
-    "domain error"
+class APPErrorBase(RFC9457):
+    "Domain error"
 
-    description: str = ""
     source: ErrorSource = "client"
     service: str = ""
 
-    def __init__(self, message: str = ""):
-        super().__init__(message)
-        self.message = message
-        self.detail = self._generate_detail()
-
     def __repr__(self):
-        return f"<{self.detail.error_code}: {self.detail.message}>"
-
-    def _generate_detail(self) -> ErrorDetail:
-        """
-        generate error detail if description is provided or docstring is provided
-        """
-        desc = self.description or self.__doc__ or ""
-
-        return ErrorDetail(
-            error_code=self.__class__.__name__,
-            description=desc.strip(),
-            source=self.source,
-            service=self.service,
-            message=self.message,
-        )
+        return f"<{self._error_detail["title"]}: {self.error_detail["detail"]}>"
 
 
 class EntityNotFoundError(APPErrorBase):

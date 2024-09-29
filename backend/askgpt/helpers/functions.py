@@ -4,6 +4,12 @@ from functools import lru_cache, update_wrapper
 AnyCallable = ty.Callable[..., ty.Any]
 
 
+class _Missing: ...
+
+
+MISSING = _Missing()
+
+
 class SimpleCacheFullError(Exception): ...
 
 
@@ -132,6 +138,7 @@ class attribute[TOwner, TField]:
         fget: ObjGet[TOwner, TField] | ClsGet[TOwner, TField] | None = None,
         fset: ObjSet[TOwner, TField] | ClsSet[TOwner, TField] | None = None,
     ):
+        "__init__ will be executed before other descriptor mtehods"
         self.fget = fget
         self.fset = fset
         self._attrname: str = ""
@@ -144,6 +151,14 @@ class attribute[TOwner, TField]:
 
         if name != self._attrname:
             raise TypeError("cannot assign the same attribute name twice")
+
+    @ty.overload
+    def __get__(self, owner_obj: TOwner, owner_type: type[TOwner]) -> TField: ...
+
+    @ty.overload
+    def __get__(
+        self, owner_obj: ty.Literal[None], owner_type: type[TOwner]
+    ) -> TField: ...
 
     def __get__(self, owner_obj: TOwner | None, owner_type: type[TOwner]) -> TField:
         if not self.fget:
@@ -177,19 +192,21 @@ class cached_attribute[TOwner, TField](attribute[TOwner, TField]):
     Cached version of attribute that stores the value after the first access.
     """
 
-    def __get__(self, owner_object: TOwner | None, owner_type: type[TOwner]) -> TField:
+    def __get__(
+        self, owner_object: TOwner | ty.Literal[None], owner_type: type[TOwner]
+    ) -> TField:
         if not self.fget:
             raise AttributeError("unreadable attribute")
 
         if owner_object is None:
+            self.fget = ty.cast(ClsGet[TOwner, TField], self.fget)
             if not hasattr(owner_type, self._attrname):
-                self.fget = ty.cast(ClsGet[TOwner, TField], self.fget)
                 value = self.fget(owner_type)
                 setattr(owner_type, self._attrname, value)
             return getattr(owner_type, self._attrname)
         else:
+            self.fget = ty.cast(ObjGet[TOwner, TField], self.fget)
             if not hasattr(owner_object, self._attrname):
-                self.fget = ty.cast(ObjGet[TOwner, TField], self.fget)
                 value = self.fget(owner_object)
                 setattr(owner_object, self._attrname, value)
             return getattr(owner_object, self._attrname)
@@ -200,3 +217,68 @@ class cached_attribute[TOwner, TField](attribute[TOwner, TField]):
             raise AttributeError("can't set attribute")
         self.fset(instance, value)
         setattr(instance, self._attrname, value)  # Cache the value
+
+
+class ClassAttr[AttrType]:
+    """
+    Like the opposite of 'property',
+    where this returns class attribute only if accssed via class
+    and return itself otherwise.
+
+    class Test:
+        name: ClassAttr[str] = ClassAttr(lambda x: x.__name__.lower())
+
+    assert Test.name == "test"
+    assert isinstance(Test().name, ClassAttr)
+    """
+
+    def __init__(
+        self,
+        name_or_getter: str | ty.Callable[[type], AttrType],
+        *,
+        default: AttrType | _Missing = MISSING,
+    ):
+        self._name_or_getter = name_or_getter
+        self._default = default
+
+    def __set_name__(self, owner_type: type, name: str):
+        self._set_name = name
+
+    @ty.overload
+    def __get__(self, owner_obj: None, owner_type: type[ty.Any]) -> AttrType: ...
+
+    @ty.overload
+    def __get__[
+        T
+    ](self, owner_obj: T, owner_type: type[T] | None = None) -> ty.Self: ...
+
+    def __get__[
+        T
+    ](self, owner_obj: T | None, owner_type: type[T] | None = None) -> (
+        AttrType | ty.Self
+    ):
+        if owner_obj is not None:
+            return self
+
+        if owner_type is None:
+            raise RuntimeError("both owner object and owner type is not provided")
+
+        if isinstance(self._name_or_getter, ty.Callable):
+            _val = self._name_or_getter(owner_type)
+        else:
+            try:
+                _val: AttrType = getattr(owner_type, self._name_or_getter)
+            except AttributeError as ae:
+                if self._default is not MISSING:
+                    self._default = ty.cast(AttrType, self._default)
+                    return self._default
+                raise ae
+        return _val
+
+
+class T:
+    name: ClassAttr[str] = ClassAttr[str](lambda cls: cls.__name__.lower())
+
+    @property
+    def age(self) -> int:
+        return 0

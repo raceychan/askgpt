@@ -33,6 +33,7 @@ class TokenRegistry:
 class AuthService:
     # NOTE: we are ignoring the dual write problem here,
     # but we should solve it in next few commits
+
     def __init__(
         self,
         user_repo: repository.UserRepository,
@@ -66,28 +67,11 @@ class AuthService:
 
         return self._token_encrypt.encrypt_jwt(token)
 
-    async def login(self, email: str, password: str) -> str:
-        user = await self._user_repo.search_user_by_email(email)
-
-        if user is None:
-            raise errors.UserNotFoundError(user_id=email)
-
-        if not user.credential.verify_password(password):
-            raise errors.InvalidPasswordError("Invalid password")
-
-        if not user.is_active:
-            raise errors.UserInactiveError(user_id=email)
-
-        user.login()
-
-        access_token = self._create_access_token(user.entity_id, user.role)
-        return access_token
-
     async def find_user(self, email: str) -> model.UserAuth | None:
         user_or_none = await self._user_repo.search_user_by_email(email)
         return user_or_none
 
-    async def signup_user(self, user_name: str, email: str, password: str) -> str:
+    async def signup_user(self, user_name: str, email: str, password: str) -> None:
         user = await self.find_user(email)
         if user is not None:
             raise errors.UserAlreadyExistError(email=email)
@@ -105,7 +89,6 @@ class AuthService:
         # TODO, persist event to eventstore along with user_auth, in a transaction.
         await self._user_repo.add(user_auth)
         await self._producer.publish(user_signed_up)
-        return user_auth.entity_id
 
     async def deactivate_user(self, user_id: str) -> None:
         user = await self._user_repo.get(user_id)
@@ -139,6 +122,23 @@ class AuthService:
 
         await self._user_repo.add_api_key_for_user(user_id, encrypted_key, api_type)
         await self._producer.publish(user_api_added)
+
+    async def login(self, email: str, password: str) -> str:
+        user = await self._user_repo.search_user_by_email(email)
+
+        if user is None:
+            raise errors.UserNotFoundError(user_id=email)
+
+        if not user.credential.verify_password(password):
+            raise errors.InvalidPasswordError("Invalid password")
+
+        if not user.is_active:
+            raise errors.UserInactiveError(user_id=email)
+
+        user.login()
+
+        access_token = self._create_access_token(user.entity_id, user.role)
+        return access_token
 
     async def get_user(self, user_id: str) -> model.UserAuth | None:
         return await self._user_repo.get(user_id)

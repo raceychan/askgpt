@@ -1,16 +1,32 @@
 from askgpt.app.api.errors import APPErrorBase, EntityNotFoundError
 
+"""
+TODO: split into UserError, AuthError
+class UserError(APPErrorBase):
+    instance = "/users/{user_id}"
+
+    def __init__(self, user_id: str):
+
+        super().__init__(
+            msg="User {user_id} not found", instance=instance.format(user_id=user_id)
+        )
+
+"""
+
+class ServiceError(APPErrorBase):
+    service: str
 
 class AuthenticationError(APPErrorBase):
     """
     Failed to authenticate user
     """
+
     service: str = "auth"
 
 
 class UserNotRegisteredError(AuthenticationError):
     """
-    Unable to find user with the email
+    Unable to find user with the email provided
     """
 
     def __init__(self, *, user_email: str):
@@ -35,7 +51,8 @@ class UserInactiveError(EntityNotFoundError, AuthenticationError):
 
     def __init__(self, *, user_id: str):
         msg = f"user {user_id} is not active"
-        super().__init__(msg)
+        instance = f"/users/{user_id}"
+        super().__init__(msg, instance=instance)
 
 
 class InvalidEmailAddressError(AuthenticationError):

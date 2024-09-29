@@ -1,19 +1,14 @@
+import orjson
 from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
 from starlette import status
-from starlette.background import BackgroundTask
 from starlette.responses import Response
 
-from askgpt.app.api.errors import (
-    APPErrorBase,
-    EntityNotFoundError,
-    ErrorDetail,
-    QuotaExceededError,
-)
+from askgpt.app.api.errors import APPErrorBase, EntityNotFoundError, QuotaExceededError
 from askgpt.app.api.xheaders import XHeaders
 from askgpt.app.auth.errors import AuthenticationError, UserNotFoundError
 from askgpt.app.gpt.errors import OrphanSessionError
-from askgpt.helpers.error_registry import ErrorDetail, registry
+from askgpt.helpers.error_registry import ErrorDetail, handler_registry
 
 
 class ServerResponse(Response):
@@ -21,127 +16,109 @@ class ServerResponse(Response):
 
 
 class ErrorResponse(JSONResponse):
+    content: ErrorDetail
     headers: dict[str, str]
-    detail: ErrorDetail
     status_code: int
 
-    def __init__(
-        self,
-        detail: ErrorDetail,
-        headers: dict[str, str],
-        status_code: int = 500,
-        background: BackgroundTask | None = None,
-    ) -> None:
-        content = dict(detail=detail.asdict())
+    def render(self, content: ErrorDetail) -> bytes:
+        return content.model_dump_json().encode("utf-8")
 
-        super().__init__(
-            content=content,
-            status_code=status_code,
-            headers=headers,
-            media_type=self.media_type,
-            background=background,
-        )
+
+INTERNAL_ERROR_DETAIL = ErrorDetail(
+    type="InternalUnknownError",
+    title="Unknow error occured, please report with request id",
+    detail="something went wrong",
+)
 
 
 def make_err_response(
     *,
-    request_id: str,
-    detail: ErrorDetail,
+    request: Request,
+    error_detail: ErrorDetail,
     code: int,
-    headers: dict[str, str] | None = None
+    headers: dict[str, str] | None = None,
 ) -> ErrorResponse:
+    request_id = request.headers[XHeaders.REQUEST_ID.value]
     default_headers = {
-        XHeaders.ERROR.value: detail.error_code,
+        XHeaders.ERROR.value: error_detail.type,
         XHeaders.REQUEST_ID.value: request_id,
     }
     headers = default_headers | (headers or {})
+    error_detail.request_id = request_id
     return ErrorResponse(
-        detail=detail,
+        content=error_detail,
         status_code=code,
         headers=headers,
     )
 
 
-@registry.register
+@handler_registry.register
 def _(request: Request, exc: Exception) -> ErrorResponse:
-    # TODO: log error
-    request_id = request.headers[XHeaders.REQUEST_ID.value]
-    detail = ErrorDetail(
-        error_code="InternalUnknownError",
-        description="unknow error occured, please report with request id",
-        message="something went wrong",
-        source="server",
-        service="unkown",
-    )
     return make_err_response(
-        request_id=request_id, detail=detail, code=status.HTTP_500_INTERNAL_SERVER_ERROR
-    )
-
-
-@registry.register
-def _(request: Request, exc: APPErrorBase) -> ErrorResponse:
-    request_id = request.headers[XHeaders.REQUEST_ID.value]
-    return make_err_response(
-        request_id=request_id,
-        detail=exc.detail,
+        request=request,
+        error_detail=INTERNAL_ERROR_DETAIL,
         code=status.HTTP_500_INTERNAL_SERVER_ERROR,
     )
 
 
-@registry.register
-def _(request: Request, exc: AuthenticationError) -> ErrorResponse:
-    request_id = request.headers[XHeaders.REQUEST_ID.value]
+@handler_registry.register
+def _(request: Request, exc: APPErrorBase) -> ErrorResponse:
     return make_err_response(
-        request_id=request_id,
-        detail=exc.detail,
+        request=request,
+        error_detail=exc.error_detail,
+        code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+    )
+
+
+@handler_registry.register
+def _(request: Request, exc: AuthenticationError) -> ErrorResponse:
+    return make_err_response(
+        request=request,
+        error_detail=exc.error_detail,
         code=status.HTTP_401_UNAUTHORIZED,
         headers={"WWW-Authenticate": "Bearer"},
     )
 
 
-@registry.register
-def _(request: Request, exc: UserNotFoundError):
-    request_id = request.headers[XHeaders.REQUEST_ID.value]
+@handler_registry.register
+def _(request: Request, exc: UserNotFoundError) -> ErrorResponse:
     return make_err_response(
-        detail=exc.detail,
+        request=request,
+        error_detail=exc.error_detail,
         code=status.HTTP_404_NOT_FOUND,
-        request_id=request_id,
         headers={"WWW-Authenticate": "Bearer"},
     )
 
 
-@registry.register
+@handler_registry.register
 def _(request: Request, exc: EntityNotFoundError) -> ErrorResponse:
-    request_id = request.headers[XHeaders.REQUEST_ID.value]
     return make_err_response(
-        detail=exc.detail,
+        request=request,
         code=status.HTTP_404_NOT_FOUND,
-        request_id=request_id,
+        error_detail=exc.error_detail,
         headers={"WWW-Authenticate": "Bearer"},
     )
 
 
-@registry.register
-def _(request: Request, exc: OrphanSessionError):
-    request_id = request.headers[XHeaders.REQUEST_ID.value]
+@handler_registry.register
+def _(request: Request, exc: OrphanSessionError) -> ErrorResponse:
     return make_err_response(
-        detail=exc.detail,
+        request=request,
         code=status.HTTP_403_FORBIDDEN,
-        request_id=request_id,
+        error_detail=exc.error_detail,
     )
 
 
-@registry.register
-def _(request: Request, exc: QuotaExceededError):
-    request_id = request.headers[XHeaders.REQUEST_ID.value]
+@handler_registry.register
+def _(request: Request, exc: QuotaExceededError) -> ErrorResponse:
     return make_err_response(
-        detail=exc.detail,
+        request=request,
         code=status.HTTP_429_TOO_MANY_REQUESTS,
-        request_id=request_id,
+        error_detail=exc.error_detail,
     )
 
 
 def add_exception_handlers(app: "FastAPI") -> None:
-    if not registry._handlers:
+    if not handler_registry._handlers:
         raise Exception("Empty error handler registry")
-    registry.inject_handlers(app)
+    handler_registry.inject_handlers(app)

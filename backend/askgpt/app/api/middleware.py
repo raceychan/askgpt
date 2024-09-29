@@ -6,6 +6,7 @@ from starlette.middleware.base import BaseHTTPMiddleware, RequestResponseEndpoin
 from starlette.middleware.cors import CORSMiddleware as CORSMiddleware
 from starlette.types import ASGIApp, Receive, Scope, Send
 
+from askgpt.app.api.error_handlers import INTERNAL_ERROR_DETAIL, make_err_response
 from askgpt.app.api.xheaders import XHeaders
 from askgpt.domain.config import TIME_EPSILON_S, Settings, UnknownAddress
 from askgpt.domain.model.base import request_id_factory
@@ -46,12 +47,6 @@ class TraceMiddleware:
 
 
 class LoggingMiddleware(BaseHTTPMiddleware):
-    """
-    NOTE: we might want to implement our own ExceptionMiddleware here
-    so that a consistent response with domain-defined x-headers will always be returned
-    regardless of the exception is raise or not
-    """
-
     async def dispatch(self, request: Request, call_next: RequestResponseEndpoint):
         request_id = request.headers[XHeaders.REQUEST_ID.value]
         with logger.contextualize(request_id=request_id):
@@ -61,13 +56,16 @@ class LoggingMiddleware(BaseHTTPMiddleware):
                 response = await call_next(request)
                 status_code = response.status_code
             except Exception as e:
-                # TODO: reponse = ErrorResponse
+                response = make_err_response(
+                    request=request, error_detail=INTERNAL_ERROR_DETAIL, code=500
+                )
                 logger.exception(f"Internal exception {e} occurred")
-                raise e
+                raise e from e
+            else:
+                response.headers[XHeaders.REQUEST_ID.value] = request_id
             finally:
                 post_process = perf_counter()
                 duration = max(round(post_process - pre_process, 3), TIME_EPSILON_S)
-                response.headers[XHeaders.REQUEST_ID.value] = request_id
                 response.headers[XHeaders.PROCESS_TIME.value] = str(duration)
                 log_request(request, status_code, duration)
             return response
