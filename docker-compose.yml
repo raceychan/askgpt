@@ -43,6 +43,7 @@ services:
       - redis-server
       - --bind
       - 0.0.0.0
+    restart: unless-stopped
 
   # frontend:
   #   ports:

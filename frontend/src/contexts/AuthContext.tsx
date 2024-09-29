@@ -26,7 +26,7 @@ const isLoggedIn = () => {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-type Status = "idle" | "loading" | "error" | "success";
+// type Status = "idle" | "loading" | "error" | "success";
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
   children,
