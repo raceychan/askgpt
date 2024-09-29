@@ -4,14 +4,10 @@ from fastapi import APIRouter, FastAPI
 
 from askgpt.adapters.factory import adapter_locator, make_database
 from askgpt.app.api import add_middlewares, route_id_factory
-from askgpt.app.api.error_handlers import (
-    INTERNAL_ERROR_DETAIL,
-    ErrorResponse,
-    add_exception_handlers,
-    handler_registry,
-)
+from askgpt.app.api.error_handlers import add_exception_handlers
 from askgpt.app.api.routers import api_router
 from askgpt.domain.config import SETTINGS_CONTEXT, Settings, detect_settings
+from askgpt.helpers.error_registry import error_route_factory, handler_registry
 from askgpt.helpers.time import timeout
 from askgpt.infra import schema
 from askgpt.infra._log import logger, prod_sink, update_sink
@@ -73,7 +69,7 @@ def app_factory(
         generate_unique_id_function=route_id_factory,
     )
 
-    error_route = handler_registry.build_error_route()
+    error_route = error_route_factory(handler_registry, route_path="/errors")
 
     root_router = APIRouter(prefix=settings.api.API_VERSION_STR)
     root_router.include_router(api_router)

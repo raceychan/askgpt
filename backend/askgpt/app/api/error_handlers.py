@@ -21,6 +21,7 @@ class ErrorResponse(JSONResponse):
     status_code: int
 
     def render(self, content: ErrorDetail) -> bytes:
+        content.model_json_schema()
         return content.model_dump_json().encode("utf-8")
 
 

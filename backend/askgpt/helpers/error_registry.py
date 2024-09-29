@@ -2,13 +2,14 @@ import inspect
 import types
 import typing as ty
 from datetime import datetime
+from string import Template
 
-import orjson
 from fastapi import APIRouter, FastAPI, Request
 from fastapi.responses import HTMLResponse
 from pydantic import BaseModel, Field
 
-from askgpt.helpers.functions import ClassAttr, attribute
+from askgpt.helpers.file import fileutil
+from askgpt.helpers.functions import ClassAttr
 from askgpt.helpers.string import str_to_kebab
 
 """
@@ -52,43 +53,65 @@ Examples
 
 
 def iso_now() -> str:
+    "YYYY-MM-DD HH:MM:SS.mmmmmm"
     return datetime.now().isoformat()
 
 
 class ErrorDetail(BaseModel):
-    """
-    "type": "https://example.com/probs/out-of-credit",
-    "title": "You do not have enough credit."
-    "detail": "Your current balance is 30, but that costs 50.",
-    "instance": "/account/12345/msgs/abc",
-                 "/account/67890"]
-    "timestamp": "2023-11-28T12:34:56Z",
-
-    "balance": 30,
-    "accounts": ["/account/12345",
-    """
-
     type: str = Field(
         json_schema_extra={
             "title": "type",
-            "description": "provides information that’s more specific than the HTTP status code itself.",
-            "examples": ["https://example.com/probs/out-of-credit"],
+            "description": "An URI that is used to locate the error type",
+            "examples": ["https://example.com/errors?error_type=out-of-credit"],
         }
     )
-    title: str
-
+    title: str = Field(
+        json_schema_extra={
+            "title": "title",
+            "description": "A general description about why the problem would happen",
+            "examples": ["You do not have enough credit."],
+        }
+    )
     detail: str | None = Field(
         default=None,
         json_schema_extra={
             "title": "detail",
-            "description": "deailted description of the problem instance",
+            "description": "Detailed description of the problem instance",
             "examples": ["Your current balance is 30, but that costs 50."],
         },
     )
-    status: int | None = None
-    instance: str | None = None
-    timestamp: str = Field(default_factory=iso_now)
-    request_id: str | None = None
+    status: int | None = Field(
+        default=None,
+        json_schema_extra={
+            "title": "status",
+            "description": "The standard http status code",
+            "examples": ["500"],
+        },
+    )
+    instance: str | None = Field(
+        default=None,
+        json_schema_extra={
+            "title": "instance",
+            "description": "An URI reference that identifies the problem instance or an entity_id",
+            "examples": ["/account/12345/msgs/abc"],
+        },
+    )
+    timestamp: str = Field(
+        default_factory=iso_now,
+        json_schema_extra={
+            "title": "timestamp",
+            "description": "Timestamp of which problem occured, in ISO format",
+            "examples": ["YYYY-MM-DD HH:MM:SS.mmmmmm'"],
+        },
+    )
+    request_id: str | None = Field(
+        default=None,
+        json_schema_extra={
+            "title": "request_id",
+            "description": "An uuid that is unique to each request, used for tracing",
+            "examples": ["268388d5-d6c5-454c-976b-31ae864fcce4"],
+        },
+    )
 
     def model_dump_json(self, exclude_unset=True, exclude_none=True):
         return super().model_dump_json(
@@ -127,9 +150,7 @@ class RFC9457(Exception):
 
     @classmethod
     def static_error_detail(cls):
-        return ErrorDetail(
-            type=cls.error_type, title=cls.error_title
-        ).model_json_schema()
+        return ErrorDetail(type=cls.error_type, title=cls.error_title)
 
     def to_json(self) -> str:
         return self.error_detail.model_dump_json()
@@ -152,8 +173,9 @@ class HandlerRegistry[Exc: Exception]:
 
     _handlers: dict[type[Exc] | int, ExceptionHandler[Exc]]
 
-    def __init__(self):
+    def __init__(self, error_route_path: str | None = None):
         self._handlers = {}
+        self._error_route_path = error_route_path
 
     def __iter__(
         self,
@@ -164,7 +186,7 @@ class HandlerRegistry[Exc: Exception]:
     def handlers(self):
         return self._handlers
 
-    def register(self, handler: ExceptionHandler[Exc]) -> None:
+    def register(self, handler: ExceptionHandler[Exc]) -> ExceptionHandler[Exc]:
         """\
         >>> @HandlerRegistry.register
         def any_error_handler(request: Request, exc: Exception | ty.Literal[500]) -> ErrorResponse:
@@ -178,35 +200,11 @@ class HandlerRegistry[Exc: Exception]:
         else:
             exc_type = ty.cast(type[Exc] | int, exc_type)
             self._handlers[exc_type] = handler
+        return handler
 
     def inject_handlers(self, app: FastAPI) -> None:
         for exc, handler in self:
             app.add_exception_handler(exc, handler)  # type: ignore
-
-    def build_error_route(self, route_path: str = "/errors"):
-
-        def _generate_error_page(error_title: str = "") -> str:
-            doc = """
-            <html>
-                <div class="tip">
-                    [API Errors]
-                    {errors}
-                </div>
-            </html>
-            """.strip()
-            errs = {exc for exc, _ in self if isinstance(exc, RFC9457)}
-            error_tmplt = """
-            <li>{err}</li>
-            """.strip()
-            errors = "\n".join(error_tmplt.format(err=err.error_detail) for err in errs)
-            final = doc.format(errors=errors)
-            return final
-
-        err_route = APIRouter()
-        err_route.get(route_path, tags=[f"{route_path}"], response_class=HTMLResponse)(
-            _generate_error_page
-        )
-        return err_route
 
     @classmethod
     def _extract_exception(
@@ -218,6 +216,81 @@ class HandlerRegistry[Exc: Exception]:
         if exc_type is inspect._empty:  # type: ignore
             raise ValueError(f"handler {handler} has no annotation for {exc.name}")
         return exc_type
+
+
+def error_route_factory(registry: HandlerRegistry, *, route_path: str = "/errors"):
+
+    def generate_error_page(error_type: str = "") -> str:
+        doc_path = fileutil.find("error_template.html")
+        doc = Template(doc_path.read_text())
+
+        error_tmplt = """
+        <div class="error-box">
+            <div class="error-title">{title}</div>
+            <span> (T, null) means a field will either be of type (T) or won't be returned.
+            </span> 
+            {fields}
+        </div>
+        """
+
+        field_tmplt = """
+        <div class="error-field">
+            <span class="field-name">{name}({type}):</span>
+            <span class="field-description">{description}</span>
+            <div class="field-example">{value}</div>
+        </div>
+        """
+
+        def format_field(field_info: dict, value: ty.Any) -> str:
+            field_type = field_info.get("type", field_info.get("anyOf"))
+            if isinstance(field_type, list):
+                field_type = ty.cast(list[dict[str, str]], field_type)
+                field_type = ", ".join([t["type"] for t in field_type])
+            field_name = field_info.get("title")
+            description = field_info.get("description")
+
+            example = field_info.get("examples", [""])[0]
+            value = value or example
+            return field_tmplt.format(
+                name=field_name,
+                type=field_type,
+                description=description,
+                value=value,
+            )
+
+        def format_error(err: type[RFC9457]):
+            error_detail = err.static_error_detail()
+            schema = error_detail.model_json_schema()
+            properties = schema.get("properties", {})
+
+            fields_html = []
+            for field_name, field_info in properties.items():
+                value = getattr(error_detail, field_name)
+                fields_html.append(format_field(field_info, value))
+
+            error_html = error_tmplt.format(
+                title=err.__name__, fields="\n".join(fields_html)
+            )
+            return error_html
+
+        errs = {
+            exc
+            for exc, _ in registry
+            if (not isinstance(exc, int) and issubclass(exc, RFC9457))
+        }
+        if error_type:
+            errs = {exc for exc in errs if exc.error_type == error_type}
+
+        errors_html = [format_error(err) for err in errs]
+        errors = "\n".join(errors_html)
+        final = doc.substitute(errors=errors)
+        return final
+
+    err_route = APIRouter()
+    err_route.get(route_path, tags=[f"{route_path}"], response_class=HTMLResponse)(
+        generate_error_page
+    )
+    return err_route
 
 
 handler_registry: ty.Final[HandlerRegistry] = HandlerRegistry[Exception]()
