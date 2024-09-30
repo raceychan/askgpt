@@ -5,6 +5,7 @@ from contextlib import asynccontextmanager
 from sqlalchemy.engine.cursor import CursorResult
 from sqlalchemy.ext.asyncio import AsyncConnection, AsyncEngine
 from sqlalchemy.sql import Executable, text
+
 from askgpt.helpers.extratypes import StrDict
 from askgpt.helpers.time import timeit
 from askgpt.infra._log import logger
@@ -18,7 +19,7 @@ class AsyncDatabase:
     def url(self):
         return self._aioengine.url
 
-    @timeit(logger=logger) # type: ignore
+    @timeit(logger=logger)  # type: ignore
     async def execute(
         self,
         query: str | Executable,
@@ -29,7 +30,7 @@ class AsyncDatabase:
         if isinstance(query, str):
             query = text(query)
 
-        async with self._aioengine.begin() as connection:
+        async with self._aioengine.connect() as connection:
             cursor = await connection.execute(
                 query, parameters, execution_options=execution_options
             )

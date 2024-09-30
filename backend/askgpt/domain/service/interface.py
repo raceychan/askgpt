@@ -78,7 +78,7 @@ class IUnitOfWork(abc.ABC):
         user_repository.update(retrieved_user)
     """
 
-    def __init__(self, engine: IEngine):
+    def __init__(self, engine: IEngine): # aiodb: AsyncDatabase
         self.engine = engine
 
     def __enter__(self) -> ty.Self:

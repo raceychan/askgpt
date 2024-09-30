@@ -14,7 +14,7 @@ WORKDIR /app
 COPY pyproject.toml ./
 
 # Install dependencies using pip
-RUN pixi install 
+RUN pixi install -e default 
 
 RUN chmod +x .pixi
 

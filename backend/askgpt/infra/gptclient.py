@@ -5,6 +5,7 @@ import httpx
 import openai
 from openai.types import beta as openai_beta
 from openai.types import chat as openai_chat
+
 from askgpt.app.gpt import model, params
 from askgpt.domain.base import SupportedGPTs
 from askgpt.helpers.functions import attribute, lru_cache
@@ -67,7 +68,7 @@ class OpenAIClient(GPTClient):
         model: str,
         name: str,
         instructions: str,
-        tools: list[openai_beta.assistant_create_params.Tool],
+        tools: list[openai_beta.assistant_tool_param.AssistantToolParam],
     ) -> openai_beta.Assistant:
         return await self._client.beta.assistants.create(
             model=model, name=name, instructions=instructions, tools=tools

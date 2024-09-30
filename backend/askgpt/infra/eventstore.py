@@ -6,7 +6,7 @@ import sqlalchemy as sa
 from askgpt.adapters.database import AsyncDatabase
 from askgpt.domain.interface import IEvent, IEventStore
 from askgpt.domain.model.base import Event
-from askgpt.infra.schema import EventSchema
+# from askgpt.infra.schema import EventSchema
 
 EVENT_TABLE: ty.Final[sa.TableClause] = sa.table(
     "domain_events",

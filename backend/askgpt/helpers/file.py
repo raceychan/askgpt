@@ -6,6 +6,12 @@ from askgpt.helpers.functions import simplecache
 
 
 def relative_path(file: str) -> str:
+    """
+    find the relative path of the file with current directory
+    ## Examples:
+    -----
+    >>> relative_path("server.py") == "askgpt.server"
+    """
     file_path = Path(file).relative_to(Path.cwd())
     return str(file_path).replace("/", ".")[:-3]
 
