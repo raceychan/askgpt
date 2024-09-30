@@ -7,6 +7,7 @@ from sqlalchemy.ext.asyncio import AsyncConnection, AsyncEngine
 from sqlalchemy.sql import Executable, text
 from askgpt.helpers.extratypes import StrDict
 from askgpt.helpers.time import timeit
+from askgpt.infra._log import logger
 
 
 class AsyncDatabase:
@@ -17,7 +18,7 @@ class AsyncDatabase:
     def url(self):
         return self._aioengine.url
 
-    @timeit
+    @timeit(logger=logger) # type: ignore
     async def execute(
         self,
         query: str | Executable,

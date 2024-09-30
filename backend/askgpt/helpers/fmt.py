@@ -13,7 +13,7 @@ def fprint(string: str) -> None:
 
 
 async def async_receiver(answer: ty.AsyncGenerator[str | None, None]) -> str:
-    # TODO: either print or return value at the same time, not both
+    # TODO: either print or return value at a time, not both
     str_container = ""
     async for chunk in answer:
         if chunk is None:

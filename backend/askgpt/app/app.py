@@ -2,16 +2,16 @@ from contextlib import asynccontextmanager
 
 from fastapi import APIRouter, FastAPI
 
-from askgpt.adapters.factory import adapter_locator, make_database
 from askgpt.app.api import add_middlewares, route_id_factory
-from askgpt.app.api.error_handlers import add_exception_handlers
+from askgpt.app.api.error_handlers import add_exception_handlers, handler_registry
 from askgpt.app.api.routers import api_router
 from askgpt.domain.config import SETTINGS_CONTEXT, Settings, detect_settings
-from askgpt.helpers.error_registry import error_route_factory, handler_registry
+from askgpt.helpers.error_registry import error_route_factory
 from askgpt.helpers.time import timeout
 from askgpt.infra import schema
 from askgpt.infra._log import logger, prod_sink, update_sink
-from askgpt.infra.factory import event_record_factory
+from askgpt.infra.factory import event_listener_factory
+from askgpt.infra.locator import adapter_locator, make_database
 
 
 class BoostrapingFailedError(Exception): ...
@@ -40,8 +40,8 @@ async def bootstrap(settings: Settings):
         await _dev(settings)
 
     adapters = adapter_locator(settings)
-    event_record = event_record_factory()
-    adapters.register(event_record)  # type: ignore
+    event_listener = event_listener_factory()
+    adapters.register_context(event_listener)  # type: ignore
 
 
 @asynccontextmanager

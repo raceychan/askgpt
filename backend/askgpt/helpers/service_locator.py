@@ -270,8 +270,8 @@ class ResourceRegistry[Registee: Resource](DependencyRegistry[Registee]):
     def dependencies(self) -> WeakKeyDictionary[type[Registee], Dependency[Registee]]:
         return self._dependencies
 
-    def register(self, service: Registee) -> None:
-        self._resource_manager.register(service)
+    def register_context(self, resource: Registee) -> None:
+        self._resource_manager.register(resource)
 
 
 class InfraLocator(ResourceRegistry[ty.Any]): ...

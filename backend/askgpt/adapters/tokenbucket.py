@@ -7,8 +7,7 @@ type TokenBucketScript = ScriptFunc[list[str], list[float | int], RedisBool]
 
 
 class Throttler(ty.Protocol):
-    async def acquire(self, cost: int = 1) -> bool:
-        ...
+    async def acquire(self, cost: int = 1) -> bool: ...
 
 
 class TokenBucket:

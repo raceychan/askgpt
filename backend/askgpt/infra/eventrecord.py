@@ -3,8 +3,8 @@ import typing as ty
 from contextlib import asynccontextmanager
 
 from askgpt.adapters.queue import MessageConsumer
-from askgpt.infra._log import logger
 from askgpt.domain.interface import IEvent
+from askgpt.infra._log import logger
 from askgpt.infra.eventstore import EventStore
 
 
@@ -15,7 +15,7 @@ async def grease(gap: float = 0.1):
     await asyncio.sleep(gap)
 
 
-class EventRecord:
+class EventListener:
     def __init__(
         self,
         consumer: MessageConsumer[IEvent],

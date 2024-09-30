@@ -7,7 +7,6 @@ from tests.conftest import TestDefaults
 
 from askgpt.adapters.cache import MemoryCache, RedisCache
 from askgpt.adapters.database import AsyncDatabase
-from askgpt.adapters.gptclient import ClientRegistry, OpenAIClient
 from askgpt.adapters.queue import BaseConsumer, BaseProducer, QueueBroker
 from askgpt.app.actor import MailBox
 from askgpt.app.auth.model import UserAuth
@@ -15,8 +14,9 @@ from askgpt.app.auth.repository import UserAuth
 from askgpt.app.gpt.params import ChatResponse
 from askgpt.domain.config import Settings
 from askgpt.infra import schema
-from askgpt.infra.eventrecord import EventRecord
+from askgpt.infra.eventrecord import EventListener
 from askgpt.infra.eventstore import EventStore
+from askgpt.infra.gptclient import ClientRegistry, OpenAIClient
 
 
 class EchoMailbox(MailBox):
@@ -78,7 +78,7 @@ def consumer(broker: QueueBroker[ty.Any]):
 
 @pytest.fixture(scope="module", autouse=True)
 async def eventrecord(consumer: BaseConsumer[ty.Any], eventstore: EventStore):
-    es = EventRecord(consumer, eventstore, wait_gap=0.1)
+    es = EventListener(consumer, eventstore, wait_gap=0.1)
     async with es.lifespan():
         yield es
 
@@ -98,7 +98,6 @@ async def eventrecord(consumer: BaseConsumer[ty.Any], eventstore: EventStore):
 @pytest.fixture(scope="module")
 async def cache(settings: Settings):
     return MemoryCache()
-
 
 
 @pytest.fixture(scope="module")

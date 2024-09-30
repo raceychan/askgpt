@@ -5,13 +5,13 @@ import signal
 import types
 import typing as ty
 from dataclasses import dataclass
-from datetime import datetime
 from functools import wraps
 from time import perf_counter
 
-from askgpt.infra._log import logger
 from askgpt.helpers.extratypes import AnyCallable
 
+if ty.TYPE_CHECKING:
+    from loguru._logger import Logger
 
 
 @dataclass(frozen=True, kw_only=True, slots=True, repr=False, unsafe_hash=True)
@@ -84,6 +84,7 @@ def timeit[
 ](
     _func: AnyCallable | None = None,
     *,
+    logger: "Logger",
     unit: ty.Literal["ns", "ms", "s"] = "ms",
     precision: int = 2,
     log_if: ty.Callable[[float], bool] = lambda x: x > 0.1,
@@ -168,4 +169,3 @@ def timeout(seconds: int):
         return async_timeout
 
     return decor_dispatch
-

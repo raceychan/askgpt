@@ -5,7 +5,7 @@ from tests.conftest import TestDefaults
 
 # from askgpt.infra.cache import Cache, MemoryCache, RedisCache
 from askgpt.adapters.cache import Cache, MemoryCache, RedisCache
-from askgpt.adapters.gptclient import OpenAIClient
+from askgpt.infra.gptclient import OpenAIClient
 from askgpt.app.actor import QueueBox
 from askgpt.app.gpt import model, service
 from askgpt.domain import config

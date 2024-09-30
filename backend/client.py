@@ -1,4 +1,5 @@
 import httpx
+
 from askgpt.domain.config import Settings
 
 
@@ -17,5 +18,5 @@ async def main():
     settings = Settings.from_file("setitngs.toml")
 
 
-if __name__ == "__main__":
-    breakpoint()
+# if __name__ == "__main__":
+# main()

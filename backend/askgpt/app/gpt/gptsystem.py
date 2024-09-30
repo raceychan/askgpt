@@ -2,7 +2,7 @@ import enum
 import typing as ty
 from functools import cached_property, singledispatchmethod
 
-from askgpt.adapters import cache, gptclient
+from askgpt.adapters import cache
 from askgpt.app.actor import (
     BoxFactory,
     EntityActor,
@@ -17,7 +17,7 @@ from askgpt.domain.config import Settings
 from askgpt.domain.interface import ActorRef, ICommand
 from askgpt.domain.model.base import Command, Event, Message
 # from askgpt.helpers.fmt import async_receiver
-from askgpt.infra import eventstore
+from askgpt.infra import eventstore, gptclient
 
 
 class SystemStarted(Event):

@@ -1,12 +1,10 @@
 import typing as ty
-from functools import partial
 
-from askgpt.adapters import cache, database, gptclient, queue, tokenbucket
+from askgpt.adapters import cache, database, queue, tokenbucket
 from askgpt.domain.config import MissingConfigError, Settings, settingfactory
 from askgpt.domain.interface import IEvent
 from askgpt.helpers import sql
 from askgpt.helpers.service_locator import Dependency, InfraLocator
-from askgpt.infra import eventstore
 
 
 @settingfactory
@@ -39,12 +37,6 @@ def make_engine(settings: Settings):
 @settingfactory
 def make_database(settings: Settings) -> database.AsyncDatabase:
     return database.AsyncDatabase(make_async_engine(settings))
-
-
-@settingfactory
-def make_eventstore(settings: Settings) -> eventstore.EventStore:
-    es = eventstore.EventStore(aiodb=make_database(settings))
-    return es
 
 
 @settingfactory
@@ -85,15 +77,6 @@ def make_local_cache(settings: Settings):
 @settingfactory
 def make_sqldbg(settings: Settings):
     return sql.SQLDebugger(make_engine(settings))
-
-
-def make_request_client(settings: Settings):
-    configs = settings.openai_client
-    return partial(
-        gptclient.OpenAIClient.build,
-        timeout=configs.TIMEOUT,
-        max_retries=configs.MAX_RETRIES,
-    )
 
 
 class adapter_locator(InfraLocator):

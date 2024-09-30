@@ -12,7 +12,7 @@ from askgpt.domain.service.interface import IEventStore as IEventStore
 from askgpt.domain.service.interface import IRepository as IRepository
 from askgpt.domain.service.interface import IUnitOfWork as IUnitOfWork
 
-ActorRef = ty.Annotated[str, "AbstractActorRef", "ActorRef"]
+type ActorRef = ty.Annotated[str, "AbstractActorRef", "ActorRef"]
 SystemRef = ty.NewType("SystemRef", ActorRef)
 EventLogRef = ty.NewType("EventLogRef", ActorRef)
 JournalRef = ty.NewType("JournalRef", ActorRef)
@@ -26,6 +26,4 @@ type SQL_ISOLATIONLEVEL = ty.Literal[
 ]
 
 
-class AbstractActorRef(ty.Protocol):
-    ...
-
+class AbstractActorRef(ty.Protocol): ...

@@ -1,4 +1,5 @@
-import orjson
+import typing as ty
+
 from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
 from starlette import status
@@ -8,7 +9,9 @@ from askgpt.app.api.errors import APPErrorBase, EntityNotFoundError, QuotaExceed
 from askgpt.app.api.xheaders import XHeaders
 from askgpt.app.auth.errors import AuthenticationError, UserNotFoundError
 from askgpt.app.gpt.errors import OrphanSessionError
-from askgpt.helpers.error_registry import ErrorDetail, handler_registry
+from askgpt.helpers.error_registry import ErrorDetail, HandlerRegistry
+
+handler_registry: ty.Final[HandlerRegistry] = HandlerRegistry[Exception]()
 
 
 class ServerResponse(Response):

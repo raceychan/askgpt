@@ -1,7 +1,7 @@
 import typing as ty
 from contextlib import asynccontextmanager
 
-from askgpt.adapters import gptclient, queue
+from askgpt.adapters import queue
 from askgpt.app.actor import QueueBox as QueueBox
 from askgpt.app.auth import repository as auth_repo
 from askgpt.app.gpt import errors, model, params
@@ -11,7 +11,7 @@ from askgpt.app.gpt.gptsystem import GPTSystem, SessionActor, SystemState, UserA
 from askgpt.infra._log import logger
 from askgpt.domain.base import SupportedGPTs
 from askgpt.domain.interface import IEvent
-from askgpt.infra import eventstore, security
+from askgpt.infra import eventstore, gptclient, security
 
 
 class GPTService:

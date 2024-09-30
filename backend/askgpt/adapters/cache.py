@@ -64,12 +64,10 @@ class Cache[TKey: ty.Hashable, TValue: ty.Any](abc.ABC):
 
     @abc.abstractmethod
     async def rpop(self, key: TKey) -> TValue | None:
-        # TODO: rewrite to be cache.list.pop
         raise NotImplementedError
 
     @abc.abstractmethod
     async def lpop(self, key: TKey) -> TValue | None:
-        # TODO: rewrite to be cache.list.pop(-1)
         raise NotImplementedError
 
     @abc.abstractmethod
@@ -88,7 +86,7 @@ class Cache[TKey: ty.Hashable, TValue: ty.Any](abc.ABC):
     @abc.abstractmethod
     def keyspace(self) -> KeySpace: ...
 
-
+    def load_script(self, script: str | pathlib.Path) -> ScriptFunc: ...
 class MemoryCache[TKey: str, TVal: ty.Any](Cache[TKey, TVal]):
     def __init__(self):
         self._cache: dict[TKey, TVal] = {}
