@@ -5,7 +5,9 @@ import uuid
 from dataclasses import dataclass
 from functools import singledispatchmethod
 
+import orjson
 import sqlalchemy as sa
+from pydantic import AwareDatetime
 from pydantic import BaseModel as BaseModel
 from pydantic import ConfigDict as ConfigDict
 from pydantic import EmailStr as EmailStr
@@ -13,10 +15,13 @@ from pydantic import Field as Field
 from pydantic import SerializeAsAny as SerializeAsAny
 from pydantic import computed_field as computed_field
 from pydantic import field_serializer as field_serializer
-from pydantic import validator as validator
 
-from askgpt.domain.model.interface import ICommand, IEvent, utc_datetime
+from askgpt.domain.model.interface import ICommand, IEvent
 from askgpt.helpers.string import str_to_snake
+from askgpt.helpers.time import utc_now as utc_now
+
+# from pydantic import validator as validator
+
 
 frozen = dataclass(frozen=True, slots=True, kw_only=True)
 
@@ -35,13 +40,12 @@ def request_id_factory() -> bytes:
     return uuid_factory().encode()
 
 
-def utcts_factory(ts: float | None = None) -> utc_datetime:
-    # NOTE: utcnow will be deprecated in future
+def json_dumps(obj) -> str:
+    return orjson.dumps(obj).decode()
 
-    if ts is not None:
-        return datetime.datetime.fromtimestamp(ts)
 
-    return datetime.datetime.utcnow()
+def json_loads(obj: str):
+    return orjson.loads(obj.encode())
 
 
 class DomainModel(BaseModel):
@@ -175,7 +179,7 @@ class Event(Message):
 
     entity_id: str
     event_id: str = Field(default_factory=uuid_factory, alias="id")
-    timestamp: utc_datetime = Field(default_factory=utcts_factory)
+    timestamp: AwareDatetime = Field(default_factory=utc_now)
 
     def __init_subclass__(cls, **kwargs: ty.Any):
         cls_id = f"{str_to_snake(cls.__name__)}"

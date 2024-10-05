@@ -1,3 +1,5 @@
+import datetime
+import os
 import pathlib
 import typing as ty
 from contextvars import ContextVar
@@ -7,12 +9,7 @@ from pydantic import AnyUrl, BaseModel, ConfigDict, SecretStr, field_validator
 
 from askgpt.domain.base import TimeScale
 from askgpt.domain.errors import GeneralDomainError
-from askgpt.domain.interface import (
-    SQL_ISOLATIONLEVEL,
-    EventLogRef,
-    JournalRef,
-    SystemRef,
-)
+from askgpt.domain.interface import SQL_ISOLATIONLEVEL, EventLogRef, SystemRef
 from askgpt.helpers.file import FileUtil
 from askgpt.helpers.functions import freeze, simplecache
 from askgpt.helpers.string import KeySpace
@@ -39,11 +36,17 @@ SETTINGS_READ_ORDER: tuple[str, ...] = (
     ".env",
 )
 
+UNKNOWN_NETLOC = ("unknown_ip", "unknown_port")
 
-def detect_settings() -> "Settings":
+UTC_TZ = datetime.UTC
+
+
+def detect_settings(read_order: tuple[str, ...] = SETTINGS_READ_ORDER) -> "Settings":
     fileutil = FileUtil.from_cwd()
     work_dir = pathlib.Path.cwd()
-    for candidate in SETTINGS_READ_ORDER:
+    if (f := os.environ.get("SETTING_FILE", None)) is not None:
+        return Settings.from_file(fileutil.find(f))
+    for candidate in read_order:
         try:
             f = fileutil.find(candidate, dir=work_dir)
         except FileNotFoundError:
@@ -51,7 +54,7 @@ def detect_settings() -> "Settings":
         else:
             settings = Settings.from_file(f)
             return settings
-    raise FileNotFoundError(f"None of {SETTINGS_READ_ORDER} File exists in {work_dir}")
+    raise FileNotFoundError(f"None of {read_order} File exists in {work_dir}")
 
 
 def sys_finetune():
@@ -66,11 +69,6 @@ def sys_finetune():
 
     # zero_gen gc gets revoked when live objects reach 3000(allocated - deallocated)
     gc.set_threshold(3000, 100, 100)
-
-
-class UnknownAddress(ty.NamedTuple):
-    ip: str = "unknown_ip"
-    port: str = "unknown_port"
 
 
 class SettingsFactory[T](ty.Protocol):
@@ -113,6 +111,7 @@ class SettingsBase(BaseModel):
 class Settings(SettingsBase):
     PROJECT_NAME: ty.ClassVar[str] = "askgpt"
     PROJECT_ROOT: ty.ClassVar[pathlib.Path] = pathlib.Path.cwd()
+    FILE_NAME: str | None = None
     RUNTIME_ENV: ty.Literal["dev", "prod", "test"]
 
     @property
@@ -191,7 +190,6 @@ class Settings(SettingsBase):
     class ActorRefs(SettingsBase):
         SYSTEM: SystemRef = SystemRef("system")  # type: ignore
         EVENTLOG: EventLogRef = EventLogRef("eventlog")  # type: ignore
-        JOURNAL: JournalRef = JournalRef("journal")  # type: ignore
 
     actor_refs: ActorRefs
 
@@ -299,6 +297,7 @@ class Settings(SettingsBase):
     def from_file(cls, filename: str | pathlib.Path) -> ty.Self:
         fileutil = FileUtil.from_cwd()
         config_data = fileutil.read_file(filename)
+        config_data["FILE_NAME"] = str(filename)
         return cls.model_validate(config_data)
 
 

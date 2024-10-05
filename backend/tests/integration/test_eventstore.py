@@ -1,8 +1,9 @@
 import pytest
+from tests.conftest import TestDefaults
+
 from askgpt.app.gpt import model
 from askgpt.domain.config import Settings
 from askgpt.infra.eventstore import EventStore, dump_event, load_event
-from tests.conftest import TestDefaults
 
 
 def test_settins(settings: Settings):
@@ -39,9 +40,3 @@ async def test_list_event(eventstore: EventStore, user_created: model.UserCreate
     assert e.timestamp == user_created.timestamp
 
     assert hash(e) == hash(user_created)
-
-
-# AssertionError:
-# assert
-# datetime.datetime(2023, 11, 10, 0, 30, 45, 26543, tzinfo=datetime.timezone.utc)
-# datetime.datetime(2023, 11, 10, 8, 30, 45, 26543, tzinfo=datetime.timezone.utc

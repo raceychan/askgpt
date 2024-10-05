@@ -13,7 +13,7 @@ from askgpt.domain.model.base import (
     Event,
     Field,
     ValueObject,
-    utcts_factory,
+    utc_now,
 )
 from askgpt.infra import security
 
@@ -88,7 +88,7 @@ class UserAuth(Entity):
         self.is_active = False
 
     def login(self) -> None:
-        self.last_login = utcts_factory()
+        self.last_login = utc_now()
 
     @singledispatchmethod
     def apply(cls, event: Event) -> ty.Self:

@@ -1,11 +1,12 @@
 import datetime
 
 import pytest
+from tests.conftest import TestDefaults
+
 from askgpt.app.auth.model import AccessToken
 from askgpt.domain.config import Settings
-from askgpt.domain.model.base import utcts_factory
+from askgpt.domain.model.base import utc_now
 from askgpt.infra import security
-from tests.conftest import TestDefaults
 
 
 @pytest.fixture(scope="module")
@@ -18,7 +19,7 @@ def token_encrypt(settings: Settings) -> security.Encrypt:
 def test_encryp_access_token(
     test_defaults: TestDefaults, token_encrypt: security.Encrypt, settings: Settings
 ):
-    now_ = utcts_factory()
+    now_ = utc_now()
     token = AccessToken(
         sub=test_defaults.USER_ID,
         role=test_defaults.USER_ROLE,

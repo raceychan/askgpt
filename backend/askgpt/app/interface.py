@@ -41,12 +41,3 @@ class AbstractStetefulActor(AbstractActor):
     def rebuild(self, events: "list[IEvent]") -> ty.Self:
         ...
 
-
-class IJournal(ty.Protocol):
-    eventstore: IEventStore
-
-    def ref(self) -> ActorRef:
-        ...
-
-    async def list_events(self, ref: ActorRef) -> "list[IEvent]":
-        ...

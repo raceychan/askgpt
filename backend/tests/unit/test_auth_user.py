@@ -1,7 +1,8 @@
 import pytest
-from askgpt.app.auth.model import UserAuth
-from askgpt.domain.model.base import utcts_factory
 from tests.conftest import TestDefaults
+
+from askgpt.app.auth.model import UserAuth
+from askgpt.domain.model.base import utc_now
 
 
 @pytest.fixture(scope="function")
@@ -9,7 +10,7 @@ def user_auth(test_defaults: TestDefaults) -> UserAuth:
     return UserAuth(
         credential=test_defaults.USER_INFO,
         user_id=test_defaults.USER_ID,
-        last_login=utcts_factory(),
+        last_login=utc_now(),
     )
 
 

@@ -2,8 +2,9 @@ from contextlib import asynccontextmanager
 
 from fastapi import APIRouter, FastAPI
 
-from askgpt.app.api import add_middlewares, route_id_factory
+from askgpt.app.api import route_id_factory
 from askgpt.app.api.error_handlers import add_exception_handlers, handler_registry
+from askgpt.app.api.middleware import add_middlewares
 from askgpt.app.api.routers import api_router
 from askgpt.domain.config import SETTINGS_CONTEXT, Settings, detect_settings
 from askgpt.helpers.error_registry import error_route_factory
@@ -17,7 +18,7 @@ from askgpt.infra.locator import adapter_locator, make_database
 class BoostrapingFailedError(Exception): ...
 
 
-@timeout(10)
+@timeout(30, logger=logger)
 async def bootstrap(settings: Settings):
     async def _prod(settings: Settings):
         update_sink(prod_sink)
@@ -27,13 +28,15 @@ async def bootstrap(settings: Settings):
             aiodb = make_database(settings)
             await schema.create_tables(aiodb)
         except Exception as e:
-            logger.critical("Failed to bootstrap application")
+            logger.exception("Failed to bootstrap application")
             raise BoostrapingFailedError(e) from e
-        else:
-            logger.success(f"db@{settings.db.HOST}:{settings.db.PORT}")
-            if settings.redis:
-                logger.success(f"redis@{settings.redis.HOST}:{settings.redis.PORT}")
 
+        logger.debug(f"db@{settings.db.HOST}:{settings.db.PORT}:{settings.db.DATABASE}")
+        if settings.redis:
+            logger.debug(f"redis@{settings.redis.HOST}:{settings.redis.PORT}")
+
+    logger.info(f"Applying {settings.FILE_NAME}")
+    logger.info(f"{settings.PROJECT_NAME} is running in {settings.RUNTIME_ENV} env")
     if settings.is_prod_env:
         await _prod(settings)
     else:
@@ -55,6 +58,15 @@ async def lifespan(app: FastAPI | None = None):
 def app_factory(
     lifespan=lifespan, start_response=None, *, settings: Settings | None = None
 ) -> FastAPI:
+    """app factory that builds the fastapi app instance.
+
+    Args:
+        start_response: gunivorn compatible hook.
+        settings: project configs
+
+    Returns:
+        FastAPI: the fastapi app
+    """
     settings = settings or detect_settings()
     SETTINGS_CONTEXT.set(settings)
 

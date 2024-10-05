@@ -4,8 +4,17 @@ from askgpt.app.auth.service import AuthService, TokenRegistry
 from askgpt.app.gpt.repository import SessionRepository
 from askgpt.app.gpt.service import GPTService, GPTSystem, QueueBox
 from askgpt.domain.config import SETTINGS_CONTEXT, Settings
+from askgpt.helpers.functions import simplecache
+from askgpt.infra.eventstore import EventStore
 from askgpt.infra.factory import encrypt_facotry
 from askgpt.infra.locator import adapter_locator
+
+
+class EventListener:
+    def __init__(self, event_store: EventStore):
+        self._event_store = event_store
+
+    def receive(self, msg): ...
 
 
 def user_request_throttler_factory():
@@ -41,11 +50,14 @@ def auth_service_factory():
 
 def gpt_service_factory():
     settings: Settings = SETTINGS_CONTEXT.get()
-    system = GPTSystem(
+
+    system: GPTSystem = GPTSystem(
         settings=settings,
         ref=settings.actor_refs.SYSTEM,
+        event_store=EventStore(aiodb=adapter_locator.aiodb),
         boxfactory=QueueBox,
         cache=adapter_locator.aiocache,
+        producer=adapter_locator.producer,
     )
 
     session_repo = SessionRepository(adapter_locator.aiodb)

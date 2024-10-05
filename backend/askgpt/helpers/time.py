@@ -1,5 +1,6 @@
 # type: ignore
 import asyncio
+import datetime
 import inspect
 import signal
 import types
@@ -12,6 +13,26 @@ from askgpt.helpers.extratypes import AnyCallable
 
 if ty.TYPE_CHECKING:
     from loguru._logger import Logger
+
+
+def iso_now() -> str:
+    """
+    UTC datetime in iso format:
+    "YYYY-MM-DD HH:MM:SS.mmmmmm"
+    """
+    return datetime.datetime.now(datetime.UTC).isoformat()
+
+
+def utc_now(ts: float | None = None) -> datetime.datetime:
+    """
+    UTC datetime
+    """
+
+    if ts is not None:
+        return datetime.datetime.fromtimestamp(ts)
+
+    # return datetime.datetime.utcnow()
+    return datetime.datetime.now(datetime.UTC)
 
 
 @dataclass(frozen=True, kw_only=True, slots=True, repr=False, unsafe_hash=True)
@@ -84,7 +105,7 @@ def timeit[
 ](
     _func: AnyCallable | None = None,
     *,
-    logger: "Logger",
+    logger: ty.Optional["Logger"] = None,
     unit: ty.Literal["ns", "ms", "s"] = "ms",
     precision: int = 2,
     log_if: ty.Callable[[float], bool] = lambda x: x > 0.1,
@@ -106,7 +127,8 @@ def timeit[
                 log_msg = log_tmplt.format(
                     function_name=funcinfo.name, time_cost=timecost, unit=unit
                 )
-                logger.info(log_msg)
+                if logger:
+                    logger.info(log_msg)
             return res
 
         @wraps(func)
@@ -120,7 +142,8 @@ def timeit[
                 log_msg = log_tmplt.format(
                     function_name=funcinfo.name, time_cost=timecost, unit=unit
                 )
-                logger.info(log_msg)
+                if logger:
+                    logger.info(log_msg)
             return res
 
         return awrapper if inspect.iscoroutinefunction(func) else wrapper  # type: ignore
@@ -156,14 +179,18 @@ class Timeout:
         signal.alarm(0)
 
 
-def timeout(seconds: int):
+def timeout(seconds: int, *, logger=None):
     def decor_dispatch(func):
         def sync_timeout(*args, **kwargs):
             raise NotImplementedError
 
         async def async_timeout(*args, **kwargs):
             coro = func(*args, **kwargs)
-            res = await asyncio.wait_for(coro, seconds)
+            try:
+                res = await asyncio.wait_for(coro, seconds)
+            except TimeoutError as te:
+                if logger:
+                    logger.exception(f"{func} timesout after {seconds}s")
             return res
 
         return async_timeout

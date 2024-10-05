@@ -4,7 +4,7 @@ from askgpt.adapters import cache, queue
 from askgpt.app.auth import errors, model, repository
 from askgpt.domain.config import Settings
 from askgpt.domain.interface import IEvent
-from askgpt.domain.model.base import utcts_factory, uuid_factory
+from askgpt.domain.model.base import utc_now, uuid_factory
 from askgpt.infra import security
 
 
@@ -53,7 +53,7 @@ class AuthService:
         return self._user_repo
 
     def _create_access_token(self, user_id: str, user_role: model.UserRoles) -> str:
-        now_ = utcts_factory()
+        now_ = utc_now()
         exp = now_ + timedelta(
             minutes=self._security_settings.ACCESS_TOKEN_EXPIRE_MINUTES
         )

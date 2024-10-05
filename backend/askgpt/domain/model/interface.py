@@ -2,7 +2,6 @@ import datetime
 import typing as ty
 from functools import singledispatchmethod
 
-utc_datetime = ty.Annotated[datetime.datetime, "UTC_TimeStamp"]
 
 
 class IDomainObject:

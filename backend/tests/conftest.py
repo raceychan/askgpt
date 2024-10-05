@@ -38,9 +38,7 @@ class TestDefaults:
 def settings() -> Settings:
     ss = Settings(
         RUNTIME_ENV="test",
-        actor_refs=Settings.ActorRefs(
-            EVENTLOG="test_eventlog", JOURNAL="test_journal", SYSTEM="test_system"
-        ),
+        actor_refs=Settings.ActorRefs(EVENTLOG="test_eventlog", SYSTEM="test_system"),
         db=Settings.SqliteDB(
             DATABASE=":memory:",
             ISOLATION_LEVEL="SERIALIZABLE",

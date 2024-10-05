@@ -20,7 +20,7 @@ def parse_access_token(token: str = Depends(oauth2_scheme)) -> AccessToken:
         decoded = token_encrypt.decrypt_jwt(token)
         access_token = AccessToken.model_validate(decoded)
     except (JWTError, ValidationError) as e:
-        raise InvalidCredentialError from e
+        raise InvalidCredentialError("Your access token is invalid") from e
     return access_token
 
 

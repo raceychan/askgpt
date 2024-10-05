@@ -6,10 +6,9 @@ install:
 	curl -fsSL https://pixi.sh/install.sh | bash
 	pixi install
 
-
 .PHONY: dev
 dev:
-	$(run) python -m $(app).server --config $(app)/dev.settings.toml
+	$(run) -e dev python -m $(app).server
 
 .PHONY: test
 test:
@@ -22,6 +21,7 @@ debug:
 .PHONY: openapi
 openapi:
 	$(run) python -m scripts.modify_openapi
+
 
 # DEVOPS 
 

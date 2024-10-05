@@ -53,3 +53,5 @@ async def create_tables(aiodb: AsyncDatabase):
 
     async with aiodb.begin() as conn:
         await conn.run_sync(TableBase.metadata.create_all)
+
+

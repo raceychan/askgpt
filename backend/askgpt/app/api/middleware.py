@@ -8,13 +8,13 @@ from starlette.types import ASGIApp, Receive, Scope, Send
 
 from askgpt.app.api.error_handlers import INTERNAL_ERROR_DETAIL, make_err_response
 from askgpt.app.api.xheaders import XHeaders
-from askgpt.domain.config import TIME_EPSILON_S, Settings, UnknownAddress
+from askgpt.domain.config import TIME_EPSILON_S, UNKNOWN_NETLOC, Settings
 from askgpt.domain.model.base import request_id_factory
 from askgpt.infra._log import logger
 
 
 def log_request(request: Request, status_code: int, duration: float):
-    client_host, client_port = request.client or UnknownAddress()
+    client_host, client_port = request.client or UNKNOWN_NETLOC
     url_parts = request.url.components
     path_query = quote(
         "{}?{}".format(url_parts.path, url_parts.query)

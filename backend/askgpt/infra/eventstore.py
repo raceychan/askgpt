@@ -1,11 +1,13 @@
-import json
+# import json
 import typing as ty
 
 import sqlalchemy as sa
 
 from askgpt.adapters.database import AsyncDatabase
+from askgpt.domain.config import UTC_TZ
 from askgpt.domain.interface import IEvent, IEventStore
-from askgpt.domain.model.base import Event
+from askgpt.domain.model.base import Event, json_dumps, json_loads
+
 # from askgpt.infra.schema import EventSchema
 
 EVENT_TABLE: ty.Final[sa.TableClause] = sa.table(
@@ -31,7 +33,7 @@ def dump_event(event: IEvent) -> dict[str, ty.Any]:
     data = event.asdict(by_alias=False)
 
     row = {colname: data.pop(field) for colname, field in table_event_mapping.items()}
-    row["event_body"] = json.dumps(data)
+    row["event_body"] = json_dumps(data)
     row["version"] = event.__class__.version
     return row
 
@@ -44,7 +46,8 @@ def load_event(row_mapping: sa.RowMapping | dict[str, ty.Any]) -> IEvent:
     matched_type = Event.match_event_type(
         event_type=data["event_type"], version=version
     )
-    data = data | (extra if isinstance(extra, dict) else json.loads(extra))
+    data = data | (extra if isinstance(extra, dict) else json_loads(extra))
+    data["timestamp"] = data["timestamp"].replace(tzinfo=UTC_TZ)
     event = matched_type.model_validate(data)
     return event
 

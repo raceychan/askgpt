@@ -1,7 +1,7 @@
-FROM python:3.12 AS python-base
+FROM python:3.12-slim-bullseye 
 
-FROM python-base as builder-base
-
+RUN apt-get update && apt-get install -y \
+    curl
 # Install pixi
 RUN curl -fsSL https://pixi.sh/install.sh | bash
 ENV PIXI_HOME="/root/.pixi"
@@ -12,14 +12,19 @@ WORKDIR /app
 
 # Pip uses pyproject.toml to install dependencies
 COPY pyproject.toml ./
+COPY pixi.lock .
 
 # Install dependencies using pip
-RUN pixi install -e default 
+RUN pixi install
 
+# Grant privilages to pixi
 RUN chmod +x .pixi
+
+# create dev database file
+RUN if [ "$RUNTIME_ENV" = "dev" ]; then touch dev.db; fi
 
 # Copy the project first so that dependencies can be installed
 COPY askgpt ./askgpt
-
-ENTRYPOINT ["pixi", "run", "uvicorn"]
-CMD ["askgpt.app.app:app_factory"]
+EXPOSE 5000
+ENTRYPOINT ["pixi", "run", "-e", "dev"]
+CMD ["uvicorn", "askgpt.app.app:app_factory"]

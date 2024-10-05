@@ -2,21 +2,14 @@ import enum
 import typing as ty
 from functools import cached_property, singledispatchmethod
 
-from askgpt.adapters import cache
-from askgpt.app.actor import (
-    BoxFactory,
-    EntityActor,
-    Journal,
-    QueueBox,
-    StatefulActor,
-    System,
-)
+from askgpt.adapters.cache import Cache, KeySpace
+from askgpt.adapters.queue import MessageProducer
+from askgpt.app.actor import BoxFactory, EntityActor, QueueBox, StatefulActor
 from askgpt.app.auth import model as auth_model
 from askgpt.app.gpt import errors, model
 from askgpt.domain.config import Settings
 from askgpt.domain.interface import ActorRef, ICommand
 from askgpt.domain.model.base import Command, Event, Message
-# from askgpt.helpers.fmt import async_receiver
 from askgpt.infra import eventstore, gptclient
 
 
@@ -60,7 +53,7 @@ class SystemState(enum.Enum):
 class GPTBaseActor[TChild: ty.Any, TEntity: ty.Any](
     EntityActor[TChild, TEntity], StatefulActor[TChild, TEntity]
 ):
-    system: "GPTSystem"  # type: ignore
+    system: "GPTSystem"
 
 
 class UserActor(GPTBaseActor["SessionActor", model.User]):
@@ -73,7 +66,7 @@ class UserActor(GPTBaseActor["SessionActor", model.User]):
         return len(self.entity.session_ids)
 
     @cached_property
-    def apipool_keyspace(self) -> cache.KeySpace:
+    def apipool_keyspace(self) -> KeySpace:
         keyspace = self.system.settings.redis.keyspaces.API_POOL
         return keyspace(self.entity_id)
 
@@ -91,7 +84,7 @@ class UserActor(GPTBaseActor["SessionActor", model.User]):
         if session_id not in self.entity.session_ids:
             raise errors.OrphanSessionError(session_id, self.entity_id)
 
-        events = await self.system.journal.list_events(session_id)
+        events = await self.system.list_events(session_id)
         created = self.entity.predict_command(
             model.CreateSession(session_id=session_id, user_id=self.entity_id)
         )[0]
@@ -119,6 +112,7 @@ class UserActor(GPTBaseActor["SessionActor", model.User]):
         events = self.entity.predict_command(command)
         self.create_session(events[0])
         for e in events:
+            # breakpoint()
             await self.publish(e)
 
     @apply.register
@@ -245,22 +239,38 @@ class SessionActor(GPTBaseActor["SessionActor", model.ChatSession]):
         return cls(chat_session=model.ChatSession.apply(event))
 
 
-class GPTSystem(System[UserActor]):
-    # TODO: this class should not inherit from system
-    # use GPTBaseActor instead
+class GPTSystem(GPTBaseActor[UserActor, None]):
+    _system: ty.Self
+
+    def __new__(cls, *args, **kwargs):
+        if not hasattr(cls, "_system"):
+            cls._system = super().__new__(cls)
+        return cls._system
+
     def __init__(
         self,
         ref: ActorRef,
         settings: Settings,
+        producer: MessageProducer,
+        event_store: eventstore.EventStore,
         boxfactory: BoxFactory,
-        cache: cache.Cache[str, str],
+        cache: Cache[str, str],
     ):
-        super().__init__(boxfactory=boxfactory, ref=ref, settings=settings)
+        super().__init__(boxfactory=boxfactory, entity=None)
+        self._producer = producer
+        self._settings = settings
+        self._ref = ref
+        self._event_store = event_store
         self._system_state = SystemState.created
         self._cache = cache
+        self.set_system(self)
 
     @property
-    def cache(self) -> cache.Cache[str, str]:
+    def settings(self) -> Settings:
+        return self._settings
+
+    @property
+    def cache(self) -> Cache[str, str]:
         return self._cache
 
     @property
@@ -273,6 +283,9 @@ class GPTSystem(System[UserActor]):
             raise errors.InvalidStateError("system already stopped")
         self._system_state = state
 
+    async def publish(self, event: Event):
+        await self._event_store.add(event)
+
     async def create_user(self, command: model.CreateUser) -> "UserActor":
         event = model.UserCreated(user_id=command.entity_id)
         user_actor = UserActor.apply(event)
@@ -280,20 +293,11 @@ class GPTSystem(System[UserActor]):
         await self.publish(event)
         return user_actor
 
-    def setup_journal(
-        self, eventstore: eventstore.EventStore, boxfactory: BoxFactory
-    ) -> None:
-        """
-        journal is part of the application layer,
-        so it should be created here by gptsystem, not by system actor
-        """
-
-        journal_ref = self.settings.actor_refs.JOURNAL
-        journal = Journal(eventstore=eventstore, boxfactory=boxfactory, ref=journal_ref)
-        self._journal = journal  # type: ignore
+    async def list_events(self, entity_id: str):
+        return await self._event_store.get(entity_id=entity_id)
 
     async def rebuild_user(self, user_id: str) -> "UserActor":
-        events = await self.journal.list_events(user_id)
+        events = await self.list_events(user_id)
         if not events:
             raise errors.UserNotRegisteredError(f"No events for user: {user_id}")
 
@@ -304,12 +308,10 @@ class GPTSystem(System[UserActor]):
         self.childs[user_actor.entity_id] = user_actor
         return user_actor
 
-    async def start(self, eventstore: eventstore.EventStore) -> "GPTSystem":
+    async def start(self) -> "GPTSystem":
         if self._system_state.is_running:
             return self
             # raise errors.InvalidStateError("system already started")
-
-        self.setup_journal(eventstore=eventstore, boxfactory=QueueBox)
         self.state = self.state.start()
         return self
 

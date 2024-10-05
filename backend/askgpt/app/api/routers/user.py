@@ -48,8 +48,8 @@ async def get_user_detail(
     service: Service, user_id: str, token: ParsedToken
 ) -> UserAuth | None:
     "Private user info"
-    if not user_id == token.sub:
-        raise InvalidCredentialError("user does not match with credentials")
+    if user_id != token.sub:
+        raise InvalidCredentialError("user id does not match with credentials")
     user = await service.get_user(user_id)
     return user
 

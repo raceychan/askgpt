@@ -12,7 +12,7 @@ class APPErrorBase(RFC9457):
     service: str = ""
 
     def __repr__(self):
-        return f"<{self._error_detail["title"]}: {self.error_detail["detail"]}>"
+        return f"<{self._error_detail.title}: {self.error_detail.detail}>"
 
 
 class EntityNotFoundError(APPErrorBase):

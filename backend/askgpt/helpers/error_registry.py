@@ -8,9 +8,9 @@ from fastapi import APIRouter, FastAPI, Request
 from fastapi.responses import HTMLResponse
 from pydantic import BaseModel, Field
 
-from askgpt.helpers.file import fileutil
 from askgpt.helpers.functions import ClassAttr
 from askgpt.helpers.string import str_to_kebab
+from askgpt.helpers.time import iso_now
 
 """
 RFC 9457
@@ -50,11 +50,6 @@ Examples
     "timestamp": "2023-11-28T12:34:56Z",
    }
 """
-
-
-def iso_now() -> str:
-    "YYYY-MM-DD HH:MM:SS.mmmmmm"
-    return datetime.now().isoformat()
 
 
 class IErrorResponse(ty.Protocol):
@@ -221,10 +216,69 @@ class HandlerRegistry[Exc: Exception]:
 
 
 def error_route_factory(registry: HandlerRegistry, *, route_path: str = "/errors"):
+    ERROR_TEMPLATE = """
+    <!DOCTYPE html>
+    <html lang="en">
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>API Errors Documentation</title>
+        <style>
+            body {
+                font-family: Arial, sans-serif;
+                line-height: 1.6;
+                color: #333;
+                max-width: 800px;
+                margin: 0 auto;
+                padding: 20px;
+            }
+            h1 {
+                color: #2c3e50;
+                border-bottom: 2px solid #3498db;
+                padding-bottom: 10px;
+            }
+            .error-box {
+                background-color: #f8f9fa;
+                border: 1px solid #e9ecef;
+                border-radius: 4px;
+                padding: 20px;
+                margin-bottom: 20px;
+            }
+            .error-title {
+                font-size: 1.2em;
+                color: #e74c3c;
+                margin-bottom: 10px;
+            }
+            .error-field {
+                margin-bottom: 10px;
+            }
+            .field-name {
+                font-weight: bold;
+                color: #2980b9;
+            }
+            .field-description {
+                margin-left: 20px;
+                font-style: italic;
+            }
+            .field-example {
+                background-color: #ecf0f1;
+                padding: 5px;
+                border-radius: 3px;
+                font-family: monospace;
+                margin-left: 20px;
+            }
+        </style>
+    </head>
+    <body>
+        <h1>API Errors Documentation</h1>
+        $errors
+    </body>
+    </html>
+
+    """
 
     def generate_error_page(error_type: str = "") -> str:
-        doc_path = fileutil.find("error_template.html")
-        doc = Template(doc_path.read_text())
+        doc = Template(ERROR_TEMPLATE)
 
         error_tmplt = """
         <div class="error-box">

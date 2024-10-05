@@ -1,5 +1,8 @@
-# import msgspec
+import typing as ty
+
+from fastapi.responses import Response, RedirectResponse
 from pydantic import BaseModel, ConfigDict
+from starlette import status
 
 
 class DTO(BaseModel):
@@ -36,3 +39,8 @@ class ResponseData(DTO):
     """
 
     ...
+
+
+
+OK = Response(status_code=status.HTTP_200_OK)
+EntityDeleted = Response(status_code=status.HTTP_204_NO_CONTENT)

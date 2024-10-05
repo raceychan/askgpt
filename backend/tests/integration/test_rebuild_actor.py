@@ -3,14 +3,14 @@ import typing as ty
 import pytest
 from tests.conftest import TestDefaults
 
-# from askgpt.infra.cache import Cache, MemoryCache, RedisCache
 from askgpt.adapters.cache import Cache, MemoryCache, RedisCache
-from askgpt.infra.gptclient import OpenAIClient
+from askgpt.adapters.queue import BaseProducer, QueueBroker
 from askgpt.app.actor import QueueBox
 from askgpt.app.gpt import model, service
 from askgpt.domain import config
 from askgpt.infra import factory
 from askgpt.infra.eventstore import EventStore
+from askgpt.infra.gptclient import OpenAIClient
 
 
 @pytest.fixture(scope="module")
@@ -34,9 +34,11 @@ async def gptsystem(
         boxfactory=QueueBox,
         ref=settings.actor_refs.SYSTEM,
         settings=settings,
-        cache=cache,
+        producer=BaseProducer(QueueBroker()),
+        event_store=eventstore,
+        cache=MemoryCache(),
     )
-    await system.start(eventstore=eventstore)
+    await system.start()
     return system
 
 

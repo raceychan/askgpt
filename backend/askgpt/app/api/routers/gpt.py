@@ -5,8 +5,9 @@ from fastapi.responses import RedirectResponse, StreamingResponse
 from starlette import status
 
 from askgpt.app.api.dependencies import ParsedToken, throttle_user_request
-from askgpt.app.api.model import RequestBody, ResponseData
+from askgpt.app.api.model import OK, EntityDeleted, RequestBody, Response, ResponseData
 from askgpt.app.factory import GPTService, gpt_service_factory
+from askgpt.app.gpt.model import ChatSession
 from askgpt.app.gpt.params import ChatGPTRoles, CompletionModels
 
 gpt_router = APIRouter(prefix="/gpt")
@@ -156,34 +157,47 @@ class SessionRenameRequest(RequestBody):
     name: str
 
 
-class PulibcSessionInfo(ResponseData):
+class PublicSessionInfo(ResponseData):
     session_id: str
     session_name: str
 
 
-@openai_router.post("/sessions")
+class PublicChatMessage(ResponseData):
+    role: str
+    content: str
+
+
+class PublicChatSession(ResponseData):
+    session_id: str
+    session_name: str
+    messages: list[PublicChatMessage]
+
+
+@openai_router.post("/sessions", response_model=ChatSession)
 async def create_session(service: Service, token: ParsedToken):
     # TODO: limit rate
     chat_session = await service.create_session(user_id=token.sub)
 
     return RedirectResponse(
         f"/v1/gpt/openai/sessions/{chat_session.entity_id}",
-        status_code=status.HTTP_303_SEE_OTHER,
+        status_code=status.HTTP_201_CREATED,
     )
 
 
-@openai_router.get("/sessions", response_model=list[PulibcSessionInfo])
+@openai_router.get("/sessions", response_model=list[PublicSessionInfo])
 async def list_sessions(service: Service, token: ParsedToken):
     user_sessions = await service.list_sessions(user_id=token.sub)
     public_sessions = [
-        PulibcSessionInfo(session_id=ss.entity_id, session_name=ss.session_name)
+        PublicSessionInfo(session_id=ss.entity_id, session_name=ss.session_name)
         for ss in user_sessions
     ]
     return public_sessions
 
 
 @openai_router.get("/sessions/{session_id}")
-async def get_session(service: Service, session_id: str, token: ParsedToken):
+async def get_session(
+    service: Service, session_id: str, token: ParsedToken
+) -> ChatSession:
     session_actor = await service.get_session_actor(
         user_id=token.sub, session_id=session_id
     )
@@ -193,19 +207,21 @@ async def get_session(service: Service, session_id: str, token: ParsedToken):
 @openai_router.put("/sessions/{session_id}")
 async def rename_session(
     service: Service, session_id: str, req: SessionRenameRequest, token: ParsedToken
-):
+) -> Response:
     await service.rename_session(session_id=session_id, new_name=req.name)
+    return OK
 
 
-@openai_router.delete("/sessions/{session_id}")
+@openai_router.delete("/sessions/{session_id}", status_code=204)
 async def delete_session(service: Service, session_id: str, token: ParsedToken):
     await service.delete_session(session_id=session_id)
+    return EntityDeleted
 
 
 @openai_router.post("/chat/{session_id}", dependencies=[Depends(throttle_user_request)])
 async def chat(
     service: Service, session_id: str, req: ChatCompletionRequest, token: ParsedToken
-):
+) -> StreamingResponse:
     data = req.model_dump(exclude_unset=True)
     data.setdefault("user", token.sub)
 

@@ -8,10 +8,11 @@ from askgpt.app.gpt import errors, model, params
 from askgpt.app.gpt import repository as gpt_repo
 from askgpt.app.gpt import request
 from askgpt.app.gpt.gptsystem import GPTSystem, SessionActor, SystemState, UserActor
-from askgpt.infra._log import logger
 from askgpt.domain.base import SupportedGPTs
+from askgpt.domain.config import SETTINGS_CONTEXT
 from askgpt.domain.interface import IEvent
-from askgpt.infra import eventstore, gptclient, security
+from askgpt.infra import gptclient, security
+from askgpt.infra._log import logger
 
 
 class GPTService:
@@ -29,6 +30,7 @@ class GPTService:
         self._user_repo = user_repo
         self._session_repo = session_repo
         self._producer = producer
+        self._settings = SETTINGS_CONTEXT.get()
         self._client_registry = gptclient.ClientRegistry()
 
     @property
@@ -56,7 +58,7 @@ class GPTService:
             self._encryptor.decrypt_string(key) for key in encrypted_api_keys
         )
 
-        pool_keyspace = self.system.settings.redis.keyspaces.API_POOL / user_id
+        pool_keyspace = self._settings.redis.keyspaces.API_POOL / user_id
         user_api_pool = request.APIPool(
             pool_keyspace=pool_keyspace,
             api_type=api_type,
@@ -121,19 +123,22 @@ class GPTService:
             session_actor = await user_actor.rebuild_session(session_id)
         return session_actor
 
-    async def list_sessions(self, user_id: str):
-        return await self._session_repo.list_sessions(user_id=user_id)
+    async def list_sessions(self, user_id: str) -> list[model.ChatSession]:
+        sessions = await self._session_repo.list_sessions(user_id=user_id)
+        return sessions
 
-    async def rename_session(self, session_id: str, new_name: str):
+    async def rename_session(self, session_id: str, new_name: str) -> None:
         chat_session = await self._session_repo.get(entity_id=session_id)
         if not chat_session:
             raise errors.SessionNotFoundError(session_id)
+        if chat_session.session_name == new_name:
+            return
         session_renamed = model.SessionRenamed(session_id=session_id, new_name=new_name)
         chat_session.apply(session_renamed)
         await self._producer.publish(session_renamed)
         await self._session_repo.rename(chat_session)
 
-    async def delete_session(self, session_id: str):
+    async def delete_session(self, session_id: str) -> None:
         session_removed = model.SessionRemoved(session_id=session_id)
         await self._producer.publish(session_removed)
         await self._session_repo.remove(session_id=session_id)
@@ -145,9 +150,7 @@ class GPTService:
         if self.system.state is SystemState.running:
             return
 
-        await self.system.start(
-            eventstore=eventstore.EventStore(aiodb=self._session_repo.aiodb),
-        )
+        await self.system.start()
         self.state = self.state.start()
         logger.success("gpt service started")
 

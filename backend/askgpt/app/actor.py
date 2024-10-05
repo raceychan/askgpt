@@ -4,16 +4,18 @@ import typing as ty
 from collections import deque
 from functools import cached_property, singledispatchmethod
 
-from askgpt.app.interface import AbstractActor, AbstractStetefulActor, IJournal
-from askgpt.domain.config import Settings
+# from askgpt.adapters.queue import MessageProducer
+from askgpt.app.interface import AbstractActor, AbstractStetefulActor
+
+# from askgpt.domain.config import Settings
 from askgpt.domain.errors import GeneralDomainError, SystemNotSetError
 from askgpt.domain.interface import (
     ActorRef,
     ICommand,
     IEntity,
     IEvent,
-    IEventStore,
     IMessage,
+    ISystem,
 )
 from askgpt.domain.model.base import Command, Event
 
@@ -97,13 +99,12 @@ class QueueBox(MailBox):
 type BoxFactory = ty.Callable[..., MailBox]
 
 
-# TODO: seperate the concept of childs and supervisees, childs are instances, supervisees are classes
 class Actor[TChild: "Actor[ty.Any]"](AbstractActor):
-    _system: ty.ClassVar["System[ty.Any]"]
+    _system: ty.ClassVar["ISystem"]
 
     def __init__(self, boxfactory: BoxFactory) -> None:
-        if not isinstance(self, System):
-            self._ensure_system()
+        # if not isinstance(self, System):
+        #     self._ensure_system()
 
         self.boxfactory = boxfactory
         self.mailbox = self.boxfactory()
@@ -117,7 +118,7 @@ class Actor[TChild: "Actor[ty.Any]"](AbstractActor):
         self.system.ensure_self()
 
     @property
-    def system(self) -> "System[TChild]":
+    def system(self) -> "ISystem":
         return self._system
 
     async def send(self, message: IMessage, other: "Actor[ty.Any]") -> None:
@@ -142,7 +143,7 @@ class Actor[TChild: "Actor[ty.Any]"](AbstractActor):
             raise TypeError("Unknown message type")
 
     async def publish(self, event: IEvent) -> None:
-        await self.system.eventlog.receive(event)
+        await self.system.publish(event)
 
     def get_child(self, ref: ActorRef) -> TChild | None:
         """
@@ -174,7 +175,7 @@ class Actor[TChild: "Actor[ty.Any]"](AbstractActor):
         raise NotImplementedError
 
     @classmethod
-    def set_system(cls, system: "System[TChild]") -> None:
+    def set_system(cls, system: ty.Any) -> None:
         sys_ = getattr(Actor, "_system", None)
 
         if sys_ is None:
@@ -241,152 +242,43 @@ class EntityActor[TChild: Actor[ty.Any], TEntity: IEntity](Actor[TChild]):
         return self.entity_id
 
 
-class System[TChild: Actor[ty.Any]](Actor[TChild]):
-    """
-    Singleton, should not be used directly, subclass it instead
-    """
+# class System[TChild: Actor[ty.Any]](Actor[TChild]):
+#     """
+#     Singleton, should not be used directly, subclass it instead
+#     """
 
-    _eventlog: "EventLog[ty.Any]"
-    _journal: IJournal
+#     def __new__(cls, *args: ty.Any, **kwargs: ty.Any):
+#         if not hasattr(cls, "_system"):
+#             cls._system = super().__new__(cls)
+#         return cls._system
 
-    def __new__(cls, *args: ty.Any, **kwargs: ty.Any) -> "ty.Self":
-        if not hasattr(cls, "_system"):
-            cls._system = super().__new__(cls)
-        return cls._system
+#     def __init__(
+#         self,
+#         ref: ActorRef,
+#         settings: Settings,
+#         producer: MessageProducer,
+#         boxfactory: BoxFactory,
+#     ):
+#         super().__init__(boxfactory=boxfactory)
+#         self.set_system(self)
+#         self._producer = producer
+#         self._settings = settings
+#         self._ref = ref
 
-    def __init__(
-        self,
-        ref: ActorRef,
-        settings: Settings,
-        boxfactory: BoxFactory,
-    ):
-        super().__init__(boxfactory=boxfactory)
-        self.set_system(self)
-        self._eventlog = EventLog(boxfactory=boxfactory)
-        self._settings = settings
-        self._ref = ref
+#     def ensure_self(self) -> None:
+#         """Pre start events"""
+#         ...
 
-    def ensure_self(self) -> None:
-        """Pre start events"""
-        ...
+#     @property
+#     def settings(self) -> Settings:
+#         return self._settings
 
-    @property
-    def eventlog(self) -> "EventLog[ty.Any]":
-        return self._eventlog
+#     @settings.setter
+#     def settings(self, value: Settings) -> None:
+#         self._settings = value
 
-    def subscribe_events(self, actor: Actor[ty.Any]):
-        self._eventlog.register_listener(actor)
+#     @cached_property
+#     def ref(self) -> ActorRef:
+#         return self._ref
 
-    @property
-    def journal(self) -> "IJournal":
-        return self._journal
-
-    @property
-    def settings(self) -> Settings:
-        return self._settings
-
-    @settings.setter
-    def settings(self, value: Settings) -> None:
-        self._settings = value
-
-    @cached_property
-    def ref(self) -> ActorRef:
-        return self._ref
-
-    @classmethod
-    def from_settings(cls, settings: Settings) -> "System[TChild]":
-        return cls(
-            boxfactory=QueueBox, ref=settings.actor_refs.SYSTEM, settings=settings
-        )
-
-
-class EventLog[TListener: Actor[ty.Any]](Actor[ty.Any]):
-    """
-    a mediator that used to decouple event source(Actors) and event consumer (Journal)
-    Actors.publish -> EventLog.receive -> Journal.receive
-    coudld be refactor to a kafka publisher if needed
-    """
-
-    def __init__(
-        self,
-        boxfactory: BoxFactory,
-        broadcast: bool = False,
-    ):
-        super().__init__(boxfactory=boxfactory)
-        self._event_listeners: list[TListener] = []
-        self._broadcast = broadcast
-
-    def register_listener(self, listener: TListener) -> None:
-        self._event_listeners.append(listener)
-
-    async def on_receive(self) -> None:
-        msg = await self.mailbox.get()
-        if not msg:
-            raise Exception("Mailbox is empty")
-
-        if self._broadcast:
-            raise NotImplementedError
-
-        try:
-            listener = self._event_listeners[0]
-        except IndexError:
-            raise Exception("No event listener registered")
-        else:
-            await listener.receive(msg)
-
-    @property
-    def event_listeners(self) -> list[TListener]:
-        return self._event_listeners[:]
-
-    @singledispatchmethod
-    def apply(self, event: Event) -> ty.Self:
-        raise NotImplementedError
-
-
-class Journal(Actor[ty.Any]):
-    """
-    Consumer that consumes events from event bus and persist them to event store
-    """
-
-    def __init__(
-        self, eventstore: IEventStore, boxfactory: BoxFactory, ref: ActorRef
-    ) -> None:
-        super().__init__(boxfactory=boxfactory)
-        self.system.subscribe_events(self)
-        self.eventstore = eventstore
-        self._ref = ref
-
-    async def on_receive(self) -> None:
-        message = await self.mailbox.get()
-        if message is None:
-            raise Exception("Mailbox is empty")
-
-        if isinstance(message, Event):
-            await self.eventstore.add(message)
-        else:
-            raise NotImplementedError("Currently journal only accepts events")
-
-    @singledispatchmethod
-    async def handle(self, message: IMessage) -> None:
-        raise NotImplementedError
-
-    async def persist_event(self) -> None:
-        raise NotImplementedError
-
-    async def start(self) -> None:
-        await self.persist_event()
-
-    @singledispatchmethod
-    def apply(self, event: IEvent) -> ty.Self:
-        raise NotImplementedError
-
-    async def publish(self, event: IEvent) -> None:
-        await self.mailbox.put(event)
-        await self.on_receive()
-
-    @cached_property
-    def ref(self) -> ActorRef:
-        return self._ref
-
-    async def list_events(self, ref: ActorRef) -> "list[IEvent]":
-        return await self.eventstore.get(entity_id=ref)
+#     async def start(self) -> None: ...

@@ -2,6 +2,7 @@ import typing as ty
 from collections import defaultdict
 from functools import singledispatchmethod
 
+from pydantic import AwareDatetime
 from askgpt.app.auth.model import UserAPIKeyAdded, UserSignedUp
 from askgpt.app.gpt.params import ChatGPTRoles, CompletionModels
 from askgpt.domain.base import SupportedGPTs
@@ -17,6 +18,7 @@ from askgpt.domain.model.base import (
 )
 from askgpt.domain.model.base import uuid_factory as uuid_factory
 from askgpt.domain.model.user import CreateUser, UserCreated
+from askgpt.helpers.time import utc_now
 
 DEFAULT_SESSION_NAME = "New Session"
 
@@ -24,6 +26,7 @@ DEFAULT_SESSION_NAME = "New Session"
 class ChatMessage(ValueObject):
     role: ChatGPTRoles
     content: str
+    timestamp: AwareDatetime = Field(default_factory=utc_now)
 
     @property
     def is_prompt(self) -> bool:
@@ -73,8 +76,7 @@ class SessionRenamed(SessionRelated, Event):
     new_name: str
 
 
-class SessionRemoved(SessionRelated, Event):
-    ...
+class SessionRemoved(SessionRelated, Event): ...
 
 
 class SendChatMessage(SessionRelated, Command):
@@ -95,8 +97,7 @@ class ChatMessageSent(SessionRelated, Event):
     chat_message: ChatMessage
 
 
-class ChatResponseReceived(ChatMessageSent):
-    ...
+class ChatResponseReceived(ChatMessageSent): ...
 
 
 # ================== Entities =====================
@@ -205,17 +206,12 @@ class User(Entity):
 
 
 class ISessionRepository(IRepository[ChatSession]):
-    async def add(self, entity: ChatSession) -> None:
-        ...
+    async def add(self, entity: ChatSession) -> None: ...
 
-    async def update(self, entity: ChatSession) -> None:
-        ...
+    async def update(self, entity: ChatSession) -> None: ...
 
-    async def get(self, entity_id: str) -> ChatSession | None:
-        ...
+    async def get(self, entity_id: str) -> ChatSession | None: ...
 
-    async def remove(self, entity_id: str) -> None:
-        ...
+    async def remove(self, entity_id: str) -> None: ...
 
-    async def list_all(self) -> list[ChatSession]:
-        ...
+    async def list_all(self) -> list[ChatSession]: ...

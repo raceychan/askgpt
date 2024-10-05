@@ -1,5 +1,10 @@
+import asyncio
+
 import pytest
+from tests.conftest import TestDefaults
+
 from askgpt.adapters.cache import MemoryCache
+from askgpt.adapters.queue import BaseProducer, QueueBroker
 from askgpt.app.actor import MailBox, QueueBox
 from askgpt.app.factory import gpt_service_factory
 
@@ -7,7 +12,6 @@ from askgpt.app.factory import gpt_service_factory
 from askgpt.app.gpt import errors, gptsystem, model, service
 from askgpt.domain import config
 from askgpt.infra.eventstore import EventStore
-from tests.conftest import TestDefaults
 
 
 class EchoMailbox(MailBox):
@@ -21,9 +25,11 @@ async def gpt_system(settings: config.Settings, eventstore: EventStore):
         boxfactory=QueueBox,
         ref=settings.actor_refs.SYSTEM,
         settings=settings,
+        producer=BaseProducer(QueueBroker()),
+        event_store=eventstore,
         cache=MemoryCache(),
     )
-    await system.start(eventstore=eventstore)
+    await system.start()
     return system
 
 
@@ -94,19 +100,6 @@ async def test_system_get_user_actor(gpt_system: service.GPTSystem):
     return user
 
 
-async def test_system_get_journal(gpt_system: service.GPTSystem):
-    journal = gpt_system.journal
-    assert isinstance(journal, gptsystem.Journal)
-
-
-async def test_user_get_journal(gpt_system: service.GPTSystem):
-    user = gpt_system.get_child(TestDefaults.USER_ID)
-    assert isinstance(user, service.UserActor)
-
-    journal = user.system.journal
-    assert isinstance(journal, gptsystem.Journal)
-
-
 async def test_create_user_by_command(
     gpt_system: service.GPTSystem, create_user: model.CreateUser
 ):
@@ -129,6 +122,7 @@ async def test_create_session_by_command(
     assert isinstance(session, service.SessionActor)
 
     user_events = await eventstore.get(user.entity_id)
+    session_events = await eventstore.get(session.entity_id)
     assert isinstance(user_events[-1], model.SessionCreated)
 
 
@@ -146,8 +140,7 @@ async def test_create_session_by_event(session_created: model.SessionCreated):
 
 async def test_send_message_receive_response(
     gpt_system: service.GPTSystem, send_chat_message: model.SendChatMessage
-):
-    ...
+): ...
 
 
 async def test_event_unduplicate(
@@ -197,7 +190,7 @@ def test_service_state_stop():
 
 @pytest.fixture(scope="module")
 async def gpt_service(settings: config.Settings):
-    gpt = gpt_service_factory(settings)
+    gpt = gpt_service_factory()
     async with gpt.lifespan():
         yield gpt
 
