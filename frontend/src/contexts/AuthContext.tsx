@@ -10,9 +10,11 @@ import {
   UserService,
   PublicUserInfo,
   LoginError,
+  LoginResponse,
 } from "@/lib/api";
 
 interface AuthContextType {
+  loginMutation: ReturnType<typeof useMutation>;
   login: (email: string, password: string) => void;
   loginWithGoogle: () => Promise<void>;
   logout: () => void;
@@ -26,8 +28,6 @@ const isLoggedIn = () => {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-// type Status = "idle" | "loading" | "error" | "success";
-
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
   children,
 }) => {
@@ -37,11 +37,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
 
   const { data: user, isLoading } = useQuery<PublicUserInfo, Error>({
     queryKey: ["user"],
-    queryFn: async (): Promise<PublicUserInfo> => {
-      const response = (await UserService.getPublicUser()) as {
-        data: PublicUserInfo;
-      };
-      return response.data; // Ensure this returns PublicUserInfo
+    queryFn: async () => {
+      const response = await UserService.getPublicUser();
+      if (!response.data) {
+        throw new Error(`Failed to get public user: ${response.error}`);
+      }
+      return response.data;
     },
     enabled: isLoggedIn(),
   }) as { data: PublicUserInfo; isLoading: boolean };
@@ -50,24 +51,16 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
     const response = await AuthService.login({
       body: { username: email, password: password },
     });
-
-    // Check if response.data is defined before accessing access_token
-    if (response.data) {
-      console.log("Login successful");
-      localStorage.setItem("access_token", response.data.access_token);
-      navigate({ to: "/" });
-    } else {
-      // Handle the case where response.data is undefined
-      setError("Login failed: No access token received.");
+    if (!response.data) {
+      throw Error(`Failed to login ${response.error}`);
     }
+    const token = response.data;
+    localStorage.setItem("access_token", token.access_token);
   };
 
-  const loginMutation = useMutation<
-    void,
-    LoginError,
-    { email: string; password: string }
-  >({
-    mutationFn: ({ email, password }) => login(email, password),
+  const loginMutation = useMutation({
+    mutationFn: (credentials: { email: string; password: string }) =>
+      login(credentials.email, credentials.password),
     onSuccess: () => {
       navigate({ to: "/" });
     },
@@ -101,7 +94,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
         body: { user_name: userName, email: email, password: password },
       });
       console.log("Signup successful", response);
-      navigate({ to: "/" }); // Redirect after successful signup
+      navigate({ to: "/login" }); // Redirect after successful signup
     } catch (error) {
       setError("Signup failed: " + (error as AxiosError).message);
     }
@@ -109,7 +102,15 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
 
   return (
     <AuthContext.Provider
-      value={{ login, loginWithGoogle, logout, signup, user, isLoading }}
+      value={{
+        loginMutation,
+        // login,
+        loginWithGoogle,
+        logout,
+        signup,
+        user,
+        isLoading,
+      }}
     >
       {children}
     </AuthContext.Provider>
@@ -123,3 +124,6 @@ export const useAuth = (): AuthContextType => {
   }
   return context;
 };
+
+export { isLoggedIn };
+export default useAuth;

@@ -1,6 +1,5 @@
 import { StrictMode } from "react";
 import {
-  Link,
   RouterProvider,
   createRouter,
   createRootRoute,
@@ -24,15 +23,6 @@ const queryClient = new QueryClient();
 const rootRoute = createRootRoute({
   component: () => (
     <>
-      <div className="p-2 flex gap-2">
-        <Link to="/" className="[&.active]:font-bold">
-          Home
-        </Link>
-        <Link to="/login" className="[&.active]:font-bold">
-          Login
-        </Link>
-      </div>
-      <hr />
       <App />
       <TanStackRouterDevtools />
     </>

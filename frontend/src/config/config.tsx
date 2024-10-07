@@ -1,5 +1,5 @@
-import { client } from '@/lib/api/services.gen';
-
+import { client } from "@/lib/api/services.gen";
+import { jwtDecode } from "jwt-decode";
 
 export const Config = {
   API_NETLOC: "http://localhost:5000",
@@ -10,13 +10,60 @@ export const Config = {
   },
 };
 
-client.setConfig({
-  baseURL: Config.API_NETLOC,
-  timeout: Config.REQUEST.TIMEOUT,
-});
+const isTokenExpired = (token: string) => {
+  const decoded: any = jwtDecode(token);
+  const expirationTime = decoded.exp * 1000; // Convert to milliseconds
+  return Date.now() >= expirationTime;
+};
 
-client.instance.interceptors.request.use((config) => {
-  const accessToken = localStorage.getItem('access_token') || "";
-  config.headers.set('Authorization', `Bearer ${accessToken}`);
-  return config;
-});
+// client.setConfig({
+//   baseURL: Config.API_NETLOC,
+//   timeout: Config.REQUEST.TIMEOUT,
+// });
+
+// client.instance.interceptors.request.use((config) => {
+//   const accessToken = localStorage.getItem("access_token") || "";
+//   if (accessToken) {
+//     config.headers.set("Authorization", `Bearer ${accessToken}`);
+//   }
+//   return config;
+// });
+
+export const initializeClient = () => {
+  client.setConfig({
+    baseURL: Config.API_NETLOC,
+    timeout: Config.REQUEST.TIMEOUT,
+  });
+
+  client.instance.interceptors.request.use((config) => {
+    const accessToken = localStorage.getItem("access_token") || "";
+    if (accessToken) {
+      if (isTokenExpired(accessToken)) {
+        localStorage.removeItem("access_token");
+        window.location.href = "/login";
+        return Promise.reject("Token expired. Redirecting to login.");
+      }
+
+      config.headers.set("Authorization", `Bearer ${accessToken}`);
+    }
+    return config;
+  });
+
+  // Response interceptor: Handle 401 responses (Unauthorized)
+  client.instance.interceptors.response.use(
+    (response) => {
+      return response; // Let the response pass if it's successful
+    },
+    (error) => {
+      if (error.response) {
+        if ([401, 404].includes(error.response.status)) {
+          localStorage.removeItem("access_token");
+          window.location.href = "/login";
+        }
+      }
+
+      return Promise.reject(error);
+    }
+  );
+};
+initializeClient();

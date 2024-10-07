@@ -152,15 +152,27 @@ export type HTTPValidationError = {
     detail?: Array<ValidationError>;
 };
 
+export type PublicChatMessage = {
+    role: 'system' | 'user' | 'assistant' | 'function';
+    content: string;
+};
+
+export type PublicChatSession = {
+    user_id: string;
+    session_id: string;
+    session_name: string;
+    messages: Array<PublicChatMessage>;
+};
+
+export type PublicSessionInfo = {
+    session_id: string;
+    session_name: string;
+};
+
 export type PublicUserInfo = {
     user_id: string;
     user_name: string;
     email: string;
-};
-
-export type PulibcSessionInfo = {
-    session_id: string;
-    session_name: string;
 };
 
 export type SessionRenameRequest = {
@@ -173,7 +185,7 @@ export type SignUp = {
     password: string;
 };
 
-export type SupportedGPTs = 'openai';
+export type SupportedGPTs = 'openai' | 'askgpt_test';
 
 export type TokenResponse = {
     access_token: string;
@@ -256,11 +268,11 @@ export type CreateNewKeyResponse = (unknown);
 
 export type CreateNewKeyError = (HTTPValidationError);
 
-export type ListSessionsResponse = (Array<PulibcSessionInfo>);
+export type ListSessionsResponse = (Array<PublicSessionInfo>);
 
 export type ListSessionsError = unknown;
 
-export type CreateSessionResponse = (unknown);
+export type CreateSessionResponse = (PublicChatSession);
 
 export type CreateSessionError = unknown;
 
@@ -270,7 +282,7 @@ export type GetSessionData = {
     };
 };
 
-export type GetSessionResponse = (unknown);
+export type GetSessionResponse = (PublicChatSession);
 
 export type GetSessionError = (HTTPValidationError);
 
@@ -291,7 +303,7 @@ export type DeleteSessionData = {
     };
 };
 
-export type DeleteSessionResponse = (unknown);
+export type DeleteSessionResponse = (void);
 
 export type DeleteSessionError = (HTTPValidationError);
 
@@ -306,6 +318,16 @@ export type ChatResponse = (unknown);
 
 export type ChatError = (HTTPValidationError);
 
-export type LambdaResponse = (unknown);
+export type GenerateErrorPageData = {
+    query?: {
+        error_type?: string;
+    };
+};
 
-export type LambdaError = unknown;
+export type GenerateErrorPageResponse = (string);
+
+export type GenerateErrorPageError = (HTTPValidationError);
+
+export type HealthCheckResponse = (unknown);
+
+export type HealthCheckError = unknown;

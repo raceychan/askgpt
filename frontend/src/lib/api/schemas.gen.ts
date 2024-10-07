@@ -422,6 +422,69 @@ export const $HTTPValidationError = {
     title: 'HTTPValidationError'
 } as const;
 
+export const $PublicChatMessage = {
+    properties: {
+        role: {
+            type: 'string',
+            enum: ['system', 'user', 'assistant', 'function'],
+            title: 'Role'
+        },
+        content: {
+            type: 'string',
+            title: 'Content'
+        }
+    },
+    additionalProperties: false,
+    type: 'object',
+    required: ['role', 'content'],
+    title: 'PublicChatMessage'
+} as const;
+
+export const $PublicChatSession = {
+    properties: {
+        user_id: {
+            type: 'string',
+            title: 'User Id'
+        },
+        session_id: {
+            type: 'string',
+            title: 'Session Id'
+        },
+        session_name: {
+            type: 'string',
+            title: 'Session Name'
+        },
+        messages: {
+            items: {
+                '$ref': '#/components/schemas/PublicChatMessage'
+            },
+            type: 'array',
+            title: 'Messages'
+        }
+    },
+    additionalProperties: false,
+    type: 'object',
+    required: ['user_id', 'session_id', 'session_name', 'messages'],
+    title: 'PublicChatSession'
+} as const;
+
+export const $PublicSessionInfo = {
+    properties: {
+        session_id: {
+            type: 'string',
+            title: 'Session Id'
+        },
+        session_name: {
+            type: 'string',
+            title: 'Session Name'
+        }
+    },
+    additionalProperties: false,
+    type: 'object',
+    required: ['session_id', 'session_name'],
+    title: 'PublicSessionInfo'
+} as const;
+
 export const $PublicUserInfo = {
     properties: {
         user_id: {
@@ -441,23 +504,6 @@ export const $PublicUserInfo = {
     type: 'object',
     required: ['user_id', 'user_name', 'email'],
     title: 'PublicUserInfo'
-} as const;
-
-export const $PulibcSessionInfo = {
-    properties: {
-        session_id: {
-            type: 'string',
-            title: 'Session Id'
-        },
-        session_name: {
-            type: 'string',
-            title: 'Session Name'
-        }
-    },
-    additionalProperties: false,
-    type: 'object',
-    required: ['session_id', 'session_name'],
-    title: 'PulibcSessionInfo'
 } as const;
 
 export const $SessionRenameRequest = {
@@ -498,8 +544,7 @@ export const $SignUp = {
 
 export const $SupportedGPTs = {
     type: 'string',
-    enum: ['openai'],
-    const: 'openai'
+    enum: ['openai', 'askgpt_test']
 } as const;
 
 export const $TokenResponse = {

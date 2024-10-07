@@ -18,14 +18,15 @@ const Login: React.FC = () => {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
-  const { login, loginWithGoogle, isLoading } = useAuth();
+  const { loginMutation, loginWithGoogle, isLoading } = useAuth();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
     try {
-      await login(email, password);
+      await loginMutation.mutateAsync({ email, password });
     } catch (error) {
+      console.log(error);
       setError("Please check your credentials and try again.");
     }
   };
