@@ -1,14 +1,7 @@
-import asyncio
-
 import pytest
 from tests.conftest import TestDefaults
 
-from askgpt.adapters.cache import MemoryCache
-from askgpt.adapters.queue import BaseProducer, QueueBroker
-from askgpt.app.actor import MailBox, QueueBox
-from askgpt.app.factory import gpt_service_factory
-
-# from askgpt.app.factory import get_gpt_service
+from askgpt.app.actor import MailBox
 from askgpt.app.gpt import errors, gptsystem, model, service
 from askgpt.domain import config
 from askgpt.infra.eventstore import EventStore
@@ -17,20 +10,6 @@ from askgpt.infra.eventstore import EventStore
 class EchoMailbox(MailBox):
     async def publish(self, message: str):
         print(message)
-
-
-@pytest.fixture(scope="module")
-async def gpt_system(settings: config.Settings, eventstore: EventStore):
-    system = service.GPTSystem(
-        boxfactory=QueueBox,
-        ref=settings.actor_refs.SYSTEM,
-        settings=settings,
-        producer=BaseProducer(QueueBroker()),
-        event_store=eventstore,
-        cache=MemoryCache(),
-    )
-    await system.start()
-    return system
 
 
 @pytest.fixture(scope="module")
@@ -168,41 +147,3 @@ async def test_event_unduplicate(
         all_events_set - system_events_set - user_events_set - session_events_set
         == set()
     )
-
-
-def test_service_state_start():
-    state = service.SystemState.created
-    new_state = state.start()
-    assert new_state == service.SystemState.running
-
-    with pytest.raises(errors.InvalidStateError):
-        service.SystemState.running.start()
-
-
-def test_service_state_stop():
-    state = service.SystemState.running
-    new_state = state.stop()
-    assert new_state == service.SystemState.stopped
-
-    with pytest.raises(errors.InvalidStateError):
-        service.SystemState.stopped.stop()
-
-
-@pytest.fixture(scope="module")
-async def gpt_service(settings: config.Settings):
-    gpt = gpt_service_factory()
-    async with gpt.lifespan():
-        yield gpt
-
-
-@pytest.mark.skip(reason="TODO: fix this test")
-async def test_start_when_already_running(gpt_service: service.GPTService):
-    gpt_service.state = service.SystemState.running
-    await gpt_service.start()
-    assert gpt_service.state.is_running
-
-    # Assert that no further actions are taken if the state is already running
-    assert gpt_service.system.state.is_running
-
-    await gpt_service.stop()
-    assert gpt_service.state.is_stopped

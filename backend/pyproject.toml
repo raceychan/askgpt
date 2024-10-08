@@ -19,6 +19,14 @@ testpaths = ["tests"]
 
 filterwarnings = ["ignore::DeprecationWarning"]
 
+[tool.coverage.run]
+omit = [
+  # omit anything in a .local directory anywhere
+  "*/adapters/*",
+  "*/helpers/*", # omit this single file
+  "*/script/*",
+]
+
 [tool.pyright]
 exclude = ["tests"]
 include = ["askgpt/*.py"]

@@ -29,12 +29,10 @@ const SessionComponent: React.FC = () => {
       return resp.data;
     },
     onSuccess: () => {
-      console.log(`session data ${sessions}`);
+      queryClient.invalidateQueries({ queryKey: ["userSessions"] });
       // Invalidate and refetch the sessions query to update the list
     },
-    onSettled: () => {
-      queryClient.invalidateQueries({ queryKey: ["userSessions"] });
-    },
+    onSettled: () => {},
   });
 
   return (

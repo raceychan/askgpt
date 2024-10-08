@@ -1,36 +1,45 @@
 version: "3.8"
 services:
   askgpt:
-    ports:
-      - 5000:5000
     environment:
+      - SETTINGS_FILE="dev.settings.toml"
       - PYTHONUNBUFFERED=1 # send output to terminal
-      - RUNTIME_ENV=prod
+      # - RUNTIME_ENV=prod
+      - RUNTIME_ENV=dev
 
     entrypoint:
       - pixi
       - run
-      - gunicorn
+      - -e
+      - dev
 
     command:
+      - "gunicorn"
       - "askgpt.app.app:app_factory"
       - "--workers"
       - "1"
       - "-k"
       - "uvicorn.workers.UvicornWorker"
       - "--bind"
-      - "localhost:5000"
+      - "0.0.0.0:5000"
+      - "--log-level"
+      - "critical"
+    ports:
+      - 5000:5000
 
     healthcheck:
       test: ["CMD", "curl", "-f", "http://0.0.0.0:5000/v1/health/"]
-      interval: 10s
-      timeout: 5s
+      interval: 30s
+      timeout: 60s
       retries: 5
 
-    restart: unless-stopped
+    # restart: unless-stopped
     build:
       context: ./backend
       dockerfile: Dockerfile
+
+    depends_on:
+      - redis
 
     volumes:
       - ./backend/askgpt/settings.toml:/app/settings.toml

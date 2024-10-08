@@ -1,25 +1,11 @@
-import typing as ty
-
-from askgpt.helpers.error_registry import RFC9457
-
-ErrorSource = ty.Literal["server", "client"]
+from askgpt.domain.errors import GeneralAPPError
 
 
-class APPErrorBase(RFC9457):
-    "Domain error"
-
-    source: ErrorSource = "client"
-    service: str = ""
-
-    def __repr__(self):
-        return f"<{self._error_detail.title}: {self.error_detail.detail}>"
-
-
-class EntityNotFoundError(APPErrorBase):
+class EntityNotFoundError(GeneralAPPError):
     "Entity not found"
 
 
-class ThrottlingError(APPErrorBase):
+class ThrottlingError(GeneralAPPError):
     "Request throttled"
 
 

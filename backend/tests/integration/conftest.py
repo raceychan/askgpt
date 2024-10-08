@@ -5,18 +5,22 @@ import pytest
 from sqlalchemy.ext import asyncio as sa_aio
 from tests.conftest import TestDefaults
 
-from askgpt.adapters.cache import MemoryCache, RedisCache
+from askgpt.adapters.cache import MemoryCache
 from askgpt.adapters.database import AsyncDatabase
-from askgpt.adapters.queue import BaseConsumer, BaseProducer, QueueBroker
+from askgpt.adapters.queue import (  # BaseConsumer,; BaseProducer,
+    MessageProducer,
+    QueueBroker,
+)
 from askgpt.app.actor import MailBox
+from askgpt.app.auth import *
 from askgpt.app.auth.model import UserAuth
 from askgpt.app.auth.repository import UserAuth
 from askgpt.app.gpt.params import ChatResponse
 from askgpt.domain.config import Settings
 from askgpt.infra import schema
-from askgpt.infra.eventrecord import EventListener
-from askgpt.infra.eventstore import EventStore
+from askgpt.infra.eventstore import EventStore, OutBoxProducer
 from askgpt.infra.gptclient import ClientRegistry, OpenAIClient
+from askgpt.infra.security import Encryptor
 
 
 class EchoMailbox(MailBox):
@@ -63,24 +67,13 @@ def user_auth(test_defaults: TestDefaults):
 
 @pytest.fixture(scope="module")
 def broker():
-    return QueueBroker[ty.Any]()
+    return QueueBroker[ty.Any](100)
 
 
 @pytest.fixture(scope="module")
-def producer(broker: QueueBroker[ty.Any]):
-    return BaseProducer(broker)
-
-
-@pytest.fixture(scope="module")
-def consumer(broker: QueueBroker[ty.Any]):
-    return BaseConsumer(broker)
-
-
-@pytest.fixture(scope="module", autouse=True)
-async def eventrecord(consumer: BaseConsumer[ty.Any], eventstore: EventStore):
-    es = EventListener(consumer, eventstore, wait_gap=0.1)
-    async with es.lifespan():
-        yield es
+def producer(eventstore: EventStore):
+    return OutBoxProducer(eventstore)
+    # return BaseProducer(broker)
 
 
 # @pytest.fixture(scope="module", autouse=True)
@@ -95,6 +88,30 @@ async def eventrecord(consumer: BaseConsumer[ty.Any], eventstore: EventStore):
 #     )
 #     async with redis.lifespan():
 #         yield redis
+
+
+@pytest.fixture(scope="module")
+async def auth_service(
+    aiodb: AsyncDatabase,
+    local_cache: MemoryCache[str, str],
+    settings: Settings,
+    encryptor: Encryptor,
+    producer: MessageProducer[ty.Any],
+):
+    keyspace = settings.redis.keyspaces.APP.cls_keyspace(service.TokenRegistry)
+
+    return service.AuthService(
+        user_repo=repository.UserRepository(aiodb),
+        encryptor=encryptor,
+        token_registry=service.TokenRegistry(
+            token_cache=local_cache,
+            keyspace=keyspace,
+        ),
+        producer=producer,
+        security_settings=settings.security,
+    )
+
+
 @pytest.fixture(scope="module")
 async def cache(settings: Settings):
     return MemoryCache()

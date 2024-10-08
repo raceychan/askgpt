@@ -47,7 +47,7 @@ async def get_public_user(service: Service, token: ParsedToken) -> PublicUserInf
 async def get_user_detail(
     service: Service, user_id: str, token: ParsedToken
 ) -> UserAuth | None:
-    "Private user info"
+    "Return private user info"
     if user_id != token.sub:
         raise InvalidCredentialError("user id does not match with credentials")
     user = await service.get_user(user_id)
@@ -66,4 +66,6 @@ class CreateNewKey(RequestBody):
 
 @user_router.post("/apikeys")
 async def create_new_key(service: Service, r: CreateNewKey, token: ParsedToken):
+    "add new api key to user, NOT idempotent"
+    # may be we should keep a hash of the api_key 
     await service.add_api_key(user_id=token.sub, api_key=r.api_key, api_type=r.api_type)

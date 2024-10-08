@@ -3,7 +3,7 @@ import typing as ty
 from contextlib import asynccontextmanager
 
 from sqlalchemy.engine.cursor import CursorResult
-from sqlalchemy.ext.asyncio import AsyncConnection, AsyncEngine
+from sqlalchemy.ext.asyncio import AsyncConnection, AsyncEngine, AsyncTransaction
 from sqlalchemy.sql import Executable, text
 
 from askgpt.helpers.extratypes import StrDict
@@ -26,7 +26,6 @@ class AsyncDatabase:
         parameters: StrDict | None = None,
         execution_options: StrDict | None = None,
     ) -> CursorResult[ty.Any]:
-        # TODO: log slow queries
         if isinstance(query, str):
             query = text(query)
 
@@ -39,7 +38,7 @@ class AsyncDatabase:
     @asynccontextmanager
     async def begin(self) -> ty.AsyncGenerator[AsyncConnection, None]:
         async with self.connect() as conn:
-            async with conn.begin():
+            async with conn.begin() as trans:
                 yield conn
 
     def connect(self) -> AsyncConnection:

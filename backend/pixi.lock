@@ -583,7 +583,7 @@ packages:
   name: askgpt
   version: 0.1.0
   path: .
-  sha256: 21a07fac15080948911ae30dae5f9d8273cc49bd091389dbbe91a978402bcaef
+  sha256: e91e6bcaa2cd5374d768749f22b6e958a64a8046e3a28e0584eec68c1aafa371
   requires_python: '>=3.12'
   editable: true
 - kind: conda

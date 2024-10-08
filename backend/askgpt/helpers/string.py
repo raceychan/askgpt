@@ -89,7 +89,7 @@ class KeySpace(ty.NamedTuple):
     def base(self):
         return KeySpace(self.key[: self.key.find(":")])
 
-    def add_cls(self, cls: type, with_module: bool = True) -> "KeySpace":
+    def cls_keyspace(self, cls: type, with_module: bool = True) -> "KeySpace":
         """
         Generate key space for class, under current keyspace
         >>> Keyspace("test").add_cls(Test)

@@ -2,7 +2,7 @@ from contextlib import asynccontextmanager
 
 from fastapi import APIRouter, FastAPI
 
-from askgpt.app.api import route_id_factory
+from askgpt.app.api import health_check, route_id_factory
 from askgpt.app.api.error_handlers import add_exception_handlers, handler_registry
 from askgpt.app.api.middleware import add_middlewares
 from askgpt.app.api.routers import api_router
@@ -11,7 +11,6 @@ from askgpt.helpers.error_registry import error_route_factory
 from askgpt.helpers.time import timeout
 from askgpt.infra import schema
 from askgpt.infra._log import logger, prod_sink, update_sink
-from askgpt.infra.factory import event_listener_factory
 from askgpt.infra.locator import adapter_locator, make_database
 
 
@@ -42,9 +41,9 @@ async def bootstrap(settings: Settings):
     else:
         await _dev(settings)
 
-    adapters = adapter_locator(settings)
-    event_listener = event_listener_factory()
-    adapters.register_context(event_listener)  # type: ignore
+    adapter_locator.build_singleton(settings)
+
+    logger.info("Application startup complete.")
 
 
 @asynccontextmanager
@@ -86,7 +85,7 @@ def app_factory(
     root_router = APIRouter(prefix=settings.api.API_VERSION_STR)
     root_router.include_router(api_router)
     root_router.include_router(error_route)
-    root_router.add_api_route("/health", lambda: "ok", tags=["health check"])
+    root_router.add_api_route("/health", health_check, tags=["health check"])
 
     app.include_router(root_router)
     add_exception_handlers(app)

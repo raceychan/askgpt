@@ -19,10 +19,10 @@ class GPTService:
     def __init__(
         self,
         system: GPTSystem,
-        encryptor: security.Encrypt,
+        encryptor: security.Encryptor,
         user_repo: auth_repo.UserRepository,
         session_repo: gpt_repo.SessionRepository,
-        producer: queue.BaseProducer[IEvent],
+        producer: queue.MessageProducer[IEvent],
     ):
         self._service_state = SystemState.created
         self._system = system
@@ -63,7 +63,7 @@ class GPTService:
             pool_keyspace=pool_keyspace,
             api_type=api_type,
             api_keys=api_keys,
-            cache=self.system.cache,
+            cache=self._system.cache,
         )
         return user_api_pool
 
@@ -93,17 +93,15 @@ class GPTService:
         return ans_gen
 
     async def get_user_actor(self, user_id: str) -> UserActor:
-        user_actor = self.system.get_child(user_id)
+        user_actor = self._system.get_child(user_id)
         if user_actor is None:
-            user_actor = await self.system.rebuild_user(user_id)
+            user_actor = await self._system.rebuild_user(user_id)
         return user_actor
 
     async def create_session(
         self, user_id: str, session_name: str = model.DEFAULT_SESSION_NAME
     ) -> model.ChatSession:
-        user_actor = self.system.get_child(user_id)
-        if not user_actor:
-            user_actor = await self.system.rebuild_user(user_id)
+        user_actor = await self.get_user_actor(user_id)
 
         session_id = model.uuid_factory()
         ss = model.ChatSession(
@@ -147,15 +145,15 @@ class GPTService:
         if self.state.is_running:
             return
 
-        if self.system.state is SystemState.running:
+        if self._system.state is SystemState.running:
             return
 
-        await self.system.start()
+        await self._system.start()
         self.state = self.state.start()
         logger.success("gpt service started")
 
     async def stop(self):
-        await self.system.stop()
+        await self._system.stop()
         self.state = self.state.stop()
 
     @asynccontextmanager

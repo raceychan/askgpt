@@ -1,12 +1,11 @@
 import inspect
 import types
 import typing as ty
-from datetime import datetime
 from string import Template
 
 from fastapi import APIRouter, FastAPI, Request
 from fastapi.responses import HTMLResponse
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 
 from askgpt.helpers.functions import ClassAttr
 from askgpt.helpers.string import str_to_kebab
@@ -62,6 +61,11 @@ type ExceptionHandler[Exc] = ty.Callable[[Request, Exc], IErrorResponse]
 
 
 class ErrorDetail(BaseModel):
+    """
+    A RFC9457 compatible error detail
+    """
+
+    # To extend errordetail, create a subclass of ErrorDetail then set it to _error_detail
     type: str = Field(
         json_schema_extra={
             "title": "type",
@@ -124,6 +128,10 @@ class ErrorDetail(BaseModel):
 
 
 class RFC9457(Exception):
+    """
+    To extend errordetail, create a subclass of ErrorDetail then set it to _error_detail
+    """
+
     error_type: ClassAttr[str] | str = ClassAttr(lambda cls: str_to_kebab(cls.__name__))
     error_title: ClassAttr[str] | str = ClassAttr(lambda cls: cls.__doc__ or "")
 
@@ -140,7 +148,7 @@ class RFC9457(Exception):
 
         self._error_detail = ErrorDetail(
             type=type or self.__class__.error_type,
-            title=title or self.__class__.error_title,
+            title=(title or self.__class__.error_title).strip(),
             detail=detail,
             instance=instance,
             status=status,

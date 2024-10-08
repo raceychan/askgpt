@@ -78,10 +78,6 @@ class MessageProducer[TMessage](abc.ABC):
     async def publish(self, message: TMessage) -> None:
         raise NotImplementedError
 
-    @abc.abstractmethod
-    async def close(self) -> None:
-        raise NotImplementedError
-
 
 class MessageConsumer[TMessage](abc.ABC):
     broker: MessageBroker[TMessage]
@@ -90,15 +86,12 @@ class MessageConsumer[TMessage](abc.ABC):
     async def get(self) -> TMessage | None:
         raise NotImplementedError
 
-    @abc.abstractmethod
-    async def close(self) -> None:
-        raise NotImplementedError
-
 
 class QueueBroker[TMessage](MessageBroker[TMessage]):
-    def __init__(self, maxsize: int = 1):
+    def __init__(self, maxsize: int = 1, logger=None):
         self._queue: deque[TMessage] = deque(maxlen=maxsize or None)
         self._maxsize = maxsize
+        self._logger = logger
 
     def __len__(self) -> int:
         return len(self._queue)
@@ -128,9 +121,6 @@ class BaseProducer[TMessage](MessageProducer[TMessage]):
     async def publish(self, message: TMessage) -> None:
         await self._broker.put(message)
 
-    async def close(self) -> None:
-        await self._broker.stop()
-
 
 class BaseConsumer[TMessage](MessageConsumer[TMessage]):
     def __init__(self, broker: MessageBroker[TMessage]):
@@ -138,9 +128,6 @@ class BaseConsumer[TMessage](MessageConsumer[TMessage]):
 
     async def get(self) -> TMessage | None:
         return await self._broker.get()
-
-    async def close(self) -> None:
-        await self._broker.stop()
 
 
 """

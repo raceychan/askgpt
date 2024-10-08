@@ -3,7 +3,7 @@ import typing as ty
 import pytest
 from tests.conftest import TestDefaults
 
-from askgpt.adapters.cache import Cache, MemoryCache, RedisCache
+from askgpt.adapters.cache import Cache, MemoryCache
 from askgpt.adapters.queue import BaseProducer, QueueBroker
 from askgpt.app.actor import QueueBox
 from askgpt.app.gpt import model, service
@@ -34,7 +34,7 @@ async def gptsystem(
         boxfactory=QueueBox,
         ref=settings.actor_refs.SYSTEM,
         settings=settings,
-        producer=BaseProducer(QueueBroker()),
+        producer=BaseProducer(QueueBroker(100)),
         event_store=eventstore,
         cache=MemoryCache(),
     )
@@ -61,11 +61,16 @@ async def session_actor(user_actor: service.UserActor):
 
 
 def test_user_add_key(user_actor: service.UserActor):
-    api_key = factory.encrypt_facotry().encrypt_string("random").decode()
+    encrypt = factory.encrypt_facotry()
+    api_type = "test"
+    api_key = encrypt.encrypt_string("random").decode()
+
+    idem_id = encrypt.hash_string(api_type + api_key)
     cmd = model.UserAPIKeyAdded(
         user_id=user_actor.entity_id,
         api_key=api_key,
-        api_type="test",
+        api_type=api_type,
+        idem_id=idem_id,
     )
     user_actor.apply(cmd)
 

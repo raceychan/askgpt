@@ -3,7 +3,8 @@ import pathlib
 
 import pytest
 
-from askgpt.domain.config import Settings
+from askgpt.domain.config import Settings, SecretStr
+from askgpt.helpers.security import generate_secrete
 
 
 @pytest.fixture(scope="session")
@@ -38,7 +39,7 @@ def settings() -> TestSettings:
         RUNTIME_ENV="test",
         api=TestSettings.API(HOST="localhost", PORT=8000, API_VERSION="0.1.0"),
         security=TestSettings.Security(
-            SECRET_KEY="test", ALGORITHM="HS256", CORS_ORIGINS=[""]
+            SECRET_KEY=SecretStr(generate_secrete().decode()), ALGORITHM="HS256", CORS_ORIGINS=[""]
         ),
         redis=TestSettings.Redis(
             HOST="localhost",

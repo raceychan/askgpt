@@ -15,24 +15,25 @@ if ty.TYPE_CHECKING:
     from loguru._logger import Logger
 
 
+def utc_now(timestamp: float | None = None) -> datetime.datetime:
+    """
+    UTC datetime
+    """
+
+    if timestamp is not None:
+        now_ = datetime.datetime.fromtimestamp(timestamp)
+    else:
+        now_ = datetime.datetime.now(datetime.UTC)
+
+    return now_
+
+
 def iso_now() -> str:
     """
     UTC datetime in iso format:
     "YYYY-MM-DD HH:MM:SS.mmmmmm"
     """
-    return datetime.datetime.now(datetime.UTC).isoformat()
-
-
-def utc_now(ts: float | None = None) -> datetime.datetime:
-    """
-    UTC datetime
-    """
-
-    if ts is not None:
-        return datetime.datetime.fromtimestamp(ts)
-
-    # return datetime.datetime.utcnow()
-    return datetime.datetime.now(datetime.UTC)
+    return utc_now().isoformat()
 
 
 @dataclass(frozen=True, kw_only=True, slots=True, repr=False, unsafe_hash=True)

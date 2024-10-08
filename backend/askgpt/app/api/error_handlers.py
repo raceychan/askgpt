@@ -5,7 +5,11 @@ from fastapi.responses import JSONResponse
 from starlette import status
 from starlette.responses import Response
 
-from askgpt.app.api.errors import APPErrorBase, EntityNotFoundError, QuotaExceededError
+from askgpt.app.api.errors import (
+    EntityNotFoundError,
+    GeneralAPPError,
+    QuotaExceededError,
+)
 from askgpt.app.api.xheaders import XHeaders
 from askgpt.app.auth.errors import AuthenticationError, UserNotFoundError
 from askgpt.app.gpt.errors import OrphanSessionError
@@ -66,7 +70,7 @@ def _(request: Request, exc: Exception) -> ErrorResponse:
 
 
 @handler_registry.register
-def _(request: Request, exc: APPErrorBase) -> ErrorResponse:
+def _(request: Request, exc: GeneralAPPError) -> ErrorResponse:
     return make_err_response(
         request=request,
         error_detail=exc.error_detail,

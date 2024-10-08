@@ -163,17 +163,30 @@ class PublicSessionInfo(ResponseData):
 
 
 class PublicChatMessage(ResponseData):
-    role: str
+    role: ChatGPTRoles
     content: str
 
 
 class PublicChatSession(ResponseData):
+    user_id: str
     session_id: str
     session_name: str
     messages: list[PublicChatMessage]
 
+    @classmethod
+    def from_chat(cls, chat: ChatSession) -> ty.Self:
+        return cls.model_construct(
+            user_id=chat.user_id,
+            session_id=chat.entity_id,
+            session_name=chat.session_name,
+            messages=[
+                PublicChatMessage.model_construct(role=m.role, content=m.content)
+                for m in chat.messages
+            ],
+        )
 
-@openai_router.post("/sessions", response_model=ChatSession)
+
+@openai_router.post("/sessions", response_model=PublicChatSession)
 async def create_session(service: Service, token: ParsedToken):
     # TODO: limit rate
     chat_session = await service.create_session(user_id=token.sub)
@@ -197,11 +210,12 @@ async def list_sessions(service: Service, token: ParsedToken):
 @openai_router.get("/sessions/{session_id}")
 async def get_session(
     service: Service, session_id: str, token: ParsedToken
-) -> ChatSession:
+) -> PublicChatSession:
     session_actor = await service.get_session_actor(
         user_id=token.sub, session_id=session_id
     )
-    return session_actor.entity
+    chat = PublicChatSession.from_chat(session_actor.entity)
+    return chat
 
 
 @openai_router.put("/sessions/{session_id}")

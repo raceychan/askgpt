@@ -5,10 +5,11 @@ import typing as ty
 from contextvars import ContextVar
 
 import jose.constants
-from pydantic import AnyUrl, BaseModel, ConfigDict, SecretStr, field_validator
+from pydantic import AnyUrl, BaseModel, ConfigDict
+from pydantic import SecretStr as SecretStr
+from pydantic import field_validator
 
-from askgpt.domain.base import TimeScale
-from askgpt.domain.errors import GeneralDomainError
+from askgpt.domain.errors import GeneralAPPError
 from askgpt.domain.interface import SQL_ISOLATIONLEVEL, EventLogRef, SystemRef
 from askgpt.helpers.file import FileUtil
 from askgpt.helpers.functions import freeze, simplecache
@@ -84,14 +85,14 @@ def settingfactory[T: ty.Any](factory: SettingsFactory[T]) -> SettingsFactory[T]
     return simplecache(max_size=1, size_check=True)(factory)  # type: ignore
 
 
-class MissingConfigError(GeneralDomainError):
+class MissingConfigError(GeneralAPPError):
     """
     Essential config is missing for some components.
     """
 
     def __int__(self, config_type: type["SettingsBase"]):
         msg = f"setting {config_type} is missing"
-        super().__init__(msg)
+        super().__init__(detail=msg)
 
 
 class SettingsBase(BaseModel):
@@ -117,6 +118,20 @@ class Settings(SettingsBase):
     @property
     def is_prod_env(self):
         return self.RUNTIME_ENV == "prod"
+
+    class Security(SettingsBase):
+        SECRET_KEY: SecretStr  # 32 bytes url safe string
+        ALGORITHM: SUPPORTED_ALGORITHMS  # jose.constants.ALGORITHMS
+        ACCESS_TOKEN_EXPIRE_MINUTES: int
+        CORS_ORIGINS: list[str]
+
+        @field_validator("CORS_ORIGINS", mode="before")
+        def _(cls, v: str) -> list[str]:
+            if isinstance(v, list):
+                return v
+            return v.split(",")
+
+    security: Security
 
     class DB(SettingsBase):
         """
@@ -192,20 +207,6 @@ class Settings(SettingsBase):
         EVENTLOG: EventLogRef = EventLogRef("eventlog")  # type: ignore
 
     actor_refs: ActorRefs
-
-    class Security(SettingsBase):
-        SECRET_KEY: str  # 32 bytes url safe string
-        ALGORITHM: SUPPORTED_ALGORITHMS  # jose.constants.ALGORITHMS
-        ACCESS_TOKEN_EXPIRE_MINUTES: TimeScale.Minute = TimeScale.Minute(WEEK)
-        CORS_ORIGINS: list[str]
-
-        @field_validator("CORS_ORIGINS", mode="before")
-        def _(cls, v: str) -> list[str]:
-            if isinstance(v, list):
-                return v
-            return v.split(",")
-
-    security: Security
 
     class API(SettingsBase):
         HOST: str

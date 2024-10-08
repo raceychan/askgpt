@@ -23,6 +23,7 @@ class TokenResponse(ResponseData):
 
 @auth_router.post("/login")
 async def login(service: Service, login_form: LoginForm) -> TokenResponse:
+    "Receive form data, return a JWT that client should keep locally"
     token = await service.login(email=login_form.username, password=login_form.password)
     return TokenResponse(access_token=token)
 

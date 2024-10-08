@@ -68,6 +68,7 @@ class UserAPIKeyAdded(Event):
     entity_id: str = Field(alias="user_id")
     api_key: str
     api_type: str
+    idem_id: bytes
 
 
 class UserAuth(Entity):

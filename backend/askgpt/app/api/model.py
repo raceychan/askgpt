@@ -1,6 +1,6 @@
 import typing as ty
 
-from fastapi.responses import Response, RedirectResponse
+from fastapi.responses import RedirectResponse, Response
 from pydantic import BaseModel, ConfigDict
 from starlette import status
 
@@ -35,11 +35,14 @@ class RequestBody(DTO):
 
 class ResponseData(DTO):
     """
+    TODO: we should use typedict for return data
+    as they don't need validation.
+    but fastapi has bad support for typeddict in terms of
+    openapi schema generation
     Isolating the changes happen on domain object
     """
 
     ...
-
 
 
 OK = Response(status_code=status.HTTP_200_OK)

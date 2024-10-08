@@ -14,17 +14,20 @@ const ProfileMenuItem: React.FC = () => {
   return (
     <NavigationMenuItem>
       <NavigationMenuTrigger>Profile</NavigationMenuTrigger>
-      <NavigationMenuContent>
-        <NavigationMenuLink asChild>
-          <a
-            className="flex h-full w-full select-none flex-col justify-end rounded-md bg-gradient-to-b from-muted/50 to-muted p-6 no-underline outline-none focus:shadow-md"
-            href="/"
-          >
-            <div className="mb-2 mt-4 text-lg font-medium">
-              {user && user.email}
-            </div>
-          </a>
-        </NavigationMenuLink>
+      <NavigationMenuContent className="bg-white">
+        {user && (
+          <NavigationMenuLink asChild>
+            <a
+              className="flex h-full w-full select-none flex-col justify-end rounded-md bg-gradient-to-b from-muted/50 to-muted p-6 no-underline outline-none focus:shadow-md"
+              href="/"
+            >
+              <div className="mb-2 mt-4 text-lg font-medium">
+                {user && user.email}
+              </div>
+            </a>
+          </NavigationMenuLink>
+        )}
+
         <ul className="grid gap-4 p-6 md:w-[400px] lg:w-[500px] lg:grid-cols-[.75fr_1fr]">
           {user ? (
             <>

@@ -21,6 +21,7 @@ class SystemStoped(Event): ...
 
 
 class SystemState(enum.Enum):
+    # TODO: remove this, not needed for system
     created = enum.auto()
     running = enum.auto()
     stopped = enum.auto()
@@ -38,15 +39,9 @@ class SystemState(enum.Enum):
         return self == type(self).stopped
 
     def start(self) -> "SystemState":
-        if not self.is_created:
-            raise errors.InvalidStateError("system already started")
         return type(self).running
 
     def stop(self) -> "SystemState":
-        if self.is_created:
-            raise errors.InvalidStateError("system not started yet")
-        if not self.is_running:
-            raise errors.InvalidStateError("system already stopped")
         return type(self).stopped
 
 
@@ -309,9 +304,6 @@ class GPTSystem(GPTBaseActor[UserActor, None]):
         return user_actor
 
     async def start(self) -> "GPTSystem":
-        if self._system_state.is_running:
-            return self
-            # raise errors.InvalidStateError("system already started")
         self.state = self.state.start()
         return self
 

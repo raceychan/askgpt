@@ -14,6 +14,7 @@ from askgpt.infra import factory as infra_factory
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="auth/login")
 
 
+
 def parse_access_token(token: str = Depends(oauth2_scheme)) -> AccessToken:
     token_encrypt = infra_factory.encrypt_facotry()
     try:

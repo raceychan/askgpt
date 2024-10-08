@@ -1,8 +1,7 @@
 import typing as ty
 
-from askgpt.adapters import cache, database, queue, tokenbucket
+from askgpt.adapters import cache, database, tokenbucket
 from askgpt.domain.config import MissingConfigError, Settings, settingfactory
-from askgpt.domain.interface import IEvent
 from askgpt.helpers import sql
 from askgpt.helpers.service_locator import Dependency, InfraLocator
 
@@ -40,21 +39,6 @@ def make_database(settings: Settings) -> database.AsyncDatabase:
 
 
 @settingfactory
-def make_broker(settings: Settings):
-    return queue.QueueBroker[IEvent]()
-
-
-@settingfactory
-def make_consumer(settings: Settings):
-    return queue.BaseConsumer(make_broker(settings))
-
-
-@settingfactory
-def make_producer(settings: Settings):
-    return queue.BaseProducer(make_broker(settings))
-
-
-@settingfactory
 def make_cache(settings: Settings):
     config = settings.redis
     if not config:
@@ -80,10 +64,9 @@ def make_sqldbg(settings: Settings):
 
 
 class adapter_locator(InfraLocator):
+    # should be a global context var with resource management
     aiodb = Dependency(database.AsyncDatabase, make_database)
     aiocache = Dependency(cache.RedisCache[str], make_cache)
-    consumer = Dependency(queue.BaseConsumer[ty.Any], make_consumer)
-    producer = Dependency(queue.BaseProducer[ty.Any], make_producer)
 
     @classmethod
     def build_token_bucket(cls, keyspace: cache.KeySpace):
@@ -96,3 +79,7 @@ class adapter_locator(InfraLocator):
             script=script_func,
             keyspace=keyspace,
         )
+
+    @classmethod
+    def build_singleton(cls, settings) -> ty.Self:
+        return cls(settings)

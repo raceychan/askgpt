@@ -4,14 +4,13 @@ from jose.exceptions import JWTError as JWTError
 from pydantic import ValidationError as ValidationError
 
 from askgpt.domain.model.base import ValueObject
-from askgpt.helpers.security import (
-    hash_password as hash_password,
-    verify_password as verify_password,
-    decode_jwt as decode_jwt,
-    decrypt_string as decrypt_string,
-    encode_jwt as encode_jwt,
-    encrypt_string as encrypt_string,
-)
+from askgpt.helpers.security import decode_jwt as decode_jwt
+from askgpt.helpers.security import decrypt_string as decrypt_string
+from askgpt.helpers.security import encode_jwt as encode_jwt
+from askgpt.helpers.security import encrypt_string as encrypt_string
+from askgpt.helpers.security import hash_256 as hash_256
+from askgpt.helpers.security import hash_password as hash_password
+from askgpt.helpers.security import verify_password as verify_password
 
 
 class JWTBase(ValueObject):
@@ -36,7 +35,7 @@ class JWTBase(ValueObject):
     jti: str | None = None
 
 
-class Encrypt:
+class Encryptor:
     def __init__(self, secret_key: str, algorithm: str):
         self._secret_key = secret_key
         self._algorithm = algorithm
@@ -58,3 +57,6 @@ class Encrypt:
 
     def decrypt_string(self, encrypted: bytes) -> str:
         return decrypt_string(encrypted, self._secret_key.encode())
+
+    def hash_string(self, string: str) -> bytes:
+        return hash_256(string, self._secret_key)

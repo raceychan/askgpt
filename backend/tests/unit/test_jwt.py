@@ -4,20 +4,21 @@ import pytest
 from tests.conftest import TestDefaults
 
 from askgpt.app.auth.model import AccessToken
-from askgpt.domain.config import Settings
+from askgpt.domain.config import SecretStr, Settings
 from askgpt.domain.model.base import utc_now
 from askgpt.infra import security
 
 
 @pytest.fixture(scope="module")
-def token_encrypt(settings: Settings) -> security.Encrypt:
-    return security.Encrypt(
-        secret_key=settings.security.SECRET_KEY, algorithm=settings.security.ALGORITHM
+def token_encrypt(settings: Settings) -> security.Encryptor:
+    return security.Encryptor(
+        secret_key=settings.security.SECRET_KEY.get_secret_value(),
+        algorithm=settings.security.ALGORITHM,
     )
 
 
 def test_encryp_access_token(
-    test_defaults: TestDefaults, token_encrypt: security.Encrypt, settings: Settings
+    test_defaults: TestDefaults, token_encrypt: security.Encryptor, settings: Settings
 ):
     now_ = utc_now()
     token = AccessToken(

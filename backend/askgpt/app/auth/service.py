@@ -1,6 +1,9 @@
 from datetime import datetime, timedelta
 
-from askgpt.adapters import cache, queue
+from askgpt.adapters import queue
+from askgpt.adapters.cache import Cache, KeySpace
+
+# from askgpt.infra.eventstore import EventStore
 from askgpt.app.auth import errors, model, repository
 from askgpt.domain.config import Settings
 from askgpt.domain.interface import IEvent
@@ -10,21 +13,21 @@ from askgpt.infra import security
 
 class TokenRegistry:
     """
-    a registry for refresh-token, validated by redis
+    a registry for access-token, validated by redis
     """
 
-    def __init__(self, token_cache: cache.Cache[str, str], keyspace: cache.KeySpace):
+    def __init__(self, token_cache: Cache[str, str], keyspace: KeySpace):
         self._cache = token_cache
         self._keyspace = keyspace
 
-    def token_key(self, user_id: str) -> str:
+    def token_key_by(self, user_id: str) -> str:
         return self._keyspace(user_id).key
 
     async def is_token_valid(self, user_id: str, token: str) -> bool:
-        return await self._cache.sismember(self.token_key(user_id), token)
+        return await self._cache.sismember(self.token_key_by(user_id), token)
 
     async def register_token(self, user_id: str, token: str) -> None:
-        await self._cache.sadd(self.token_key(user_id), token)
+        await self._cache.sadd(self.token_key_by(user_id), token)
 
     async def revoke_tokens(self, user_id: str, token: str) -> None:
         await self._cache.remove(user_id)
@@ -38,21 +41,24 @@ class AuthService:
         self,
         user_repo: repository.UserRepository,
         token_registry: TokenRegistry,
-        token_encrypt: security.Encrypt,
+        encryptor: security.Encryptor,
         producer: queue.MessageProducer[IEvent],
         security_settings: Settings.Security,
     ):
         self._user_repo = user_repo
         self._token_registry = token_registry
-        self._token_encrypt = token_encrypt
+        self._encryptor = encryptor
         self._producer = producer
         self._security_settings = security_settings
+
+    
 
     @property
     def user_repo(self):
         return self._user_repo
 
     def _create_access_token(self, user_id: str, user_role: model.UserRoles) -> str:
+        # TODO: create a separate infra <TokenEncrypt> for this
         now_ = utc_now()
         exp = now_ + timedelta(
             minutes=self._security_settings.ACCESS_TOKEN_EXPIRE_MINUTES
@@ -65,7 +71,7 @@ class AuthService:
             role=user_role,
         )
 
-        return self._token_encrypt.encrypt_jwt(token)
+        return self._encryptor.encrypt_jwt(token)
 
     async def find_user(self, email: str) -> model.UserAuth | None:
         user_or_none = await self._user_repo.search_user_by_email(email)
@@ -87,6 +93,16 @@ class AuthService:
         )
         user_auth = model.UserAuth.apply(user_signed_up)
         # TODO, persist event to eventstore along with user_auth, in a transaction.
+        """
+        class S:
+            def __init__():
+                self._uow = UnitOfWork(aiodb)
+                self._repo_faq = lambda c: UserRepository(c)
+        async with self._uow as conn:
+            await self._user_repo(conn).add(user_auth)
+            await self._producer(conn).publish(user_signed_up)
+        """
+
         await self._user_repo.add(user_auth)
         await self._producer.publish(user_signed_up)
 
@@ -112,15 +128,19 @@ class AuthService:
         if user is None:
             raise errors.UserNotFoundError(user_id=user_id)
 
-        encrypted_key = self._token_encrypt.encrypt_string(api_key).decode()
+        # TODO: add HS256 of api key using encrypt
+
+        idem_id = self._encryptor.hash_string(api_type + api_key)
+
+        encrypted_key = self._encryptor.encrypt_string(api_key).decode()
 
         user_api_added = model.UserAPIKeyAdded(
-            user_id=user_id,
-            api_key=encrypted_key,
-            api_type=api_type,
+            user_id=user_id, api_key=encrypted_key, api_type=api_type, idem_id=idem_id
         )
 
-        await self._user_repo.add_api_key_for_user(user_id, encrypted_key, api_type)
+        await self._user_repo.add_api_key_for_user(
+            user_id, encrypted_key, api_type, idem_id
+        )
         await self._producer.publish(user_api_added)
 
     async def login(self, email: str, password: str) -> str:

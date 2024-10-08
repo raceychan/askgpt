@@ -16,19 +16,6 @@ const isTokenExpired = (token: string) => {
   return Date.now() >= expirationTime;
 };
 
-// client.setConfig({
-//   baseURL: Config.API_NETLOC,
-//   timeout: Config.REQUEST.TIMEOUT,
-// });
-
-// client.instance.interceptors.request.use((config) => {
-//   const accessToken = localStorage.getItem("access_token") || "";
-//   if (accessToken) {
-//     config.headers.set("Authorization", `Bearer ${accessToken}`);
-//   }
-//   return config;
-// });
-
 export const initializeClient = () => {
   client.setConfig({
     baseURL: Config.API_NETLOC,

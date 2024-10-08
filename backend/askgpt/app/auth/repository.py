@@ -2,36 +2,13 @@ import typing as ty
 
 import sqlalchemy as sa
 
-# from sqlalchemy.ext import asyncio as sa_aio
-from askgpt.adapters.database import AsyncDatabase
+from askgpt.adapters.database import AsyncConnection, AsyncDatabase
 from askgpt.app.auth.model import IUserRepository, UserAuth, UserCredential
-
-USER_TABLE: ty.Final[sa.TableClause] = sa.table(
-    "users",
-    sa.column("id", sa.String),
-    sa.column("username", sa.String),
-    sa.column("email", sa.String),
-    sa.column("password_hash"),
-    sa.column("last_login", sa.DateTime),
-    sa.column("role", sa.String),
-    sa.column("is_active", sa.Boolean),
-    sa.column("gmt_modified", sa.DateTime),
-    sa.column("gmt_created", sa.DateTime),
-)
-
-USER_OPENAI_KEYS_TABLE: ty.Final[sa.TableClause] = sa.table(
-    "user_api_keys",
-    sa.column("id", sa.String),
-    sa.column("user_id", sa.String),
-    sa.column("api_key", sa.String),
-    sa.column("api_type", sa.String),
-    sa.column("is_active", sa.Boolean),
-    sa.column("gmt_modified", sa.DateTime),
-    sa.column("gmt_created", sa.DateTime),
-)
+from askgpt.infra.schema import UserAPIKeySchema, UserSchema
 
 
 def dump_userauth(user: UserAuth) -> dict[str, ty.Any]:
+    # TODO: should (instead of dict) map UserAuth to UserSchema
     return dict(
         id=user.entity_id,
         username=user.credential.user_name,
@@ -44,6 +21,7 @@ def dump_userauth(user: UserAuth) -> dict[str, ty.Any]:
 
 
 def load_userauth(user_data: dict[str, ty.Any]) -> UserAuth:
+    # TODO: should (instead of dict) map UserAuth to UserSchema
     user_info = UserCredential(
         user_name=user_data["username"],
         user_email=user_data["email"],
@@ -57,36 +35,48 @@ def load_userauth(user_data: dict[str, ty.Any]) -> UserAuth:
     )
 
 
+"""
+async with self._repo.trans():
+    self._repo.add(user)
+    self._repo.
+
+"""
+
+
 class UserRepository(IUserRepository):
     def __init__(self, aiodb: AsyncDatabase):
         self._aiodb = aiodb
 
+    async def connect(self):
+        return self._aiodb.connect()
+
     async def add(self, entity: UserAuth) -> None:
         data = dump_userauth(entity)
-        stmt = sa.insert(USER_TABLE).values(data)
+        stmt = sa.insert(UserSchema).values(data)
 
-        async with self._aiodb.begin() as cursor:
-            await cursor.execute(stmt)
+        async with self._aiodb.begin() as conn:
+            await conn.execute(stmt)
 
     async def get(self, entity_id: str) -> UserAuth | None:
-        stmt = sa.select(USER_TABLE).where(USER_TABLE.c.id == entity_id)
-        async with self._aiodb.begin() as cursor:
-            res = await cursor.execute(stmt)
+        stmt = sa.select(UserSchema).where(UserSchema.id == entity_id)
+        async with self._aiodb.begin() as conn:
+            res = await conn.execute(stmt)
             row = res.one_or_none()
             if not row:
                 return None
+
         return load_userauth(dict(row._mapping))  # type: ignore
 
     async def remove(self, entity_id: str) -> None:
         stmt = (
-            sa.update(USER_TABLE)
-            .where(USER_TABLE.c.id == entity_id)
+            sa.update(UserSchema)
+            .where(UserSchema.id == entity_id)
             .values(is_active=False)
         )
         await self._aiodb.execute(stmt)
 
     async def search_user_by_email(self, useremail: str) -> UserAuth | None:
-        stmt = sa.select(USER_TABLE).where(USER_TABLE.c.email == useremail)
+        stmt = sa.select(UserSchema).where(UserSchema.email == useremail)
 
         async with self._aiodb.begin() as conn:
             cursor = await conn.execute(stmt)
@@ -99,24 +89,90 @@ class UserRepository(IUserRepository):
         return load_userauth(user_data)
 
     async def add_api_key_for_user(
-        self, user_id: str, encrypted_api_key: str, api_type: str
+        self, user_id: str, encrypted_api_key: str, api_type: str, idem_id: bytes
     ) -> None:
-        stmt = sa.insert(USER_OPENAI_KEYS_TABLE).values(
-            user_id=user_id, api_key=encrypted_api_key, api_type=api_type
+        stmt = sa.insert(UserAPIKeySchema).values(
+            user_id=user_id,
+            api_key=encrypted_api_key,
+            api_type=api_type,
+            idem_id=idem_id,
         )
 
         async with self._aiodb.begin() as conn:
             await conn.execute(stmt)
 
     async def get_api_keys_for_user(self, user_id: str, api_type: str) -> list[bytes]:
-        stmt = sa.select(USER_OPENAI_KEYS_TABLE).where(
-            USER_OPENAI_KEYS_TABLE.c.user_id == user_id,
-            USER_OPENAI_KEYS_TABLE.c.api_type == api_type,
+        stmt = sa.select(UserAPIKeySchema).where(
+            UserAPIKeySchema.user_id == user_id,
+            UserAPIKeySchema.api_type == api_type,
         )
 
         async with self._aiodb.begin() as conn:
             cursor = await conn.execute(stmt)
             res = cursor.fetchall()
+
+        encrypted_keys = [row.api_key for row in res]
+        return encrypted_keys
+
+
+class TestUserRepository:
+    def __init__(self, conn: AsyncConnection):
+        self._conn = conn
+
+    async def add(self, entity: UserAuth) -> None:
+        data = dump_userauth(entity)
+        stmt = sa.insert(UserSchema).values(data)
+        await self._conn.execute(stmt)
+
+    async def get(self, entity_id: str) -> UserAuth | None:
+        stmt = sa.select(UserSchema).where(UserSchema.id == entity_id)
+        res = await self._conn.execute(stmt)
+        row = res.one_or_none()
+        if not row:
+            return None
+
+        return load_userauth(dict(row._mapping))  # type: ignore
+
+    async def remove(self, entity_id: str) -> None:
+        stmt = (
+            sa.update(UserSchema)
+            .where(UserSchema.id == entity_id)
+            .values(is_active=False)
+        )
+        await self._conn.execute(stmt)
+
+    async def search_user_by_email(self, useremail: str) -> UserAuth | None:
+        stmt = sa.select(UserSchema).where(UserSchema.email == useremail)
+
+        cursor = await self._conn.execute(stmt)
+        res = cursor.one_or_none()
+
+        if not res:
+            return None
+
+        user_data = dict(res._mapping)  # type: ignore
+        return load_userauth(user_data)
+
+    async def add_api_key_for_user(
+        self, user_id: str, encrypted_api_key: str, api_type: str, idem_id: bytes
+    ) -> None:
+        stmt = sa.insert(UserAPIKeySchema).values(
+            user_id=user_id,
+            api_key=encrypted_api_key,
+            api_type=api_type,
+            idem_id=idem_id,
+        )
+
+        await self._conn.execute(stmt)
+
+    async def get_api_keys_for_user(self, user_id: str, api_type: str) -> list[bytes]:
+        stmt = sa.select(UserAPIKeySchema).where(
+            UserAPIKeySchema.user_id == user_id,
+            UserAPIKeySchema.api_type == api_type,
+        )
+
+        cursor = await self._conn.execute(stmt)
+        res = cursor.fetchall()
 
         encrypted_keys = [row.api_key for row in res]
         return encrypted_keys

@@ -3,10 +3,9 @@ import asyncio
 import pytest
 
 from askgpt.app.auth.model import UserCredential, UserRoles
-from askgpt.domain.config import SETTINGS_CONTEXT, Settings
+from askgpt.domain.config import SETTINGS_CONTEXT, SecretStr, Settings
 from askgpt.helpers.file import FileLoader, FileUtil
 from askgpt.helpers.security import generate_secrete
-from askgpt.helpers.string import KeySpace
 from askgpt.infra import security
 
 
@@ -38,7 +37,10 @@ class TestDefaults:
 def settings() -> Settings:
     ss = Settings(
         RUNTIME_ENV="test",
-        actor_refs=Settings.ActorRefs(EVENTLOG="test_eventlog", SYSTEM="test_system"),
+        actor_refs=Settings.ActorRefs(
+            EVENTLOG="test_eventlog",
+            SYSTEM="test_system",
+        ),
         db=Settings.SqliteDB(
             DATABASE=":memory:",
             ISOLATION_LEVEL="SERIALIZABLE",
@@ -51,7 +53,7 @@ def settings() -> Settings:
             keyspaces=Settings.Redis.KeySpaces(APP="test"),  # type: ignore
         ),
         security=Settings.Security(
-            SECRET_KEY=generate_secrete().decode(),
+            SECRET_KEY=SecretStr(generate_secrete().decode()),
             ALGORITHM="HS256",
             CORS_ORIGINS=["localhost:5732"],
         ),
@@ -84,8 +86,8 @@ def test_defaults():
 
 
 @pytest.fixture(scope="module")
-def token_encrypt(settings: Settings) -> security.Encrypt:
-    return security.Encrypt(
-        secret_key=settings.security.SECRET_KEY,
+def encryptor(settings: Settings) -> security.Encryptor:
+    return security.Encryptor(
+        secret_key=settings.security.SECRET_KEY.get_secret_value(),
         algorithm=settings.security.ALGORITHM,
     )

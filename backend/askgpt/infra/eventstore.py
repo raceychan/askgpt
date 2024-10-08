@@ -4,22 +4,11 @@ import typing as ty
 import sqlalchemy as sa
 
 from askgpt.adapters.database import AsyncDatabase
+from askgpt.adapters.queue import MessageProducer
 from askgpt.domain.config import UTC_TZ
 from askgpt.domain.interface import IEvent, IEventStore
 from askgpt.domain.model.base import Event, json_dumps, json_loads
-
-# from askgpt.infra.schema import EventSchema
-
-EVENT_TABLE: ty.Final[sa.TableClause] = sa.table(
-    "domain_events",
-    sa.column("id", sa.String),
-    sa.column("event_type", sa.String),
-    sa.column("event_body", sa.JSON),
-    sa.column("entity_id", sa.String),
-    sa.column("version", sa.String),
-    sa.column("gmt_modified", sa.DateTime),
-    sa.column("gmt_created", sa.DateTime),
-)
+from askgpt.infra.schema import EventSchema
 
 table_event_mapping = {
     "id": "event_id",
@@ -53,37 +42,44 @@ def load_event(row_mapping: sa.RowMapping | dict[str, ty.Any]) -> IEvent:
 
 
 class EventStore(IEventStore):
-    table: sa.TableClause = EVENT_TABLE
 
     def __init__(self, aiodb: AsyncDatabase):
         self._aiodb = aiodb
 
     async def add(self, event: IEvent) -> None:
         value = dump_event(event)
-        stmt = sa.insert(self.table).values(value)
+        stmt = sa.insert(EventSchema).values(value)
 
         async with self._aiodb.begin() as conn:
             await conn.execute(stmt)
 
     async def add_all(self, events: list[IEvent]) -> None:
         values = [dump_event(event) for event in events]
-        sa.insert(self.table).values(values)
+        sa.insert(EventSchema).values(values)
 
     async def get(self, entity_id: str) -> list[IEvent]:
-        stmt = sa.select(self.table).where(self.table.c.entity_id == entity_id)
-        async with self._aiodb.begin() as cursor:
-            result = await cursor.execute(stmt)
-            rows = result.fetchall()
+        stmt = sa.select(EventSchema).where(EventSchema.entity_id == entity_id)
+        async with self._aiodb.begin() as conn:
+            cursor = await conn.execute(stmt)
+            rows = cursor.fetchall()
             events = [load_event(row._mapping) for row in rows]  # type: ignore
         return events
 
     async def list_all(self) -> list[IEvent]:
-        stmt = sa.select(self.table)
-        async with self._aiodb.begin() as cursor:
-            result = await cursor.execute(stmt)
-            rows = result.fetchall()
+        stmt = sa.select(EventSchema)
+        async with self._aiodb.begin() as conn:
+            cursor = await conn.execute(stmt)
+            rows = cursor.fetchall()
             events = [load_event(row._mapping) for row in rows]  # type: ignore
         return events
 
     async def remove(self, entity_id: str) -> None:
         raise NotImplementedError
+
+
+class OutBoxProducer(MessageProducer[IEvent]):
+    def __init__(self, eventstore: EventStore):
+        self._es = eventstore
+
+    async def publish(self, message: IEvent):
+        await self._es.add(message)
