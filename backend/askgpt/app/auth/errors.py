@@ -1,4 +1,4 @@
-from askgpt.app.api.errors import EntityNotFoundError, GeneralAPPError
+from askgpt.app.api.errors import EntityNotFoundError, GeneralWebError
 
 """
 TODO: split into UserError, AuthError
@@ -14,11 +14,11 @@ class UserError(APPErrorBase):
 """
 
 
-class ServiceError(GeneralAPPError):
+class ServiceError(GeneralWebError):
     service: str
 
 
-class AuthenticationError(GeneralAPPError):
+class AuthenticationError(GeneralWebError):
     """
     Failed to authenticate user
     """

@@ -2,7 +2,7 @@ import pytest
 from tests.conftest import TestDefaults
 
 from askgpt.app.actor import MailBox
-from askgpt.app.gpt import errors, gptsystem, model, service
+from askgpt.app.gpt import gptsystem, model, service
 from askgpt.domain import config
 from askgpt.infra.eventstore import EventStore
 

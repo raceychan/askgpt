@@ -44,7 +44,7 @@ def settings() -> Settings:
         db=Settings.SqliteDB(
             DATABASE=":memory:",
             ISOLATION_LEVEL="SERIALIZABLE",
-            ENGINE_ECHO=False,
+            # ENGINE_ECHO=False,
         ),
         redis=Settings.Redis(
             HOST="localhost",
@@ -56,6 +56,7 @@ def settings() -> Settings:
             SECRET_KEY=SecretStr(generate_secrete().decode()),
             ALGORITHM="HS256",
             CORS_ORIGINS=["localhost:5732"],
+            ACCESS_TOKEN_EXPIRE_MINUTES=15,
         ),
         api=Settings.API(HOST="localhost", PORT=5000),
         throttling=Settings.Throttling(

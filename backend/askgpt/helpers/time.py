@@ -128,8 +128,8 @@ def timeit[
                 log_msg = log_tmplt.format(
                     function_name=funcinfo.name, time_cost=timecost, unit=unit
                 )
-                if logger:
-                    logger.info(log_msg)
+            if logger:
+                logger.info(log_msg)
             return res
 
         @wraps(func)
@@ -143,8 +143,8 @@ def timeit[
                 log_msg = log_tmplt.format(
                     function_name=funcinfo.name, time_cost=timecost, unit=unit
                 )
-                if logger:
-                    logger.info(log_msg)
+            if logger:
+                logger.info(log_msg)
             return res
 
         return awrapper if inspect.iscoroutinefunction(func) else wrapper  # type: ignore
@@ -180,7 +180,7 @@ class Timeout:
         signal.alarm(0)
 
 
-def timeout(seconds: int, *, logger=None):
+def timeout(seconds: int, *, logger: ty.Optional["Logger"] = None):
     def decor_dispatch(func):
         def sync_timeout(*args, **kwargs):
             raise NotImplementedError

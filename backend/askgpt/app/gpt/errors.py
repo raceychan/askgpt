@@ -1,11 +1,11 @@
-from askgpt.app.api.errors import EntityNotFoundError, GeneralAPPError, ThrottlingError
+from askgpt.app.api.errors import EntityNotFoundError, GeneralWebError, ThrottlingError
 from askgpt.app.auth.errors import AuthenticationError
 
 
 class InvalidStateError(Exception): ...
 
 
-class GPTError(GeneralAPPError):
+class GPTError(GeneralWebError):
     service = "gpt"
 
 

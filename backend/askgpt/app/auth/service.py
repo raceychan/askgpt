@@ -2,13 +2,11 @@ from datetime import datetime, timedelta
 
 from askgpt.adapters import queue
 from askgpt.adapters.cache import Cache, KeySpace
-
-# from askgpt.infra.eventstore import EventStore
 from askgpt.app.auth import errors, model, repository
 from askgpt.domain.config import Settings
 from askgpt.domain.interface import IEvent
 from askgpt.domain.model.base import utc_now, uuid_factory
-from askgpt.infra import security
+from askgpt.infra import security, uow
 
 
 class TokenRegistry:
@@ -34,8 +32,6 @@ class TokenRegistry:
 
 
 class AuthService:
-    # NOTE: we are ignoring the dual write problem here,
-    # but we should solve it in next few commits
 
     def __init__(
         self,
@@ -45,17 +41,12 @@ class AuthService:
         producer: queue.MessageProducer[IEvent],
         security_settings: Settings.Security,
     ):
+        self._uow = user_repo.uow
         self._user_repo = user_repo
         self._token_registry = token_registry
         self._encryptor = encryptor
         self._producer = producer
         self._security_settings = security_settings
-
-    
-
-    @property
-    def user_repo(self):
-        return self._user_repo
 
     def _create_access_token(self, user_id: str, user_role: model.UserRoles) -> str:
         # TODO: create a separate infra <TokenEncrypt> for this
@@ -74,7 +65,8 @@ class AuthService:
         return self._encryptor.encrypt_jwt(token)
 
     async def find_user(self, email: str) -> model.UserAuth | None:
-        user_or_none = await self._user_repo.search_user_by_email(email)
+        async with self._uow:
+            user_or_none = await self._user_repo.search_user_by_email(email)
         return user_or_none
 
     async def signup_user(self, user_name: str, email: str, password: str) -> None:
@@ -92,28 +84,22 @@ class AuthService:
             last_login=datetime.utcnow(),
         )
         user_auth = model.UserAuth.apply(user_signed_up)
-        # TODO, persist event to eventstore along with user_auth, in a transaction.
-        """
-        class S:
-            def __init__():
-                self._uow = UnitOfWork(aiodb)
-                self._repo_faq = lambda c: UserRepository(c)
-        async with self._uow as conn:
-            await self._user_repo(conn).add(user_auth)
-            await self._producer(conn).publish(user_signed_up)
-        """
 
-        await self._user_repo.add(user_auth)
+        async with self._uow:
+            # TODO, persist event to eventstore along with user_auth, in a transaction.
+            await self._user_repo.add(user_auth)
+
         await self._producer.publish(user_signed_up)
 
     async def deactivate_user(self, user_id: str) -> None:
-        user = await self._user_repo.get(user_id)
-        if user is None:
-            raise errors.UserNotFoundError(user_id=user_id)
-        e = model.UserDeactivated(user_id=user_id)
-        user.apply(e)
-        await self._user_repo.remove(user.entity_id)
-        await self._producer.publish(e)
+        async with self._uow:
+            user = await self._user_repo.get(user_id)
+            if user is None:
+                raise errors.UserNotFoundError(user_id=user_id)
+            e = model.UserDeactivated(user_id=user_id)
+            user.apply(e)
+            await self._user_repo.remove(user.entity_id)
+            await self._producer.publish(e)
 
     async def add_api_key(self, user_id: str, api_key: str, api_type: str) -> None:
         """
@@ -123,28 +109,28 @@ class AuthService:
         if is_duplicate:
             raise DuplicatedAPIKeyError
         """
+        async with self._uow:
+            user = await self._user_repo.get(user_id)
+            if user is None:
+                raise errors.UserNotFoundError(user_id=user_id)
 
-        user = await self._user_repo.get(user_id)
-        if user is None:
-            raise errors.UserNotFoundError(user_id=user_id)
+            idem_id = self._encryptor.hash_string(api_type + api_key)
+            encrypted_key = self._encryptor.encrypt_string(api_key).decode()
+            user_api_added = model.UserAPIKeyAdded(
+                user_id=user_id,
+                api_key=encrypted_key,
+                api_type=api_type,
+                idem_id=idem_id,
+            )
 
-        # TODO: add HS256 of api key using encrypt
-
-        idem_id = self._encryptor.hash_string(api_type + api_key)
-
-        encrypted_key = self._encryptor.encrypt_string(api_key).decode()
-
-        user_api_added = model.UserAPIKeyAdded(
-            user_id=user_id, api_key=encrypted_key, api_type=api_type, idem_id=idem_id
-        )
-
-        await self._user_repo.add_api_key_for_user(
-            user_id, encrypted_key, api_type, idem_id
-        )
-        await self._producer.publish(user_api_added)
+            await self._user_repo.add_api_key_for_user(
+                user_id, encrypted_key, api_type, idem_id
+            )
+            await self._producer.publish(user_api_added)
 
     async def login(self, email: str, password: str) -> str:
-        user = await self._user_repo.search_user_by_email(email)
+        async with self._uow:
+            user = await self._user_repo.search_user_by_email(email)
 
         if user is None:
             raise errors.UserNotFoundError(user_id=email)
@@ -161,11 +147,13 @@ class AuthService:
         return access_token
 
     async def get_user(self, user_id: str) -> model.UserAuth | None:
-        return await self._user_repo.get(user_id)
+        async with self._uow:
+            return await self._user_repo.get(user_id)
 
     async def get_current_user(self, token: model.AccessToken) -> model.UserAuth:
         user_id = token.sub
-        user = await self.get_user(user_id)
+        async with self._uow:
+            user = await self.get_user(user_id)
         if not user:
             raise errors.UserNotFoundError(user_id=user_id)
         return user

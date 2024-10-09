@@ -81,5 +81,5 @@ class adapter_locator(InfraLocator):
         )
 
     @classmethod
-    def build_singleton(cls, settings) -> ty.Self:
+    def build_singleton(cls, settings: Settings) -> ty.Self:
         return cls(settings)

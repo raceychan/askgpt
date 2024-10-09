@@ -195,9 +195,6 @@ class cached_attribute[TOwner, TField](attribute[TOwner, TField]):
     def __get__(
         self, owner_object: TOwner | ty.Literal[None], owner_type: type[TOwner]
     ) -> TField:
-        if not self.fget:
-            raise AttributeError("unreadable attribute")
-
         if owner_object is None:
             self.fget = ty.cast(ClsGet[TOwner, TField], self.fget)
             if not hasattr(owner_type, self._attrname):
@@ -276,9 +273,3 @@ class ClassAttr[AttrType]:
         return _val
 
 
-class T:
-    name: ClassAttr[str] = ClassAttr[str](lambda cls: cls.__name__.lower())
-
-    @property
-    def age(self) -> int:
-        return 0

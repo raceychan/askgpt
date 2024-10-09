@@ -7,7 +7,7 @@ from starlette.responses import Response
 
 from askgpt.app.api.errors import (
     EntityNotFoundError,
-    GeneralAPPError,
+    GeneralWebError,
     QuotaExceededError,
 )
 from askgpt.app.api.xheaders import XHeaders
@@ -15,7 +15,9 @@ from askgpt.app.auth.errors import AuthenticationError, UserNotFoundError
 from askgpt.app.gpt.errors import OrphanSessionError
 from askgpt.helpers.error_registry import ErrorDetail, HandlerRegistry
 
-handler_registry: ty.Final[HandlerRegistry] = HandlerRegistry[Exception]()
+handler_registry: ty.Final[HandlerRegistry[GeneralWebError]] = HandlerRegistry[
+    GeneralWebError
+]()
 
 
 class ServerResponse(Response):
@@ -70,7 +72,7 @@ def _(request: Request, exc: Exception) -> ErrorResponse:
 
 
 @handler_registry.register
-def _(request: Request, exc: GeneralAPPError) -> ErrorResponse:
+def _(request: Request, exc: GeneralWebError) -> ErrorResponse:
     return make_err_response(
         request=request,
         error_detail=exc.error_detail,
@@ -127,6 +129,6 @@ def _(request: Request, exc: QuotaExceededError) -> ErrorResponse:
 
 
 def add_exception_handlers(app: "FastAPI") -> None:
-    if not handler_registry._handlers:
+    if not handler_registry.handlers:
         raise Exception("Empty error handler registry")
     handler_registry.inject_handlers(app)

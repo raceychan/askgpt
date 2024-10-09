@@ -1,16 +1,17 @@
 import pytest
-from askgpt.adapters.database import AsyncDatabase
+
 from askgpt.app.auth.repository import (
     UserAuth,
     UserRepository,
     dump_userauth,
     load_userauth,
 )
+from askgpt.infra.uow import UnitOfWork
 
 
 @pytest.fixture(scope="module")
-def user_repo(aiodb: AsyncDatabase):
-    return UserRepository(aiodb)
+def user_repo(uow: UnitOfWork):
+    return UserRepository(uow)
 
 
 def test_deserialzie(user_auth: UserAuth):
@@ -18,20 +19,24 @@ def test_deserialzie(user_auth: UserAuth):
 
 
 async def test_add_user(user_auth: UserAuth, user_repo: UserRepository):
-    await user_repo.add(user_auth)
+    async with user_repo.uow:
+        await user_repo.add(user_auth)
 
 
 async def test_get_user(user_auth: UserAuth, user_repo: UserRepository):
-    user = await user_repo.get(user_auth.entity_id)
+    async with user_repo.uow:
+        user = await user_repo.get(user_auth.entity_id)
     assert user == user_auth
 
 
 async def test_user_unique_email(user_auth: UserAuth, user_repo: UserRepository):
     with pytest.raises(Exception):
-        await user_repo.add(user_auth)
-        await user_repo.add(user_auth)
+        async with user_repo.uow:
+            await user_repo.add(user_auth)
+            await user_repo.add(user_auth)
 
 
 async def test_search_user_by_email(user_auth: UserAuth, user_repo: UserRepository):
-    user = await user_repo.search_user_by_email(user_auth.credential.user_email)
+    async with user_repo.uow:
+        user = await user_repo.search_user_by_email(user_auth.credential.user_email)
     assert user == user_auth

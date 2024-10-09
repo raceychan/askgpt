@@ -21,6 +21,7 @@ from askgpt.infra import schema
 from askgpt.infra.eventstore import EventStore, OutBoxProducer
 from askgpt.infra.gptclient import ClientRegistry, OpenAIClient
 from askgpt.infra.security import Encryptor
+from askgpt.infra.uow import UnitOfWork
 
 
 class EchoMailbox(MailBox):
@@ -38,6 +39,11 @@ def aiodb(settings: Settings):
     )
     db = AsyncDatabase(engine)
     return db
+
+
+@pytest.fixture(scope="module")
+def uow(aiodb: AsyncDatabase):
+    return UnitOfWork(aiodb)
 
 
 @pytest.fixture(scope="module")
@@ -92,7 +98,7 @@ def producer(eventstore: EventStore):
 
 @pytest.fixture(scope="module")
 async def auth_service(
-    aiodb: AsyncDatabase,
+    uow: UnitOfWork,
     local_cache: MemoryCache[str, str],
     settings: Settings,
     encryptor: Encryptor,
@@ -101,7 +107,7 @@ async def auth_service(
     keyspace = settings.redis.keyspaces.APP.cls_keyspace(service.TokenRegistry)
 
     return service.AuthService(
-        user_repo=repository.UserRepository(aiodb),
+        user_repo=repository.UserRepository(uow),
         encryptor=encryptor,
         token_registry=service.TokenRegistry(
             token_cache=local_cache,

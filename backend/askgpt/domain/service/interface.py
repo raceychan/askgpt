@@ -2,8 +2,8 @@ import abc
 import typing as ty
 from types import TracebackType
 
-from askgpt.domain.model.base import Event
 from askgpt.domain.interface import IEntity, IEvent
+from askgpt.domain.model.base import Event
 
 """
 Remember:
@@ -15,20 +15,16 @@ and let infra implemente
 
 class IEventStore(abc.ABC):
     @abc.abstractmethod
-    async def add(self, event: Event) -> None:
-        ...
+    async def add(self, event: Event) -> None: ...
 
     @abc.abstractmethod
-    async def add_all(self, events: list[IEvent]) -> None:
-        ...
+    async def add_all(self, events: list[IEvent]) -> None: ...
 
     @abc.abstractmethod
-    async def get(self, entity_id: str) -> list[IEvent]:
-        ...
+    async def get(self, entity_id: str) -> list[IEvent]: ...
 
     @abc.abstractmethod
-    async def remove(self, entity_id: str) -> None:
-        ...
+    async def remove(self, entity_id: str) -> None: ...
 
 
 class IRepository[TEntity: IEntity](ty.Protocol):
@@ -58,27 +54,24 @@ class IEngine(ty.Protocol):
     def __enter__(self) -> ty.Self:
         return self
 
-    def commit(self) -> None:
-        ...
+    def commit(self) -> None: ...
 
-    def rollback(self) -> None:
-        ...
+    def rollback(self) -> None: ...
 
-    def close(self) -> None:
-        ...
+    def close(self) -> None: ...
 
 
 class IUnitOfWork(abc.ABC):
     """
     with UnitOfWork(engine) as uow:
-        repo = UserRepository(uow.engine)
+        repo = UserRepository(uow.conn)
         user_repository.create(new_user)
         retrieved_user = user_repository.find_by_id(new_user.id)
         retrieved_user.name = "Updated John"
         user_repository.update(retrieved_user)
     """
 
-    def __init__(self, engine: IEngine): # aiodb: AsyncDatabase
+    def __init__(self, engine: IEngine):  # aiodb: AsyncDatabase
         self.engine = engine
 
     def __enter__(self) -> ty.Self:

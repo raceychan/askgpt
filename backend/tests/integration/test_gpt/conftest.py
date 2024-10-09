@@ -1,13 +1,13 @@
 import pytest
 
 from askgpt.adapters.cache import MemoryCache
-from askgpt.adapters.database import AsyncDatabase
 from askgpt.adapters.queue import MessageProducer
 from askgpt.app.actor import QueueBox
-from askgpt.app.gpt.service import GPTSystem
 from askgpt.app.gpt.repository import SessionRepository
+from askgpt.app.gpt.service import GPTSystem
 from askgpt.domain import config
 from askgpt.infra.eventstore import EventStore
+from askgpt.infra.uow import UnitOfWork
 
 
 @pytest.fixture(scope="module")
@@ -30,5 +30,5 @@ async def gpt_system(
 
 
 @pytest.fixture(scope="module")
-async def session_repo(aiodb: AsyncDatabase):
-    return SessionRepository(aiodb)
+async def session_repo(uow: UnitOfWork):
+    return SessionRepository(uow)

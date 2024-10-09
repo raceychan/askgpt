@@ -1,28 +1,26 @@
 import pytest
 from tests.conftest import TestDefaults
 
-from askgpt.adapters.database import AsyncDatabase
 from askgpt.adapters.queue import MessageProducer
 from askgpt.app.auth.repository import UserRepository
 from askgpt.app.auth.service import AuthService
 from askgpt.app.gpt.repository import SessionRepository
 from askgpt.app.gpt.service import GPTService, GPTSystem, SystemState
-from askgpt.domain.config import Settings
 from askgpt.domain.interface import IEvent
 from askgpt.infra.security import Encryptor
+from askgpt.infra.uow import UnitOfWork
 
 
 @pytest.fixture(scope="module")
 async def gpt_service(
-    settings: Settings,
     gpt_system: GPTSystem,
-    aiodb: AsyncDatabase,
+    uow: UnitOfWork,
     session_repo: SessionRepository,
     encryptor: Encryptor,
     producer: MessageProducer[IEvent],
 ):
 
-    user_repo = UserRepository(aiodb)
+    user_repo = UserRepository(uow)
     service = GPTService(
         system=gpt_system,
         encryptor=encryptor,
@@ -48,12 +46,16 @@ async def test_start_when_already_running(gpt_service: GPTService):
 
 
 async def test_get_created_session(
-    test_defaults: TestDefaults, auth_service: AuthService, gpt_service: GPTService
+    test_defaults: TestDefaults,
+    auth_service: AuthService,
+    gpt_service: GPTService,
+    uow: UnitOfWork,
 ):
     """
     TO FIX BUG: when user create a session,
     and then get session via the session_id,
     OrphanSession error would be raised
+    # cause: not using transaction, leads to rollback
     """
     await auth_service.signup_user(
         user_name=test_defaults.USER_NAME,

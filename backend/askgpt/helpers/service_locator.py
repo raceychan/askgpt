@@ -173,7 +173,7 @@ class Dependency[TDep: ty.Any]:
         registry_cls.registry[self._dependency] = dep
         return dep
 
-    def solve_dependency(self, settings) -> TDep:
+    def solve_dependency(self, settings: ty.Any) -> TDep:
         # TODO: add dependency graph, support contextmanager
         if self._factory is None:
             return self._dependency()
@@ -194,13 +194,11 @@ class DependencyRegistry[Registee: ty.Any]:
     def __init_subclass__(cls) -> None:
         cls._dependencies = WeakKeyDictionary()
         for _, dep in cls.__dict__.items():
-            if not isinstance(dep, Dependency):
-                continue
-            cls._dependencies[dep.dependency] = dep
-
+            if isinstance(dep, Dependency):
+                cls._dependencies[dep.dependency] = dep
         cls._singleton = None
 
-    def __new__(cls, settings) -> ty.Self:
+    def __new__(cls, settings: ty.Any) -> ty.Self:
         if cls._singleton is None:
             cls._singleton = super().__new__(cls)
             cls._registry: WeakKeyDictionary[type[Registee], Registee] = (
@@ -212,11 +210,11 @@ class DependencyRegistry[Registee: ty.Any]:
             raise ServiceReinitializationError
         return cls._singleton
 
-    def __init__(self, settings) -> None:
+    def __init__(self, settings: ty.Any) -> None:
         self._settings = settings
 
     @attribute
-    def settings(self):
+    def settings(self) -> ty.Any:
         if self._singleton is None:
             raise RegistryUninitializedError(self.__class__)
         return self._singleton._settings
@@ -246,7 +244,7 @@ class ResourceRegistry[Registee: Resource](DependencyRegistry[Registee]):
     _dependencies: WeakKeyDictionary[type[Registee], Dependency[Registee]]
     _singleton: ty.ClassVar["ty.Self | None"]
 
-    def __init__(self, settings):
+    def __init__(self, settings: ty.Any):
         super().__init__(settings)
         self._resource_manager = ResourceManager()
 

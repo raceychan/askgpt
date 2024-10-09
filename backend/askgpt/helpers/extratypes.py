@@ -4,7 +4,7 @@ from enum import Enum
 from askgpt.helpers.string import str_to_snake
 
 type AnyCallable = ty.Callable[..., ty.Any]
-type StrDict = dict[str, ty.Any]
+type StrMap = ty.Mapping[str, ty.Any]
 type LifeSpan = ty.AsyncContextManager[None]
 
 

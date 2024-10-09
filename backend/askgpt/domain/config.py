@@ -92,7 +92,7 @@ class MissingConfigError(GeneralAPPError):
 
     def __int__(self, config_type: type["SettingsBase"]):
         msg = f"setting {config_type} is missing"
-        super().__init__(detail=msg)
+        super().__init__(msg)
 
 
 class SettingsBase(BaseModel):

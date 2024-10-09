@@ -1,21 +1,21 @@
 import sqlalchemy as sa
 
-from askgpt.adapters.database import AsyncDatabase
 from askgpt.app.gpt.model import ChatSession, ISessionRepository
 from askgpt.infra.schema import SessionSchema
+from askgpt.infra.uow import UnitOfWork
 
 
 class SessionRepository(ISessionRepository):
-    def __init__(self, aiodb: AsyncDatabase):
-        self._aiodb = aiodb
+    def __init__(self, uow: UnitOfWork):
+        self._uow = uow
 
     @property
-    def aiodb(self) -> AsyncDatabase:
-        return self._aiodb
+    def uow(self) -> UnitOfWork:
+        return self._uow
 
     async def list_sessions(self, user_id: str) -> list[ChatSession]:
         stmt = sa.select(SessionSchema).where(SessionSchema.user_id == user_id)
-        cursor = await self._aiodb.execute(stmt)
+        cursor = await self._uow.execute(stmt)
         rows = cursor.fetchall()
         sessions = [
             ChatSession(
@@ -32,8 +32,7 @@ class SessionRepository(ISessionRepository):
             session_name=entity.session_name,
         )
 
-        async with self._aiodb.begin() as conn:
-            await conn.execute(stmt)
+        await self._uow.execute(stmt)
 
     async def rename(self, entity: ChatSession):
         stmt = (
@@ -41,17 +40,15 @@ class SessionRepository(ISessionRepository):
             .where(SessionSchema.id == entity.entity_id)
             .values(session_name=entity.session_name)
         )
-        async with self._aiodb.begin() as conn:
-            await conn.execute(stmt)
+        await self._uow.execute(stmt)
 
     async def remove(self, session_id: str):
         stmt = sa.delete(SessionSchema).where(SessionSchema.id == session_id)
-        async with self._aiodb.begin() as conn:
-            await conn.execute(stmt)
+        await self._uow.execute(stmt)
 
     async def get(self, entity_id: str) -> ChatSession | None:
         stmt = sa.select(SessionSchema).where(SessionSchema.id == entity_id)
-        cursor = await self._aiodb.execute(stmt)
+        cursor = await self._uow.execute(stmt)
         row = cursor.one_or_none()
         if not row:
             return None

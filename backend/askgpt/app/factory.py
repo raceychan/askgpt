@@ -8,6 +8,7 @@ from askgpt.helpers.functions import simplecache
 from askgpt.infra.eventstore import EventStore, OutBoxProducer
 from askgpt.infra.factory import encrypt_facotry
 from askgpt.infra.locator import adapter_locator
+from askgpt.infra.uow import UnitOfWork
 
 
 def user_request_throttler_factory():
@@ -39,10 +40,16 @@ def outbox_producer_factory():
     return OutBoxProducer(eventstore=event_store_factory())
 
 
+@simplecache
+def uow_factory() -> UnitOfWork:
+    uow = UnitOfWork(adapter_locator.aiodb)
+    return uow
+
+
 def auth_service_factory():
     settings: Settings = SETTINGS_CONTEXT.get()
     auth_service = AuthService(
-        user_repo=UserRepository(adapter_locator.aiodb),
+        user_repo=UserRepository(uow_factory()),
         token_registry=token_registry_factory(),
         encryptor=encrypt_facotry(),
         producer=outbox_producer_factory(),
@@ -53,7 +60,6 @@ def auth_service_factory():
 
 def gpt_service_factory():
     settings: Settings = SETTINGS_CONTEXT.get()
-
     system: GPTSystem = GPTSystem(
         settings=settings,
         ref=settings.actor_refs.SYSTEM,
@@ -63,8 +69,8 @@ def gpt_service_factory():
         producer=outbox_producer_factory(),
     )
 
-    session_repo = SessionRepository(adapter_locator.aiodb)
-    user_repo = UserRepository(adapter_locator.aiodb)
+    session_repo = SessionRepository(uow_factory())
+    user_repo = UserRepository(uow_factory())
     encryptor = encrypt_facotry()
     producer = outbox_producer_factory()
     service = GPTService(

@@ -1,3 +1,4 @@
+import typing as ty
 from contextlib import asynccontextmanager
 
 from fastapi import APIRouter, FastAPI
@@ -55,7 +56,10 @@ async def lifespan(app: FastAPI | None = None):
 
 
 def app_factory(
-    lifespan=lifespan, start_response=None, *, settings: Settings | None = None
+    lifespan: ty.AsyncContextManager[None]=lifespan,
+    start_response: ty.Any = None,
+    *,
+    settings: Settings | None = None,
 ) -> FastAPI:
     """app factory that builds the fastapi app instance.
 

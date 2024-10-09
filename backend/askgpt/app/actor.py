@@ -5,7 +5,7 @@ from collections import deque
 from functools import cached_property, singledispatchmethod
 
 from askgpt.app.interface import AbstractActor, AbstractStetefulActor
-from askgpt.domain.errors import GeneralAPPError, SystemNotSetError
+from askgpt.domain.errors import GeneralWebError, SystemNotSetError
 from askgpt.domain.interface import (
     ActorRef,
     ICommand,
@@ -17,7 +17,7 @@ from askgpt.domain.interface import (
 from askgpt.domain.model.base import Command, Event
 
 
-class EmptyEvents(GeneralAPPError): ...
+class EmptyEvents(GeneralWebError): ...
 
 
 class ActorRegistry[TRef: ActorRef, TActor: "AbstractActor"]:

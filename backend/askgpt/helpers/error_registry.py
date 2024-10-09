@@ -5,7 +5,7 @@ from string import Template
 
 from fastapi import APIRouter, FastAPI, Request
 from fastapi.responses import HTMLResponse
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, Field
 
 from askgpt.helpers.functions import ClassAttr
 from askgpt.helpers.string import str_to_kebab
@@ -121,7 +121,9 @@ class ErrorDetail(BaseModel):
         },
     )
 
-    def model_dump_json(self, exclude_unset=True, exclude_none=True):
+    def model_dump_json(
+        self, exclude_unset: bool = True, exclude_none: bool = True, **kwargs
+    ):
         return super().model_dump_json(
             exclude_unset=exclude_unset, exclude_none=exclude_none
         )
@@ -223,7 +225,9 @@ class HandlerRegistry[Exc: Exception]:
         return exc_type
 
 
-def error_route_factory(registry: HandlerRegistry, *, route_path: str = "/errors"):
+def error_route_factory(
+    registry: HandlerRegistry[Exception], *, route_path: str = "/errors"
+):
     ERROR_TEMPLATE = """
     <!DOCTYPE html>
     <html lang="en">
@@ -305,7 +309,7 @@ def error_route_factory(registry: HandlerRegistry, *, route_path: str = "/errors
         </div>
         """
 
-        def format_field(field_info: dict, value: ty.Any) -> str:
+        def format_field(field_info: dict[str, ty.Any], value: ty.Any) -> str:
             field_type = field_info.get("type", field_info.get("anyOf"))
             if isinstance(field_type, list):
                 field_type = ty.cast(list[dict[str, str]], field_type)
@@ -327,7 +331,7 @@ def error_route_factory(registry: HandlerRegistry, *, route_path: str = "/errors
             schema = error_detail.model_json_schema()
             properties = schema.get("properties", {})
 
-            fields_html = []
+            fields_html: list[str] = []
             for field_name, field_info in properties.items():
                 value = getattr(error_detail, field_name)
                 fields_html.append(format_field(field_info, value))
