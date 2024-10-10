@@ -1,18 +1,19 @@
 import pytest
+from tests.conftest import dft
+
 from askgpt.app.gpt import model
-from tests.conftest import TestDefaults
 
 
 @pytest.fixture(scope="module")
-def chat_message(test_defaults: TestDefaults):
+def chat_message():
     return model.ChatMessage(role="user", content="ping")
 
 
 @pytest.fixture(scope="module")
 def session_created():
     return model.SessionCreated(
-        session_id=TestDefaults.SESSION_ID,
-        user_id=TestDefaults.USER_ID,
+        session_id=dft.SESSION_ID,
+        user_id=dft.USER_ID,
         session_name="New Session",
     )
 
@@ -20,15 +21,15 @@ def session_created():
 @pytest.fixture(scope="module")
 def chat_message_sent(chat_message: model.ChatMessage):
     return model.ChatMessageSent(
-        session_id=TestDefaults.SESSION_ID,
+        session_id=dft.SESSION_ID,
         chat_message=chat_message,
     )
 
 
 @pytest.fixture(scope="module")
-def chat_response_received(test_defaults: TestDefaults):
+def chat_response_received():
     return model.ChatResponseReceived(
-        session_id=test_defaults.SESSION_ID,
+        session_id=dft.SESSION_ID,
         chat_message=model.ChatMessage(role="system", content="pong"),
     )
 
@@ -39,7 +40,7 @@ def chatsession(session_created: model.SessionCreated):
 
 
 @pytest.fixture(scope="module")
-def chat_messages(test_defaults: TestDefaults):
+def chat_messages():
     return [
         model.ChatMessage.as_prompt(content="answer me seriously!"),
         model.ChatMessage.as_user(content="ping"),

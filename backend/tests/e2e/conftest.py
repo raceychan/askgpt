@@ -1,57 +1,16 @@
-import asyncio
-import pathlib
-
 import pytest
+from fastapi import FastAPI
+from starlette.testclient import TestClient
 
-from askgpt.domain.config import Settings, SecretStr
-from askgpt.helpers.security import generate_secrete
-
-
-@pytest.fixture(scope="session")
-def event_loop():
-    loop = asyncio.new_event_loop()
-    yield loop
-    loop.close()
+from askgpt.app.app import app_factory
+from askgpt.domain.config import Settings
 
 
-class TestSettings(Settings):
-    __test__ = False
-
-    class DB(Settings.DB):
-        DIALECT: str = "sqlite"
-        DRIVER: str = "aiosqlite"
-        DATABASE: pathlib.Path = pathlib.Path("./database/test.db")
-        ENGINE_ECHO: bool = False
-        HOST: str | None = None
-        PORT: int | None = None
-        USER: str | None = None
-        PASSWORD: str | None = None
-
-    class ActorRefs(Settings.ActorRefs): ...
-
-    db: DB = DB(ISOLATION_LEVEL="SERIALIZABLE")
+@pytest.fixture(scope="package")
+async def app(settings: Settings):
+    return app_factory(settings=settings)
 
 
-@pytest.fixture(scope="session")
-def settings() -> TestSettings:
-    ss = TestSettings(
-        actor_refs=TestSettings.ActorRefs(),
-        RUNTIME_ENV="test",
-        api=TestSettings.API(HOST="localhost", PORT=8000, API_VERSION="0.1.0"),
-        security=TestSettings.Security(
-            SECRET_KEY=SecretStr(generate_secrete().decode()), ALGORITHM="HS256", CORS_ORIGINS=[""]
-        ),
-        redis=TestSettings.Redis(
-            HOST="localhost",
-            PORT=6379,
-            DB=1,
-            SOCKET_TIMEOUT=2,
-            keyspaces=TestSettings.Redis.KeySpaces(APP="test"),
-        ),
-        event_record=TestSettings.EventRecord(),
-        throttling=TestSettings.Throttling(
-            USER_MAX_REQUEST_DURATION_MINUTE=1, USER_MAX_REQUEST_PER_MINUTE=3
-        ),
-        openai_client=TestSettings.OpenAIClient(),
-    )
-    return ss
+@pytest.fixture(scope="module")
+async def client(app: FastAPI):
+    return TestClient(app=app, base_url="http://testserver/v1")

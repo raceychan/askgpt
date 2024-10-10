@@ -170,8 +170,7 @@ class RFC9457(Exception):
         return self.error_detail.model_dump_json()
 
 
-@ty.final
-class HandlerRegistry[Exc: Exception]:
+class HandlerRegistry[Exc]:
     """
     Add error handler to fastapi according to their signature
     """

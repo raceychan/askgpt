@@ -1,5 +1,5 @@
 import pytest
-from tests.conftest import TestDefaults
+from tests.conftest import UserDefaults
 
 from askgpt.adapters.queue import MessageProducer
 from askgpt.app.auth.repository import UserRepository
@@ -46,7 +46,7 @@ async def test_start_when_already_running(gpt_service: GPTService):
 
 
 async def test_get_created_session(
-    test_defaults: TestDefaults,
+    test_defaults: UserDefaults,
     auth_service: AuthService,
     gpt_service: GPTService,
     uow: UnitOfWork,

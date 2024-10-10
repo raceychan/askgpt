@@ -1,4 +1,3 @@
-# type: ignore
 import asyncio
 import datetime
 import inspect
@@ -12,7 +11,7 @@ from time import perf_counter
 from askgpt.helpers.extratypes import AnyCallable
 
 if ty.TYPE_CHECKING:
-    from loguru._logger import Logger
+    from loguru import Logger
 
 
 def utc_now(timestamp: float | None = None) -> datetime.datetime:
@@ -45,13 +44,13 @@ class FuncInfo:
     is_async: bool
 
     def __repr__(self):
-        return f"<FuncInfo {self.location} {self.name}{str(self.signature)}>"
+        return f"<{self.__class__.__name__} {self.location} {self.name}{str(self.signature)}>"
 
     def __str__(self):
         return f"{self.location} {self.name}"
 
     @classmethod
-    def from_func(cls, func: AnyCallable):
+    def from_func(cls, func: AnyCallable) -> ty.Self:
         name = func.__qualname__
         func_code = func.__code__
         code = inspect.getsource(func)
@@ -92,62 +91,120 @@ class ExecInfo:
 
 
 @ty.overload
-def timeit[R, **P](func: ty.Callable[P, R]) -> ty.Callable[P, R]: ...
+def timeit[
+    R, **P
+](_func: ty.Callable[P, R]) -> ty.Callable[P, R]:  # Sync function, no kwargs
+    ...
 
 
 @ty.overload
 def timeit[
     R, **P
-](func: ty.Callable[P, ty.Awaitable[R]]) -> ty.Callable[P, ty.Awaitable[R]]: ...
+](_func: ty.Callable[P, ty.Awaitable[R]]) -> ty.Callable[
+    P, ty.Awaitable[R]
+]:  # Async function, no kwargs
+    ...
+
+
+@ty.overload
+def timeit[
+    R, **P
+](
+    _func: None = None,
+    *,
+    logger: ty.Optional["Logger"] = None,
+    unit: ty.Literal["ns", "ms", "s"] = "ms",
+    precision: int = 2,
+    log_threadhold: ty.Callable[[float], bool] = lambda x: x > 0.1,
+    with_args: bool = False,
+) -> ty.Callable[
+    [ty.Callable[P, R]], ty.Callable[P, R]
+]:  # Sync function with kwargs
+    ...
+
+
+@ty.overload
+def timeit[
+    R, **P
+](
+    _func: None = None,
+    *,
+    logger: ty.Optional["Logger"] = None,
+    unit: ty.Literal["ns", "ms", "s"] = "ms",
+    precision: int = 2,
+    log_threadhold: ty.Callable[[float], bool] = lambda x: x > 0.1,
+    with_args: bool = False,
+) -> ty.Callable[
+    [ty.Callable[P, ty.Awaitable[R]]], ty.Callable[P, ty.Awaitable[R]]
+]: ...
 
 
 def timeit[
     R, **P
 ](
-    _func: AnyCallable | None = None,
+    _func: ty.Callable[P, R] | None = None,
     *,
     logger: ty.Optional["Logger"] = None,
     unit: ty.Literal["ns", "ms", "s"] = "ms",
     precision: int = 2,
-    log_if: ty.Callable[[float], bool] = lambda x: x > 0.1,
+    log_threadhold: ty.Callable[[float], bool] = lambda x: x > 0.1,
     with_args: bool = False,
 ):
-    log_tmplt = "Executed {function_name} in {time_cost}{unit}"
 
-    def decorator(func: ty.Callable[P, R]) -> ty.Callable[P, R]:
-        funcinfo = FuncInfo.from_func(func)
+    @ty.overload
+    def decorator(func: ty.Callable[P, ty.Awaitable[R]]) -> ty.Callable[P, R]: ...
+
+    @ty.overload
+    def decorator(func: ty.Callable[P, R]) -> ty.Callable[P, R]: ...
+
+    def decorator(
+        func: ty.Callable[P, R] | ty.Callable[P, ty.Awaitable[R]]
+    ) -> ty.Callable[P, R] | ty.Callable[P, ty.Awaitable[R]]:
+        def build_logmsg(
+            pre: float,
+            aft: float,
+        ):
+            timecost = round(pre - aft, precision)
+            if unit == "ms":
+                timecost *= 10**3
+            elif unit == "ns":
+                timecost *= 10**6
+
+            msg = f"Executed {func} in {timecost}{unit}"
+            return msg
 
         @wraps(func)
-        def wrapper(*args: P.args, **kwargs: P.kwargs):
+        def wrapper(*args: P.args, **kwargs: P.kwargs) -> R:
             start = perf_counter()
-            res = func(*args, **kwargs)
+            f = ty.cast(ty.Callable[P, R], func)
+            res = f(*args, **kwargs)
             end = perf_counter()
             timecost = round(end - start, precision)
 
-            if log_if(timecost):
-                log_msg = log_tmplt.format(
-                    function_name=funcinfo.name, time_cost=timecost, unit=unit
-                )
+            if not log_threadhold(timecost):
+                return res
+
             if logger:
-                logger.info(log_msg)
+                logger.info(build_logmsg(start, end))
             return res
 
         @wraps(func)
         async def awrapper(*args: P.args, **kwargs: P.kwargs) -> R:
             start = perf_counter()
-            res = await func(*args, **kwargs)
+            f = ty.cast(ty.Callable[P, ty.Awaitable[R]], func)
+            res = await f(*args, **kwargs)
             end = perf_counter()
             timecost = round(end - start, precision)
-
-            if log_if(timecost):
-                log_msg = log_tmplt.format(
-                    function_name=funcinfo.name, time_cost=timecost, unit=unit
-                )
+            if not log_threadhold(timecost):
+                return res
             if logger:
-                logger.info(log_msg)
+                logger.info(build_logmsg(start, end))
+
             return res
 
-        return awrapper if inspect.iscoroutinefunction(func) else wrapper  # type: ignore
+        if inspect.iscoroutinefunction(func):
+            return awrapper
+        return wrapper
 
     if _func is None:
         return decorator

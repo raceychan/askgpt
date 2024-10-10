@@ -2,11 +2,11 @@ import typing as ty
 from contextlib import asynccontextmanager
 
 from fastapi import APIRouter, FastAPI
+from starlette.types import Lifespan
 
-from askgpt.app.api import health_check, route_id_factory
 from askgpt.app.api.error_handlers import add_exception_handlers, handler_registry
 from askgpt.app.api.middleware import add_middlewares
-from askgpt.app.api.routers import api_router
+from askgpt.app.api.routers import api_router, health_check, route_id_factory
 from askgpt.domain.config import SETTINGS_CONTEXT, Settings, detect_settings
 from askgpt.helpers.error_registry import error_route_factory
 from askgpt.helpers.time import timeout
@@ -56,7 +56,7 @@ async def lifespan(app: FastAPI | None = None):
 
 
 def app_factory(
-    lifespan: ty.AsyncContextManager[None]=lifespan,
+    lifespan: Lifespan = lifespan,
     start_response: ty.Any = None,
     *,
     settings: Settings | None = None,
@@ -89,7 +89,6 @@ def app_factory(
     root_router = APIRouter(prefix=settings.api.API_VERSION_STR)
     root_router.include_router(api_router)
     root_router.include_router(error_route)
-    root_router.add_api_route("/health", health_check, tags=["health check"])
 
     app.include_router(root_router)
     add_exception_handlers(app)

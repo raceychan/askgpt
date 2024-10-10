@@ -8,7 +8,7 @@ from starlette.types import ASGIApp, Receive, Scope, Send
 
 from askgpt.app.api.error_handlers import INTERNAL_ERROR_DETAIL, make_err_response
 from askgpt.app.api.xheaders import XHeaders
-from askgpt.domain.config import TIME_EPSILON_S, UNKNOWN_NETLOC, Settings
+from askgpt.domain.config import TIME_EPSILON_S, UNKNOWN_NETLOC, Settings, SETTINGS_CONTEXT
 from askgpt.domain.model.base import request_id_factory
 from askgpt.infra._log import logger
 
@@ -59,7 +59,7 @@ class LoggingMiddleware(BaseHTTPMiddleware):
                 response = make_err_response(
                     request=request, error_detail=INTERNAL_ERROR_DETAIL, code=500
                 )
-                logger.exception(f"Internal exception {e} occurred")
+                logger.exception(f"Internal exception {e}")
                 raise e from e
             else:
                 response.headers[XHeaders.REQUEST_ID.value] = request_id

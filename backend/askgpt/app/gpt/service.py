@@ -49,7 +49,7 @@ class GPTService:
         self._service_state = state
 
     async def build_api_pool(self, user_id: str, api_type: str):
-        async with self._uow:
+        async with self._uow.trans():
             encrypted_api_keys = await self._user_repo.get_api_keys_for_user(
                 user_id=user_id, api_type=api_type
             )
@@ -113,7 +113,7 @@ class GPTService:
         await user_actor.handle(
             model.CreateSession(user_id=user_id, session_id=session_id)
         )
-        async with self._uow:
+        async with self._uow.trans():
             await self._session_repo.add(ss)
         return ss
 
@@ -125,12 +125,12 @@ class GPTService:
         return session_actor
 
     async def list_sessions(self, user_id: str) -> list[model.ChatSession]:
-        async with self._uow:
+        async with self._uow.trans():
             sessions = await self._session_repo.list_sessions(user_id=user_id)
         return sessions
 
     async def rename_session(self, session_id: str, new_name: str) -> None:
-        async with self._uow:
+        async with self._uow.trans():
             chat_session = await self._session_repo.get(entity_id=session_id)
             if not chat_session:
                 raise errors.SessionNotFoundError(session_id)
@@ -145,7 +145,7 @@ class GPTService:
 
     async def delete_session(self, session_id: str) -> None:
         session_removed = model.SessionRemoved(session_id=session_id)
-        async with self._uow:
+        async with self._uow.trans():
             await self._producer.publish(session_removed)
             await self._session_repo.remove(session_id=session_id)
 

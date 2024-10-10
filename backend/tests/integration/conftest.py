@@ -3,7 +3,7 @@ import typing as ty
 
 import pytest
 from sqlalchemy.ext import asyncio as sa_aio
-from tests.conftest import TestDefaults
+from tests.conftest import UserDefaults
 
 from askgpt.adapters.cache import MemoryCache
 from askgpt.adapters.database import AsyncDatabase
@@ -63,7 +63,7 @@ async def eventstore(aiodb: AsyncDatabase) -> EventStore:
 
 
 @pytest.fixture(scope="module")
-def user_auth(test_defaults: TestDefaults):
+def user_auth(test_defaults: UserDefaults):
     return UserAuth(
         credential=test_defaults.USER_INFO,
         last_login=datetime.datetime.utcnow(),

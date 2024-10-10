@@ -15,9 +15,7 @@ from askgpt.app.auth.errors import AuthenticationError, UserNotFoundError
 from askgpt.app.gpt.errors import OrphanSessionError
 from askgpt.helpers.error_registry import ErrorDetail, HandlerRegistry
 
-handler_registry: ty.Final[HandlerRegistry[GeneralWebError]] = HandlerRegistry[
-    GeneralWebError
-]()
+handler_registry: ty.Final[HandlerRegistry[GeneralWebError]] = HandlerRegistry()
 
 
 class ServerResponse(Response):

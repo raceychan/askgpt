@@ -65,7 +65,7 @@ class AuthService:
         return self._encryptor.encrypt_jwt(token)
 
     async def find_user(self, email: str) -> model.UserAuth | None:
-        async with self._uow:
+        async with self._uow.trans():
             user_or_none = await self._user_repo.search_user_by_email(email)
         return user_or_none
 
@@ -85,14 +85,14 @@ class AuthService:
         )
         user_auth = model.UserAuth.apply(user_signed_up)
 
-        async with self._uow:
+        async with self._uow.trans():
             # TODO, persist event to eventstore along with user_auth, in a transaction.
             await self._user_repo.add(user_auth)
 
         await self._producer.publish(user_signed_up)
 
     async def deactivate_user(self, user_id: str) -> None:
-        async with self._uow:
+        async with self._uow.trans():
             user = await self._user_repo.get(user_id)
             if user is None:
                 raise errors.UserNotFoundError(user_id=user_id)
@@ -109,7 +109,7 @@ class AuthService:
         if is_duplicate:
             raise DuplicatedAPIKeyError
         """
-        async with self._uow:
+        async with self._uow.trans():
             user = await self._user_repo.get(user_id)
             if user is None:
                 raise errors.UserNotFoundError(user_id=user_id)
@@ -129,7 +129,7 @@ class AuthService:
             await self._producer.publish(user_api_added)
 
     async def login(self, email: str, password: str) -> str:
-        async with self._uow:
+        async with self._uow.trans():
             user = await self._user_repo.search_user_by_email(email)
 
         if user is None:
@@ -147,12 +147,12 @@ class AuthService:
         return access_token
 
     async def get_user(self, user_id: str) -> model.UserAuth | None:
-        async with self._uow:
+        async with self._uow.trans():
             return await self._user_repo.get(user_id)
 
     async def get_current_user(self, token: model.AccessToken) -> model.UserAuth:
         user_id = token.sub
-        async with self._uow:
+        async with self._uow.trans():
             user = await self.get_user(user_id)
         if not user:
             raise errors.UserNotFoundError(user_id=user_id)

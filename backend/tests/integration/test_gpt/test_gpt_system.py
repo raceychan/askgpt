@@ -1,5 +1,5 @@
 import pytest
-from tests.conftest import TestDefaults
+from tests.conftest import dft
 
 from askgpt.app.actor import MailBox
 from askgpt.app.gpt import gptsystem, model, service
@@ -14,21 +14,19 @@ class EchoMailbox(MailBox):
 
 @pytest.fixture(scope="module")
 def create_user():
-    return model.CreateUser(user_id=TestDefaults.USER_ID)
+    return model.CreateUser(user_id=dft.USER_ID)
 
 
 @pytest.fixture(scope="module")
 def create_session():
-    return model.CreateSession(
-        user_id=TestDefaults.USER_ID, session_id=TestDefaults.SESSION_ID
-    )
+    return model.CreateSession(user_id=dft.USER_ID, session_id=dft.SESSION_ID)
 
 
 @pytest.fixture(scope="module")
 def send_chat_message():
     return model.SendChatMessage(
-        user_id=TestDefaults.USER_ID,
-        session_id=TestDefaults.SESSION_ID,
+        user_id=dft.USER_ID,
+        session_id=dft.SESSION_ID,
         message_body="hello",
         role="user",
     )
@@ -36,20 +34,19 @@ def send_chat_message():
 
 @pytest.fixture(scope="module")
 def system_started(settings: config.Settings):
-    return gptsystem.SystemStarted(entity_id=TestDefaults.SYSTEM_ID, settings=settings)
+    return gptsystem.SystemStarted(entity_id=dft.SYSTEM_ID, settings=settings)
 
 
 @pytest.fixture(scope="module")
 def user_created():
-    dfs = TestDefaults
-    return model.UserCreated(user_id=dfs.USER_ID)
+    return model.UserCreated(user_id=dft.USER_ID)
 
 
 @pytest.fixture(scope="module")
 def session_created():
     return model.SessionCreated(
-        user_id=TestDefaults.USER_ID,
-        session_id=TestDefaults.SESSION_ID,
+        user_id=dft.USER_ID,
+        session_id=dft.SESSION_ID,
         session_name="New Session",
     )
 
@@ -60,8 +57,7 @@ async def test_create_user_from_system(
     create_user: model.CreateUser,
 ):
     user_events = await eventstore.get(create_user.entity_id)
-    defaults = TestDefaults
-    command = model.CreateUser(user_id=defaults.USER_ID)
+    command = model.CreateUser(user_id=dft.USER_ID)
 
     await gpt_system.receive(command)
 
@@ -74,7 +70,7 @@ async def test_create_user_from_system(
 
 
 async def test_system_get_user_actor(gpt_system: service.GPTSystem):
-    user = gpt_system.get_child(TestDefaults.USER_ID)
+    user = gpt_system.get_child(dft.USER_ID)
     assert isinstance(user, service.UserActor)
     return user
 

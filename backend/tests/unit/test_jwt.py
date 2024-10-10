@@ -1,7 +1,7 @@
 import datetime
 
 import pytest
-from tests.conftest import TestDefaults
+from tests.conftest import UserDefaults
 
 from askgpt.app.auth.model import AccessToken
 from askgpt.domain.config import SecretStr, Settings
@@ -18,7 +18,7 @@ def token_encrypt(settings: Settings) -> security.Encryptor:
 
 
 def test_encryp_access_token(
-    test_defaults: TestDefaults, token_encrypt: security.Encryptor, settings: Settings
+    test_defaults: UserDefaults, token_encrypt: security.Encryptor, settings: Settings
 ):
     now_ = utc_now()
     token = AccessToken(

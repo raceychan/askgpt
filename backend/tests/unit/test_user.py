@@ -1,27 +1,24 @@
 import pytest
-from askgpt.app.gpt import model
-from tests.conftest import TestDefaults
+from tests.conftest import dft
 
-# from askgpt.infra import encrypt
+from askgpt.app.gpt import model
 
 
 @pytest.fixture(scope="module")
-def create_user():  # user_info: model.UserInfo):
-    return model.CreateUser(user_id=TestDefaults.USER_ID)  # , user_info=user_info)
+def create_user():
+    return model.CreateUser(user_id=dft.USER_ID)
 
 
 @pytest.fixture(scope="module")
 def create_session():
-    return model.CreateSession(
-        session_id=TestDefaults.SESSION_ID, user_id=TestDefaults.USER_ID
-    )
+    return model.CreateSession(session_id=dft.SESSION_ID, user_id=dft.USER_ID)
 
 
 @pytest.fixture(scope="module")
 def session_created():
     return model.SessionCreated(
-        session_id=TestDefaults.SESSION_ID,
-        user_id=TestDefaults.USER_ID,
+        session_id=dft.SESSION_ID,
+        user_id=dft.USER_ID,
         session_name="New Session",
     )
 
@@ -46,5 +43,5 @@ def test_rebuild_user_by_events(
 
 # def test_user_password(user_info: model.UserInfo):
 #     assert encrypt.verify_password(
-#         TestDefaults.USER_PASSWORD.encode(), user_info.hash_password
+#         dft.USER_PASSWORD.encode(), user_info.hash_password
 #     )

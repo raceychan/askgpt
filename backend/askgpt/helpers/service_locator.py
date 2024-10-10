@@ -227,7 +227,10 @@ class DependencyRegistry[Registee: ty.Any]:
 
     @attribute
     def registry(self) -> WeakKeyDictionary[type[Registee], Registee]:
-        return self._registry
+        try:
+            return self._registry
+        except AttributeError:
+            raise RegistryUninitializedError(self.__class__)
 
     @classmethod
     def override(cls, registee: type[Registee], factory: DepFactory[Registee]) -> None:

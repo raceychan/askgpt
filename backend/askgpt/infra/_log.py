@@ -79,8 +79,8 @@ def debug_sink(msg: loguru.Message) -> None:
     )
 
     console.print(log, style=COLOR_MAPPER[record["level"].name])
-    if record["exception"] and record["level"].name == "debug":
-        console.print_exception(show_locals=True)
+    if record["exception"]:
+        print(traceback.format_exc())
 
 
 def update_sink(sink: ty.Callable[[loguru.Message], None]) -> loguru.Logger:

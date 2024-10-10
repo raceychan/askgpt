@@ -1,5 +1,5 @@
 import pytest
-from tests.conftest import TestDefaults
+from tests.conftest import dft
 
 from askgpt.app.gpt import model
 from askgpt.domain.config import Settings
@@ -12,7 +12,7 @@ def test_settins(settings: Settings):
 
 @pytest.fixture(scope="module")
 def user_created():
-    event = model.UserCreated(user_id=TestDefaults.USER_ID)
+    event = model.UserCreated(user_id=dft.USER_ID)
     return event
 
 

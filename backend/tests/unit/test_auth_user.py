@@ -1,12 +1,12 @@
 import pytest
-from tests.conftest import TestDefaults
+from tests.conftest import UserDefaults
 
 from askgpt.app.auth.model import UserAuth
 from askgpt.domain.model.base import utc_now
 
 
 @pytest.fixture(scope="function")
-def user_auth(test_defaults: TestDefaults) -> UserAuth:
+def user_auth(test_defaults: UserDefaults) -> UserAuth:
     return UserAuth(
         credential=test_defaults.USER_INFO,
         user_id=test_defaults.USER_ID,

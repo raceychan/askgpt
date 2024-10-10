@@ -19,24 +19,24 @@ def test_deserialzie(user_auth: UserAuth):
 
 
 async def test_add_user(user_auth: UserAuth, user_repo: UserRepository):
-    async with user_repo.uow:
+    async with user_repo.uow.trans():
         await user_repo.add(user_auth)
 
 
 async def test_get_user(user_auth: UserAuth, user_repo: UserRepository):
-    async with user_repo.uow:
+    async with user_repo.uow.trans():
         user = await user_repo.get(user_auth.entity_id)
     assert user == user_auth
 
 
 async def test_user_unique_email(user_auth: UserAuth, user_repo: UserRepository):
     with pytest.raises(Exception):
-        async with user_repo.uow:
+        async with user_repo.uow.trans():
             await user_repo.add(user_auth)
             await user_repo.add(user_auth)
 
 
 async def test_search_user_by_email(user_auth: UserAuth, user_repo: UserRepository):
-    async with user_repo.uow:
+    async with user_repo.uow.trans():
         user = await user_repo.search_user_by_email(user_auth.credential.user_email)
     assert user == user_auth

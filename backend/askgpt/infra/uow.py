@@ -1,5 +1,6 @@
 import types
 import typing as ty
+from contextlib import asynccontextmanager
 from contextvars import ContextVar
 
 from sqlalchemy.ext.asyncio import AsyncConnection
@@ -14,7 +15,9 @@ from askgpt.adapters.database import (
 from askgpt.domain.errors import GeneralWebError
 
 
-class LostContextError(GeneralWebError):
+class OutOfContextError(GeneralWebError):
+    "raised when caller tries get connection before entering uow"
+
     def __init__(self, msg: str = ""):
         msg = msg or "Connection is used without entering UnitOfWork context"
         super().__init__(msg)
@@ -39,7 +42,7 @@ class UnitOfWork:
         try:
             _conn = self._connection_context.get()
         except LookupError:
-            raise LostContextError()
+            raise OutOfContextError()
         return _conn
 
     async def execute(
@@ -57,17 +60,17 @@ class UnitOfWork:
             execution_options=execution_options,
         )
 
-    async def __aenter__(self):
-        self._transaction = self._aiodb.begin()
-        connection = await self._transaction.__aenter__()
-        self._connection_token = self._connection_context.set(connection)
-        return self
-
-    async def __aexit__(
-        self,
-        exc_type: type[BaseException] | None,
-        exc_val: BaseException | None,
-        exc_tb: types.TracebackType | None,
-    ):
-        await self._transaction.__aexit__(exc_type, exc_val, exc_tb)
-        self._connection_context.reset(self._connection_token)
+    @asynccontextmanager
+    async def trans(self):
+        """
+        An async context manager to handle the lifecycle of the UnitOfWork transaction.
+        This allows for reusing the same UnitOfWork instance across multiple objects.
+        """
+        transaction = self._aiodb.begin()
+        connection = await transaction.__aenter__()
+        token = self._connection_context.set(connection)
+        try:
+            yield self  # Yield the current UnitOfWork instance
+        finally:
+            await transaction.__aexit__(None, None, None)
+            self._connection_context.reset(token)

@@ -12,6 +12,10 @@ dev:
 
 .PHONY: test
 test:
+	$(run) -e test pytest tests/ 
+
+.PHONY: cov
+cov:
 	$(run) -e test pytest tests/ --cov=askgpt --cov-report term-missing 
 
 .PHONY: debug

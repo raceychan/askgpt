@@ -46,7 +46,7 @@ class AsyncDatabase:
     def url(self):
         return self._aioengine.url
 
-    @timeit(logger=logger)  # type: ignore
+    @timeit(logger=logger) 
     async def execute(
         self,
         query: str | Executable,
