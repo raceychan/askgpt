@@ -15,7 +15,6 @@ import LoginPage from "@/pages/LoginPage.tsx";
 import SignupPage from "@/pages/SignUpPage";
 import { TanStackRouterDevtools } from "@tanstack/router-devtools";
 
-// import ErrorPage from "@/pages/ErrorPage.tsx";
 import "@/index.css";
 
 const queryClient = new QueryClient();
