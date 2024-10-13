@@ -45,7 +45,7 @@ async def test_start_when_already_running(gpt_service: GPTService):
     assert gpt_service.state.is_stopped
 
 
-async def test_get_created_session(
+async def test_list_created_session(
     test_defaults: UserDefaults,
     auth_service: AuthService,
     gpt_service: GPTService,
@@ -81,3 +81,10 @@ async def test_get_created_session(
     second_ss = await gpt_service.create_session(user_id)
     sessions = await gpt_service.list_sessions(user_id)
     assert len(sessions) == 2
+
+
+async def test_gpt_send_message_without_api_key():
+    """
+    raise APINotProvidedError when user tries to send messages
+    without providing API-key
+    """

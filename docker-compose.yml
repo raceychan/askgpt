@@ -1,5 +1,15 @@
 version: "3.8"
 services:
+  redis:
+    image: redis:latest # Use the official Redis image
+    ports:
+      - "6379:6379" # Map port 6379 on the host to port 6379 in the container
+    command:
+      - redis-server
+      - --bind
+      - 0.0.0.0
+    restart: unless-stopped
+
   askgpt:
     environment:
       - SETTINGS_FILE="dev.settings.toml"
@@ -43,16 +53,6 @@ services:
 
     volumes:
       - ./backend/askgpt/settings.toml:/app/settings.toml
-
-  redis:
-    image: redis:latest # Use the official Redis image
-    ports:
-      - "6379:6379" # Map port 6379 on the host to port 6379 in the container
-    command:
-      - redis-server
-      - --bind
-      - 0.0.0.0
-    restart: unless-stopped
 
   # frontend:
   #   ports:

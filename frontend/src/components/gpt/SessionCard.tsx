@@ -7,6 +7,8 @@ import {
   CardFooter,
 } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import useAuth from "@/contexts/AuthContext";
+import { Link } from "@tanstack/react-router";
 
 type Session = {
   session_id: string;
@@ -24,41 +26,45 @@ type GPTSessionCardProps = {
 const GPTSessionsCardContent: React.FC<
   Pick<GPTSessionCardProps, "status" | "sessions">
 > = ({ status, sessions }) => {
-  if (status === "pending") {
-    return (
-      <CardContent>
-        <p>Loading sessions...</p>
-      </CardContent>
+  const { user } = useAuth();
+  let content;
+
+  if (!user) {
+    content = (
+      <p>
+        <Button asChild variant="link">
+          <Link to="/login">Login</Link>
+        </Button>{" "}
+        to see your sessions
+      </p>
     );
+  } else if (status === "pending") {
+    content = <p>Loading sessions...</p>;
+  } else if (status === "error") {
+    content = <p>Error loading sessions. Please try again later.</p>;
+  } else if (sessions && sessions.length > 0) {
+    content = (
+      <ul>
+        {sessions.map((session) => (
+          <li key={session.session_id}>
+            <Button
+              asChild
+              variant="default"
+              className="hover:bg-gray-300 border"
+            >
+              <Link to={`/chat/${session.session_id}`}>
+                {session.session_name + `(${session.session_id})`}
+              </Link>
+            </Button>
+          </li>
+        ))}
+      </ul>
+    );
+  } else {
+    content = <p>No sessions found</p>;
   }
 
-  if (status === "error") {
-    return (
-      <CardContent>
-        <p>Error loading sessions. Please try again later.</p>
-      </CardContent>
-    );
-  }
-
-  if (sessions && sessions.length > 0) {
-    return (
-      <CardContent>
-        <ul>
-          {sessions.map((session) => (
-            <li key={session.session_id}>
-              {session.session_name + `(${session.session_id})`}
-            </li>
-          ))}
-        </ul>
-      </CardContent>
-    );
-  }
-
-  return (
-    <CardContent>
-      <p>No sessions found.</p>
-    </CardContent>
-  );
+  return <CardContent>{content}</CardContent>;
 };
 
 // Main GPTSessionsCard component

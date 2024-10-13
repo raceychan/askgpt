@@ -1,6 +1,6 @@
 import time
 
-from askgpt.helpers.time import FuncInfo, timeit
+from askgpt.helpers.time import timeit
 
 
 @timeit
@@ -25,8 +25,8 @@ class B:
         time.sleep(0.01)
 
 
-fi = FuncInfo.from_func(add_two)
-mi = FuncInfo.from_func(B.slow_func)
+# fi = FuncInfo.from_func(add_two)
+# mi = FuncInfo.from_func(B.slow_func)
 
 
 def test_timeit():

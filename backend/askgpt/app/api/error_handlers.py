@@ -11,10 +11,19 @@ from askgpt.app.api.errors import (
     QuotaExceededError,
 )
 from askgpt.app.api.xheaders import XHeaders
-from askgpt.app.auth.errors import AuthenticationError, UserNotFoundError
-from askgpt.app.gpt.errors import OrphanSessionError
+from askgpt.app.auth.errors import (
+    AuthenticationError,
+    UserAlreadyExistError,
+    UserNotFoundError,
+)
+from askgpt.app.gpt.errors import (
+    APIKeyNotAvailableError,
+    APIKeyNotProvidedError,
+    OrphanSessionError,
+)
 from askgpt.helpers.error_registry import ErrorDetail, HandlerRegistry
 
+# BUG? (pylance), if we defined generic var lhs of =, it would be contravariant, otherwise it would be covariant
 handler_registry: ty.Final[HandlerRegistry[GeneralWebError]] = HandlerRegistry()
 
 
@@ -78,6 +87,7 @@ def _(request: Request, exc: GeneralWebError) -> ErrorResponse:
     )
 
 
+# it seems HandlerRegistry is a Contravarience, but it should be a Covariance
 @handler_registry.register
 def _(request: Request, exc: AuthenticationError) -> ErrorResponse:
     return make_err_response(
@@ -99,6 +109,16 @@ def _(request: Request, exc: UserNotFoundError) -> ErrorResponse:
 
 
 @handler_registry.register
+def _(request: Request, exc: UserAlreadyExistError) -> ErrorResponse:
+    return make_err_response(
+        request=request,
+        error_detail=exc.error_detail,
+        code=status.HTTP_409_CONFLICT,
+        headers={"WWW-Authenticate": "Bearer"},
+    )
+
+
+@handler_registry.register
 def _(request: Request, exc: EntityNotFoundError) -> ErrorResponse:
     return make_err_response(
         request=request,
@@ -113,6 +133,24 @@ def _(request: Request, exc: OrphanSessionError) -> ErrorResponse:
     return make_err_response(
         request=request,
         code=status.HTTP_403_FORBIDDEN,
+        error_detail=exc.error_detail,
+    )
+
+
+@handler_registry.register
+def _(request: Request, exc: APIKeyNotProvidedError) -> ErrorResponse:
+    return make_err_response(
+        request=request,
+        code=status.HTTP_429_TOO_MANY_REQUESTS,
+        error_detail=exc.error_detail,
+    )
+
+
+@handler_registry.register
+def _(request: Request, exc: APIKeyNotAvailableError) -> ErrorResponse:
+    return make_err_response(
+        request=request,
+        code=status.HTTP_400_BAD_REQUEST,
         error_detail=exc.error_detail,
     )
 

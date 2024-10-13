@@ -35,6 +35,20 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
   const navigate = useNavigate();
   const [error, setError] = useState<string | null>(null);
 
+  const signup = async (email: string, password: string, userName?: string) => {
+    const resp = await AuthService.signup({
+      body: { user_name: userName, email: email, password: password },
+    });
+
+    if (resp.data) {
+      console.log(resp.data);
+      navigate({ to: "/login" }); // Redirect after successful signup
+    } else {
+      setError("Signup failed: " + (resp.error as AxiosError).message);
+      throw resp.error;
+    }
+  };
+
   const { data: user, isLoading } = useQuery<PublicUserInfo, Error>({
     queryKey: ["user"],
     queryFn: async () => {
@@ -86,18 +100,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
   const logout = () => {
     localStorage.removeItem("access_token");
     navigate({ to: "/login" });
-  };
-
-  const signup = async (email: string, password: string, userName?: string) => {
-    try {
-      const response = await AuthService.signup({
-        body: { user_name: userName, email: email, password: password },
-      });
-      console.log("Signup successful", response);
-      navigate({ to: "/login" }); // Redirect after successful signup
-    } catch (error) {
-      setError("Signup failed: " + (error as AxiosError).message);
-    }
   };
 
   return (

@@ -13,9 +13,11 @@ import App from "@/app/App.tsx";
 import HomePage from "@/pages/HomePage.tsx";
 import LoginPage from "@/pages/LoginPage.tsx";
 import SignupPage from "@/pages/SignUpPage";
+import ChatRoot from "@/pages/ChatRootPage";
 import { TanStackRouterDevtools } from "@tanstack/router-devtools";
 
 import "@/index.css";
+import ChatPage from "./pages/ChatPage";
 
 const queryClient = new QueryClient();
 
@@ -47,8 +49,27 @@ const signupRoute = createRoute({
   component: SignupPage,
 });
 
+const chatRootRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/chat",
+  component: ChatRoot,
+});
+
+const chatRoute = createRoute({
+  getParentRoute: () => chatRootRoute,
+  path: "$chatId",
+  component: ChatPage,
+});
+
+// chatRootRoute.addChildren([chatRoute]);
 // Create the router
-const routeTree = rootRoute.addChildren([homeRoute, loginRoute, signupRoute]);
+const routeTree = rootRoute.addChildren([
+  homeRoute,
+  loginRoute,
+  signupRoute,
+  chatRootRoute,
+  chatRoute,
+]);
 const router = createRouter({ routeTree });
 declare module "@tanstack/react-router" {
   interface Register {

@@ -197,6 +197,10 @@ class RedisCache[TKey: str | memoryview | bytes](Cache[TKey, ty.Any]):
         res: RedisBool = await self._redis.rpush(key, *values)  # type: ignore
         return res == 1
 
+    async def lrange(self, key: TKey):
+        res: int = await self._redis.lrange(key, 0, -1) # type: ignore
+        return res
+
     @asynccontextmanager
     async def pipeline(self, transaction: bool = False):
         pipe = self._redis.pipeline(transaction=transaction)

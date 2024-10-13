@@ -22,11 +22,10 @@ const Signup: React.FC = () => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setError(null);
     try {
       await signup(email, password);
     } catch (error) {
-      setError("Signup failed. Please check your credentials and try again.");
+      setError("sign up error");
     }
   };
 
@@ -35,9 +34,7 @@ const Signup: React.FC = () => {
       <Card className="w-[350px]">
         <CardHeader>
           <CardTitle>Sign Up</CardTitle>
-          <CardDescription>
-            Create an account to get started
-          </CardDescription>
+          <CardDescription>Create an account to get started</CardDescription>
         </CardHeader>
         <form onSubmit={handleSubmit}>
           <CardContent>
@@ -83,13 +80,15 @@ const Signup: React.FC = () => {
               {isLoading ? "Signing up..." : "Sign Up"}
             </Button>
             <Separator className="flex-grow bg-black" />
-            <span className="px-2 text-sm text-gray-500">Already have an account?</span>
+            <span className="px-2 text-sm text-gray-500">
+              Already have an account?
+            </span>
             <Button
               type="button"
               className="w-full border-2 border-secondary"
               onClick={() => (window.location.href = "/login")}
             >
-              Sign In
+              Log In
             </Button>
           </CardFooter>
         </form>

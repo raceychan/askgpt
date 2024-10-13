@@ -5,11 +5,11 @@ from askgpt.app.auth.errors import AuthenticationError
 class InvalidStateError(Exception): ...
 
 
+class UserNotRegisteredError(AuthenticationError): ...
+
+
 class GPTError(GeneralWebError):
     service = "gpt"
-
-
-class UserNotRegisteredError(AuthenticationError): ...
 
 
 class SessionNotFoundError(EntityNotFoundError, GPTError):
@@ -18,7 +18,7 @@ class SessionNotFoundError(EntityNotFoundError, GPTError):
         super().__init__(msg)
 
 
-class OrphanSessionError(AuthenticationError):
+class OrphanSessionError(GPTError):
     "You are accessing a session that does not belong to you, if you believe this is an error, please contact support."
 
     def __init__(self, session_id: str, user_id: str):
@@ -26,13 +26,17 @@ class OrphanSessionError(AuthenticationError):
         super().__init__(msg)
 
 
-class APIKeyNotProvidedError(AuthenticationError):
-    def __init__(self, user_id: str, api_type: str):
-        msg = f"User {user_id} do not have any API-key for {api_type}"
+class APIKeyNotProvidedError(GPTError):
+    """
+    You would need to register you api-key first before sending messages
+    """
+
+    def __init__(self, api_type: str):
+        msg = f"You do not have any registered api-key for {api_type}"
         super().__init__(msg)
 
 
-class APIKeyNotAvailableError(ThrottlingError):
+class APIKeyNotAvailableError(GPTError, ThrottlingError):
     def __init__(self, api_type: str):
         msg = f"No API keys available for {api_type=}"
         super().__init__(msg)

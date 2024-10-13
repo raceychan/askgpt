@@ -3,6 +3,7 @@ from collections import deque
 from contextlib import asynccontextmanager
 
 from askgpt.adapters import cache
+from askgpt.app.gpt.errors import APIKeyNotAvailableError, APIKeyNotProvidedError
 from askgpt.domain.base import SupportedGPTs
 
 
@@ -24,33 +25,30 @@ class APIPool:
         api_keys: ty.Sequence[str],
         cache: cache.Cache[str, str],
     ):
-        self.pool_key = pool_keyspace
-        self.api_type = api_type
-        self.api_keys = deque(api_keys)
+        self._pool_key = pool_keyspace
+        self._api_type = api_type
+        self._api_keys = api_keys
         self._cache = cache
-        self._keys_loaded: bool = False
 
     async def acquire(self):
         # Pop an API key from the front of the deque
-        if not self._keys_loaded:
-            raise Exception("APIPool not started")
-        api_key = await self._cache.lpop(self.pool_key.key)
+        api_key = await self._cache.lpop(self._pool_key.key)
         if not api_key:
-            raise Exception("No API keys available")
+            raise APIKeyNotAvailableError(self._api_type)
         return api_key
 
     async def release(self, api_key: str):
         # Push the API key back to the end of the deque
-        await self._cache.rpush(self.pool_key.key, api_key)
+        await self._cache.rpush(self._pool_key.key, api_key)
 
     async def load_keys(self, keys: ty.Sequence[str]):
-        await self._cache.rpush(self.pool_key.key, *keys)
-        self._keys_loaded = True
+        # BUG: should check length of api_pool before pushing
+        # else: 
+        await self._cache.rpush(self._pool_key.key, *keys)
 
     @asynccontextmanager
     async def reserve_api_key(self):
-        if not self._keys_loaded:
-            await self.load_keys(self.api_keys)
+        await self.load_keys(self._api_keys)
         api_key = await self.acquire()
         try:
             yield api_key

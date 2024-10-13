@@ -1,12 +1,15 @@
 import React from "react";
+import { Link } from "@tanstack/react-router";
 import {
   NavigationMenuItem,
   NavigationMenuTrigger,
   NavigationMenuContent,
   NavigationMenuLink,
+  NavigationMenu,
+  NavigationMenuList,
 } from "@/components/ui/navigation-menu";
 
-const FeatureMenuItem: React.FC = () => {
+const FeatureItem: React.FC = () => {
   return (
     <NavigationMenuItem>
       <NavigationMenuTrigger>Features</NavigationMenuTrigger>
@@ -29,4 +32,19 @@ const FeatureMenuItem: React.FC = () => {
   );
 };
 
-export default FeatureMenuItem;
+const Feature: React.FC = () => {
+  return (
+    <NavigationMenu>
+      <NavigationMenuList>
+        <NavigationMenuItem>
+          <Link to="/">
+            <span className="text-2xl font-bold">AskGPT</span>
+          </Link>
+        </NavigationMenuItem>
+        <FeatureItem></FeatureItem>
+      </NavigationMenuList>
+    </NavigationMenu>
+  );
+};
+
+export default Feature;
