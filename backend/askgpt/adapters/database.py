@@ -6,10 +6,10 @@ from sqlalchemy.engine.cursor import CursorResult
 from sqlalchemy.ext.asyncio import AsyncConnection, AsyncEngine
 from sqlalchemy.sql import Executable, text
 
-from askgpt.helpers.extratypes import StrMap
 from askgpt.helpers.time import timeit
 from askgpt.infra._log import logger
 
+type StrMap = ty.Mapping[str, ty.Any]
 type SQL_ISOLATIONLEVEL = ty.Literal[
     "SERIALIZABLE",
     "REPEATABLE READ",
@@ -46,7 +46,7 @@ class AsyncDatabase:
     def url(self):
         return self._aioengine.url
 
-    @timeit(logger=logger) 
+    @timeit(logger=logger)
     async def execute(
         self,
         query: str | Executable,
@@ -69,6 +69,7 @@ class AsyncDatabase:
             async with conn.begin():
                 yield conn
 
+    @timeit(logger=logger)
     def connect(self) -> AsyncConnection:
         return self._aioengine.connect()
 

@@ -7,6 +7,7 @@ from askgpt.app.auth import repository as auth_repo
 from askgpt.app.gpt import errors, model, params
 from askgpt.app.gpt import repository as gpt_repo
 from askgpt.app.gpt import request
+from askgpt.app.gpt.errors import APIKeyNotProvidedError
 from askgpt.app.gpt.gptsystem import GPTSystem, SessionActor, SystemState, UserActor
 from askgpt.domain.base import SupportedGPTs
 from askgpt.domain.config import SETTINGS_CONTEXT
@@ -54,7 +55,7 @@ class GPTService:
                 user_id=user_id, api_type=api_type
             )
         if not encrypted_api_keys:
-            raise Exception("no api keys found for user")
+            raise APIKeyNotProvidedError(api_type=api_type)
 
         api_keys = tuple(
             self._encryptor.decrypt_string(key) for key in encrypted_api_keys

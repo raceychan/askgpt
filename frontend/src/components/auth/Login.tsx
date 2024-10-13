@@ -91,7 +91,7 @@ const Login: React.FC = () => {
                 className="w-1/2 border-2 border-primary"
                 disabled={isLoading}
               >
-                {isLoading ? "Logging in..." : "Sign In"}
+                {isLoading ? "Logging in..." : "Log In"}
               </Button>
               <Button
                 type="button"

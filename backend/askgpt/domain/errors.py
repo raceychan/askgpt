@@ -16,7 +16,7 @@ class StaticAPPError(GeneralAPPError):
 
 
 class GeneralWebError(GeneralAPPError, RFC9457):
-    "Domain error"
+    "The basic error classes that contains RFC9457 compatible error detail."
 
     source: ErrorSource = "client"
     service: str = ""

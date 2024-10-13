@@ -1,4 +1,3 @@
-import types
 import typing as ty
 from contextlib import asynccontextmanager
 from contextvars import ContextVar

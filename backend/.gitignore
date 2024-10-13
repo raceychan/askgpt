@@ -1,5 +1,6 @@
 .pixi
 archive
+beta_*.py
 
 .ipynb_checkpoints
 *.vscode
