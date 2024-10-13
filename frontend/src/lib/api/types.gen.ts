@@ -216,6 +216,10 @@ export type ValidationError = {
     type: string;
 };
 
+export type HealthCheckResponse = (unknown);
+
+export type HealthCheckError = unknown;
+
 export type LoginData = {
     body: Body_auth_login;
 };
@@ -327,7 +331,3 @@ export type GenerateErrorPageData = {
 export type GenerateErrorPageResponse = (string);
 
 export type GenerateErrorPageError = (HTTPValidationError);
-
-export type HealthCheckResponse = (unknown);
-
-export type HealthCheckError = unknown;

@@ -61,7 +61,6 @@ const chatRoute = createRoute({
   component: ChatPage,
 });
 
-// chatRootRoute.addChildren([chatRoute]);
 // Create the router
 const routeTree = rootRoute.addChildren([
   homeRoute,
@@ -77,7 +76,6 @@ declare module "@tanstack/react-router" {
   }
 }
 
-// Render the application
 const rootElement = document.getElementById("root")!;
 if (!rootElement.innerHTML) {
   const root = ReactDOM.createRoot(rootElement);
