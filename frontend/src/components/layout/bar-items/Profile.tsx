@@ -6,11 +6,33 @@ import {
   NavigationMenuItem,
   NavigationMenuTrigger,
   NavigationMenuContent,
-  NavigationMenuLink,
 } from "@/components/ui/navigation-menu";
-// import { Card } from "@/components/ui/card";
 import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
+// import { Card } from "@/components/ui/card";
+
+type UserMenuProps = {
+  user: { email: string } | null;
+  logout: () => void;
+};
+
+const UserMenu: React.FC<UserMenuProps> = ({ user, logout }) => {
+  return (
+    <>
+      <NavigationMenuTrigger>{user && user.email}</NavigationMenuTrigger>
+      <NavigationMenuContent className="bg-white inline-block p-4">
+        <Button
+          onClick={(e) => {
+            e.preventDefault();
+            logout();
+          }}
+        >
+          Log Out
+        </Button>
+      </NavigationMenuContent>
+    </>
+  );
+};
 
 const UserCenter = () => {
   const { user, logout } = useAuth();
@@ -18,37 +40,19 @@ const UserCenter = () => {
   let panel;
 
   if (user) {
-    panel = (
-      <>
-        <NavigationMenuTrigger>{user && user.email}</NavigationMenuTrigger>
-        <NavigationMenuContent className="bg-white inline-block p-4">
-          <Button
-            onClick={(e) => {
-              e.preventDefault();
-              logout();
-            }}
-          >
-            Log Out
-          </Button>
-        </NavigationMenuContent>
-      </>
-    );
+    panel = <UserMenu user={user} logout={logout} />;
   } else {
     panel = (
       <>
         <NavigationMenuList>
           <NavigationMenuItem>
             <Button variant="outline">
-              <Link to="/login">
-                <NavigationMenuLink>Log in</NavigationMenuLink>
-              </Link>
+              <Link to="/login">Log In</Link>
             </Button>
           </NavigationMenuItem>
           <NavigationMenuItem>
             <Button variant="outline" className="bg-black text-white">
-              <Link to="/signup">
-                <NavigationMenuLink>Sign Up</NavigationMenuLink>
-              </Link>
+              <Link to="/signup">Sign Up</Link>
             </Button>
           </NavigationMenuItem>
         </NavigationMenuList>
