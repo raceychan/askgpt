@@ -1,3 +1,3 @@
-[submodule "askgpt/backend/helpers"]
-	path = askgpt/backend/helpers
+[submodule ".backend/askgpt/helpers"]
+	path = .backend/askgpt/helpers
 	url = https://github.com/raceychan/helpers.git
