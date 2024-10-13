@@ -3,23 +3,6 @@ from enum import Enum
 
 from askgpt.helpers.string import str_to_snake
 
-type AnyCallable = ty.Callable[..., ty.Any]
-type StrMap = ty.Mapping[str, ty.Any]
-type LifeSpan = ty.AsyncContextManager[None]
-
-
-class _Sentinel: ...
-
-
-SENTINEL = _Sentinel()
-
-
-def issentinel(obj: ty.Any) -> bool:
-    """
-    check if an object is the SENTINEL object
-    """
-    return isinstance(obj, _Sentinel) and obj is SENTINEL
-
 
 def enum_generator(
     **kwargs: dict[str, ty.Iterable[str]]

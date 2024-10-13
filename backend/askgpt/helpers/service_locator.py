@@ -24,6 +24,42 @@ The locator can hide dependencies to other implementations, but you do need to s
 So the decision between locator and injector depends on whether that dependency is a problem.
 """
 
+"""
+TODO: make a dependency tree, where root node is the app
+           APP
+        /       \
+AuthService    GPTService
+
+     /               \
+UserRepository     SessionRepository
+...
+how can we achieve pytest.fixture?
+reference:
+pytest.fixtures.py -> FixtureManager
+pytest.fixtures.py -> FixtureRequest.getfixturevalue
+
+pytest.nodes.py -> Node
+pytest.python.py -> PyCollector
+
+API would be something like
+
+@dependency_node
+def settings():
+    return Settings.from_file(sys.argv[1])
+
+@dependency_node(reuse=False) # each call would create a new engine
+def engine(settings: Settings):
+    return AsyncDatabase(engine)
+
+@dependency_node
+def aiodb(engine: AsyncEngine):
+    return AsyncDatabase(engine)
+
+@dependency_node
+def user_repository(aiodb: AsyncDatabase):
+    return UserRepository(aiodb)
+"""
+
 
 @ty.runtime_checkable
 class LiveService(ty.Protocol):

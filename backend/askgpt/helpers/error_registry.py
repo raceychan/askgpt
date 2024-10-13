@@ -134,8 +134,10 @@ class RFC9457(Exception):
     To extend errordetail, create a subclass of ErrorDetail then set it to _error_detail
     """
 
-    error_type: ClassAttr[str] | str = ClassAttr(lambda cls: str_to_kebab(cls.__name__))
-    error_title: ClassAttr[str] | str = ClassAttr(lambda cls: cls.__doc__ or "")
+    __error_type__: ClassAttr[str] | str = ClassAttr(
+        lambda cls: str_to_kebab(cls.__name__)
+    )
+    __error_title__: ClassAttr[str] | str = ClassAttr(lambda cls: cls.__doc__ or "")
 
     def __init__(
         self,
@@ -149,8 +151,8 @@ class RFC9457(Exception):
     ):
 
         self._error_detail = ErrorDetail(
-            type=type or self.__class__.error_type,
-            title=(title or self.__class__.error_title).strip(),
+            type=type or self.__class__.__error_type__,
+            title=(title or self.__class__.__error_title__).strip(),
             detail=detail,
             instance=instance,
             status=status,
@@ -164,13 +166,13 @@ class RFC9457(Exception):
 
     @classmethod
     def static_error_detail(cls):
-        return ErrorDetail(type=cls.error_type, title=cls.error_title)
+        return ErrorDetail(type=cls.__error_type__, title=cls.__error_title__)
 
     def to_json(self) -> str:
         return self.error_detail.model_dump_json()
 
 
-class HandlerRegistry[Exc]:
+class HandlerRegistry[Exc: Exception]:
     """
     Add error handler to fastapi according to their signature
     """
@@ -224,9 +226,7 @@ class HandlerRegistry[Exc]:
         return exc_type
 
 
-def error_route_factory(
-    registry: HandlerRegistry[Exception], *, route_path: str = "/errors"
-):
+def error_route_factory(registry: HandlerRegistry, *, route_path: str = "/errors"):
     ERROR_TEMPLATE = """
     <!DOCTYPE html>
     <html lang="en">
@@ -346,7 +346,7 @@ def error_route_factory(
             if (not isinstance(exc, int) and issubclass(exc, RFC9457))
         }
         if error_type:
-            errs = {exc for exc in errs if exc.error_type == error_type}
+            errs = {exc for exc in errs if exc.__error_type__ == error_type}
 
         errors_html = [format_error(err) for err in errs]
         errors = "\n".join(errors_html)

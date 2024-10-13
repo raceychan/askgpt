@@ -4,13 +4,13 @@ import inspect
 import signal
 import types
 import typing as ty
-from dataclasses import dataclass
+from contextlib import contextmanager
 from functools import wraps
 from time import perf_counter
 
-from askgpt.helpers.extratypes import AnyCallable
-
 if ty.TYPE_CHECKING:
+    from logging import Logger as StdLogger
+
     from loguru import Logger
 
 
@@ -35,121 +35,87 @@ def iso_now() -> str:
     return utc_now().isoformat()
 
 
-@dataclass(frozen=True, kw_only=True, slots=True, repr=False, unsafe_hash=True)
-class FuncInfo:
-    name: str
-    code: str
-    signature: inspect.Signature
-    location: str
-    is_async: bool
-
-    def __repr__(self):
-        return f"<{self.__class__.__name__} {self.location} {self.name}{str(self.signature)}>"
-
-    def __str__(self):
-        return f"{self.location} {self.name}"
-
-    @classmethod
-    def from_func(cls, func: AnyCallable) -> ty.Self:
-        name = func.__qualname__
-        func_code = func.__code__
-        code = inspect.getsource(func)
-        sig = inspect.signature(func)
-        is_async = inspect.iscoroutinefunction(func)
-        location = f"{func_code.co_filename}({func_code.co_firstlineno})"
-
-        funcinfo = cls(
-            name=name,
-            code=code,
-            signature=sig,
-            location=location,
-            is_async=is_async,
-        )
-        return funcinfo
-
-
-@dataclass(frozen=True, kw_only=True, slots=True, unsafe_hash=True)
-class ExecInfo:
-    funcinfo: FuncInfo
-    args: tuple[ty.Any, ...]
-    kwargs: dict[str, ty.Any]
-    timecost: float
-    unit: ty.Literal["ns", "ms", "s"] = "s"
-
-    def format_repr(self, with_args: bool = False):
-        if with_args:
-            raise NotImplementedError
-        fmt = f"{self.funcinfo.location} {self.funcinfo.name} {self.timecost:.3f}{self.unit}"
-        return fmt
-
-    def __repr__(self) -> str:
-        fmt = f"<ExecInfo {str(self.funcinfo)} {self.timecost:.3f}{self.unit}>"
-        return fmt
-
-    def __str__(self) -> str:
-        return self.format_repr()
-
-
-@ty.overload
-def timeit[
-    R, **P
-](_func: ty.Callable[P, R]) -> ty.Callable[P, R]:  # Sync function, no kwargs
-    ...
-
-
-@ty.overload
-def timeit[
-    R, **P
-](_func: ty.Callable[P, ty.Awaitable[R]]) -> ty.Callable[
-    P, ty.Awaitable[R]
-]:  # Async function, no kwargs
-    ...
-
-
-@ty.overload
-def timeit[
-    R, **P
-](
-    _func: None = None,
-    *,
-    logger: ty.Optional["Logger"] = None,
-    unit: ty.Literal["ns", "ms", "s"] = "ms",
-    precision: int = 2,
-    log_threadhold: ty.Callable[[float], bool] = lambda x: x > 0.1,
-    with_args: bool = False,
-) -> ty.Callable[
-    [ty.Callable[P, R]], ty.Callable[P, R]
-]:  # Sync function with kwargs
-    ...
-
-
-@ty.overload
-def timeit[
-    R, **P
-](
-    _func: None = None,
-    *,
-    logger: ty.Optional["Logger"] = None,
-    unit: ty.Literal["ns", "ms", "s"] = "ms",
-    precision: int = 2,
-    log_threadhold: ty.Callable[[float], bool] = lambda x: x > 0.1,
-    with_args: bool = False,
-) -> ty.Callable[
+type SimpleDecor[**P, R] = ty.Callable[P, R]
+type ParamDecor[**P, R] = ty.Callable[[ty.Callable[P, R]], ty.Callable[P, R]]
+type AsyncSimpleDecor[**P, R] = ty.Callable[P, ty.Awaitable[R]]
+type AsyncParamDecor[**P, R] = ty.Callable[
     [ty.Callable[P, ty.Awaitable[R]]], ty.Callable[P, ty.Awaitable[R]]
-]: ...
+]
+type FlexDecor[**P, R] = SimpleDecor | ParamDecor | AsyncSimpleDecor | AsyncParamDecor
+
+
+# Sync function, no kwargs
+@ty.overload
+def timeit[R, **P](func__: ty.Callable[P, R]) -> SimpleDecor[P, R]: ...
+
+
+# Async function, no kwargs
+@ty.overload
+def timeit[
+    R, **P
+](func__: ty.Callable[P, ty.Awaitable[R]]) -> AsyncSimpleDecor[P, R]: ...
+
+
+# Sync function with kwargs
+@ty.overload
+def timeit[
+    R, **P
+](
+    *,
+    logger: ty.Optional[ty.Union["Logger", "StdLogger"]] = None,
+    precision: int = 2,
+    log_threshold: float = 0.1,
+    with_args: bool = False,
+) -> ParamDecor[P, R]: ...
+
+
+@ty.overload
+def timeit[
+    R, **P
+](
+    *,
+    logger: ty.Optional[ty.Union["Logger", "StdLogger"]] = None,
+    precision: int = 2,
+    log_threshold: float = 0.1,
+    with_args: bool = False,
+) -> AsyncParamDecor[P, R]: ...
+
+
+@ty.overload
+def timeit[
+    R, **P
+](
+    *,
+    logger: ty.Optional[ty.Callable[[float], None]] = None,
+    precision: int = 2,
+    log_threshold: float = 0.1,
+) -> ParamDecor[P, R]: ...
+
+
+@ty.overload
+def timeit[
+    R, **P
+](
+    *,
+    logger: ty.Optional[ty.Callable[[float], None]] = None,
+    precision: int = 2,
+    log_threshold: float = 0.1,
+) -> AsyncParamDecor[P, R]: ...
 
 
 def timeit[
     R, **P
 ](
-    _func: ty.Callable[P, R] | None = None,
+    func__: ty.Callable[P, R] | None = None,
     *,
-    logger: ty.Optional["Logger"] = None,
-    unit: ty.Literal["ns", "ms", "s"] = "ms",
+    logger: ty.Optional[
+        ty.Union["Logger", "StdLogger", ty.Callable[[float], None]]
+    ] = None,
     precision: int = 2,
-    log_threadhold: ty.Callable[[float], bool] = lambda x: x > 0.1,
+    log_threshold: float = 0.1,
     with_args: bool = False,
-):
+    show_fino: bool = True,
+) -> FlexDecor:
 
     @ty.overload
     def decorator(func: ty.Callable[P, ty.Awaitable[R]]) -> ty.Callable[P, R]: ...
@@ -161,59 +127,68 @@ def timeit[
         func: ty.Callable[P, R] | ty.Callable[P, ty.Awaitable[R]]
     ) -> ty.Callable[P, R] | ty.Callable[P, ty.Awaitable[R]]:
         def build_logmsg(
-            pre: float,
-            aft: float,
+            timecost: float,
+            func_args: tuple,
+            func_kwargs: dict,
         ):
-            timecost = round(pre - aft, precision)
-            if unit == "ms":
-                timecost *= 10**3
-            elif unit == "ns":
-                timecost *= 10**6
 
-            msg = f"Executed {func} in {timecost}{unit}"
+            func_repr = func.__qualname__
+            if with_args:
+                arg_repr = ", ".join(f"{arg}" for arg in func_args)
+                kwargs_repr = ", ".join(f"{k}={v}" for k, v in func_kwargs.items())
+                func_repr = f"{func_repr}({arg_repr}, {kwargs_repr})"
+
+            msg = f"{func_repr} {timecost}s"
+
+            if show_fino:
+                func_code = func.__code__
+                location = f"{func_code.co_filename}({func_code.co_firstlineno})"
+                msg = f"{location} {msg}"
+
             return msg
+
+        @contextmanager
+        def log_callback(args, kwargs):
+            pre = perf_counter()
+            yield
+            aft = perf_counter()
+            timecost = round(aft - pre, precision)
+
+            if timecost < log_threshold:
+                return
+
+            if logger:
+                if callable(logger):
+                    logger(timecost)
+                else:
+                    logger.info(build_logmsg(timecost, args, kwargs))
+            else:
+                print(build_logmsg(timecost, args, kwargs))
 
         @wraps(func)
         def wrapper(*args: P.args, **kwargs: P.kwargs) -> R:
-            start = perf_counter()
             f = ty.cast(ty.Callable[P, R], func)
-            res = f(*args, **kwargs)
-            end = perf_counter()
-            timecost = round(end - start, precision)
-
-            if not log_threadhold(timecost):
-                return res
-
-            if logger:
-                logger.info(build_logmsg(start, end))
+            with log_callback(args, kwargs):
+                res = f(*args, **kwargs)
             return res
 
         @wraps(func)
         async def awrapper(*args: P.args, **kwargs: P.kwargs) -> R:
-            start = perf_counter()
             f = ty.cast(ty.Callable[P, ty.Awaitable[R]], func)
-            res = await f(*args, **kwargs)
-            end = perf_counter()
-            timecost = round(end - start, precision)
-            if not log_threadhold(timecost):
-                return res
-            if logger:
-                logger.info(build_logmsg(start, end))
-
+            with log_callback(args, kwargs):
+                res = await f(*args, **kwargs)
             return res
 
         if inspect.iscoroutinefunction(func):
             return awrapper
-        return wrapper
+        else:
+            return wrapper
 
-    if _func is None:
+    if func__ is None:
         return decorator
     else:
-        return decorator(_func)
-
-
-class TimeoutException(Exception):
-    pass
+        # wraps(func__)(decorator)
+        return decorator(func__)
 
 
 class Timeout:
@@ -222,7 +197,7 @@ class Timeout:
         self.error_msg = error_msg or f"Timed out after {seconds} seconds"
 
     def handle_timeout(self, signume: int, frame: ty.Any):
-        raise TimeoutException(self.error_msg)
+        raise TimeoutError(self.error_msg)
 
     def __enter__(self):
         signal.signal(signal.SIGALRM, self.handle_timeout)
@@ -240,6 +215,17 @@ class Timeout:
 def timeout(seconds: int, *, logger: ty.Optional["Logger"] = None):
     def decor_dispatch(func):
         def sync_timeout(*args, **kwargs):
+            import platform
+
+            if platform.uname().system == "Windows":
+                ...  # use threading
+            else:
+                ...  # use signal
+                # signal.signal(signal.SIGALRM, handler)
+                # Define a timeout for your function
+                # signal.alarm(10)
+
+            # use threading.join for this
             raise NotImplementedError
 
         async def async_timeout(*args, **kwargs):
@@ -248,9 +234,20 @@ def timeout(seconds: int, *, logger: ty.Optional["Logger"] = None):
                 res = await asyncio.wait_for(coro, seconds)
             except TimeoutError as te:
                 if logger:
-                    logger.exception(f"{func} timesout after {seconds}s")
+                    logger.exception(f"{func} timeout after {seconds}s")
+                raise te
             return res
 
         return async_timeout
 
     return decor_dispatch
+
+
+if __name__ == "__main__":
+    from loguru import logger
+
+    @timeit(logger=logger, with_args=True, log_threshold=-1)
+    def test_timeit(a: int, b: int, *, c: str, d: dict):
+        return None
+
+    test_timeit(3, 5, c="test", d={"name": "test"})
