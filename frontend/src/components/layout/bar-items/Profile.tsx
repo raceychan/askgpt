@@ -9,7 +9,8 @@ import {
 } from "@/components/ui/navigation-menu";
 import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
-// import { Card } from "@/components/ui/card";
+import { useToast } from "@/hooks/use-toast";
+import ListItem from "./ListItem";
 
 type UserMenuProps = {
   user: { email: string } | null;
@@ -17,18 +18,27 @@ type UserMenuProps = {
 };
 
 const UserMenu: React.FC<UserMenuProps> = ({ user, logout }) => {
+  const { toast } = useToast();
   return (
     <>
       <NavigationMenuTrigger>{user && user.email}</NavigationMenuTrigger>
-      <NavigationMenuContent className="bg-white inline-block p-4">
-        <Button
-          onClick={(e) => {
-            e.preventDefault();
-            logout();
-          }}
-        >
-          Log Out
-        </Button>
+      <NavigationMenuContent>
+        <ul className="grid gap-3 p-4 md:w-[200px] lg:w-[300px] justify-left">
+          <ListItem className="text-lg" href="/settings" title="Settings" />
+
+          <ListItem
+            className="flex items-center"
+            title="Log Out"
+            onClick={(e) => {
+              e.preventDefault();
+              logout();
+              toast({
+                title: "Logged out",
+                description: "You have been logged out",
+              });
+            }}
+          />
+        </ul>
       </NavigationMenuContent>
     </>
   );

@@ -4,7 +4,7 @@ from contextlib import asynccontextmanager
 
 from askgpt.adapters.queue import MessageConsumer
 from askgpt.domain.interface import IEvent
-from askgpt.infra._log import logger
+from askgpt.helpers._log import logger
 from askgpt.infra.eventstore import EventStore
 
 

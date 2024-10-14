@@ -5,18 +5,19 @@ import sqlalchemy as sa
 from sqlalchemy import MetaData
 from sqlalchemy import orm as sa_orm
 from sqlalchemy.ext import asyncio as sa_aio
-from sqlalchemy.sql import func
+from sqlalchemy.orm import DeclarativeBase
+from sqlalchemy.sql import FromClause, func
 
 from askgpt.helpers.string import str_to_snake
 
 
 # Reference: https://docs.sqlalchemy.org/en/14/orm/declarative_mixins.html
-def declarative[T](cls: type[T]) -> type[T]:
+def declarative(cls: type) -> type[DeclarativeBase]:
     """
     A more pythonic way to declare a sqlalchemy table
     """
 
-    return sa_orm.declarative_base(cls=cls)  # type: ignore
+    return sa_orm.declarative_base(cls=cls)
 
 
 def async_engine(engine: sa.Engine) -> sa_aio.AsyncEngine:
@@ -62,7 +63,9 @@ class TableBase:
     used for DDL and data migrations only
     """
 
-    metadata: MetaData
+    __table__: ty.ClassVar[FromClause]
+
+    metadata: ty.ClassVar[MetaData]
 
     gmt_modified = sa.Column(
         "gmt_modified", sa.DateTime, server_default=func.now(), onupdate=func.now()
@@ -76,18 +79,18 @@ class TableBase:
 
     @classmethod
     def create_table(cls, engine: sa.Engine) -> None:
-        cls.metadata.create_all(engine)  # type: ignore
+        cls.metadata.create_all(engine)
 
     @classmethod
     async def create_table_async(cls, async_engine: sa_aio.AsyncEngine) -> None:
         async with async_engine.begin() as conn:
-            await conn.run_sync(cls.metadata.create_all)  # type:ignore
+            await conn.run_sync(cls.metadata.create_all)
 
     @classmethod
     def generate_tableclause(cls) -> sa.TableClause:
         clause = sa.table(
             cls.__tablename__,
-            *[sa.column(c) for c in cls.__table__.columns],  # type: ignore
+            *[sa.column(c.name, c.type) for c in cls.__table__.columns],
         )
         return clause
 

@@ -226,8 +226,7 @@ class HandlerRegistry[Exc: Exception]:
         return exc_type
 
 
-def error_route_factory(registry: HandlerRegistry, *, route_path: str = "/errors"):
-    ERROR_TEMPLATE = """
+ERROR_TEMPLATE = """
     <!DOCTYPE html>
     <html lang="en">
     <head>
@@ -285,28 +284,32 @@ def error_route_factory(registry: HandlerRegistry, *, route_path: str = "/errors
         $errors
     </body>
     </html>
+"""
 
-    """
+ERROR_TEMPLT = """
+<div class="error-box">
+    <div class="error-title">{title}</div>
+    <span> (T, null) means a field will either be of type (T) or won't be returned.
+    </span> 
+    {fields}
+</div>
+"""
+
+FIELD_TMPLT = """
+<div class="error-field">
+    <span class="field-name">{name}({type}):</span>
+    <span class="field-description">{description}</span>
+    <div class="field-example">{value}</div>
+</div>
+"""
+
+
+def error_route_factory(
+    registry: HandlerRegistry, *, route_path: str = "/errors", route_tag: str = "errors"
+):
 
     def generate_error_page(error_type: str = "") -> str:
-        doc = Template(ERROR_TEMPLATE)
-
-        error_tmplt = """
-        <div class="error-box">
-            <div class="error-title">{title}</div>
-            <span> (T, null) means a field will either be of type (T) or won't be returned.
-            </span> 
-            {fields}
-        </div>
-        """
-
-        field_tmplt = """
-        <div class="error-field">
-            <span class="field-name">{name}({type}):</span>
-            <span class="field-description">{description}</span>
-            <div class="field-example">{value}</div>
-        </div>
-        """
+        doc = Template(ERROR_TEMPLATE.strip())
 
         def format_field(field_info: dict[str, ty.Any], value: ty.Any) -> str:
             field_type = field_info.get("type", field_info.get("anyOf"))
@@ -318,7 +321,7 @@ def error_route_factory(registry: HandlerRegistry, *, route_path: str = "/errors
 
             example = field_info.get("examples", [""])[0]
             value = value or example
-            return field_tmplt.format(
+            return FIELD_TMPLT.format(
                 name=field_name,
                 type=field_type,
                 description=description,
@@ -335,7 +338,7 @@ def error_route_factory(registry: HandlerRegistry, *, route_path: str = "/errors
                 value = getattr(error_detail, field_name)
                 fields_html.append(format_field(field_info, value))
 
-            error_html = error_tmplt.format(
+            error_html = ERROR_TEMPLT.format(
                 title=err.__name__, fields="\n".join(fields_html)
             )
             return error_html
@@ -354,7 +357,12 @@ def error_route_factory(registry: HandlerRegistry, *, route_path: str = "/errors
         return final
 
     err_route = APIRouter()
-    err_route.get(route_path, tags=[f"{route_path}"], response_class=HTMLResponse)(
-        generate_error_page
-    )
+    err_route.get(
+        route_path,
+        tags=[f"{route_tag}"],
+        response_class=HTMLResponse,
+        description="""
+        RFC-9457 compatible errors
+                  """.strip(),
+    )(generate_error_page)
     return err_route

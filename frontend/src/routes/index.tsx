@@ -19,3 +19,4 @@ export default HomePage;
 export const Route = createFileRoute('/')({
   component: HomePage,
 })
+

@@ -17,16 +17,11 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 const Signup: React.FC = () => {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [error, setError] = useState<string | null>(null);
-  const { signup, isLoading } = useAuth();
+  const { signup, isLoading, authError } = useAuth();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    try {
-      await signup(email, password);
-    } catch (error) {
-      setError("sign up error");
-    }
+    await signup(email, password);
   };
 
   return (
@@ -64,11 +59,11 @@ const Signup: React.FC = () => {
             </div>
           </CardContent>
           <CardFooter className="flex flex-col gap-4">
-            {error && (
+            {authError && (
               <Alert variant="destructive" className="mb-2">
                 <AlertTitle className="text-red-600">Signup Failed</AlertTitle>
                 <AlertDescription className="text-red-600">
-                  {error}
+                  {authError.detail}
                 </AlertDescription>
               </Alert>
             )}

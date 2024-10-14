@@ -1,26 +1,29 @@
-import React, { createContext, useContext } from "react";
+import React, { createContext, useContext, useCallback, useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Config } from "@/config/config";
 import { useNavigate } from "@tanstack/react-router";
 import { AxiosError } from "axios";
-import { useState } from "react";
+import { UseMutationResult } from "@tanstack/react-query";
+import { AuthService, UserService, PublicUserInfo } from "@/lib/api";
 
-import {
-  AuthService,
-  UserService,
-  PublicUserInfo,
-  LoginError,
-  LoginResponse,
-} from "@/lib/api";
+type ErrorResponse = {
+  type: string;
+  title: string;
+  detail: string;
+};
 
 interface AuthContextType {
-  loginMutation: ReturnType<typeof useMutation>;
-  login: (email: string, password: string) => void;
+  loginMutation: UseMutationResult<
+    void,
+    ErrorResponse,
+    { email: string; password: string }
+  >;
   loginWithGoogle: () => Promise<void>;
   logout: () => void;
   signup: (email: string, password: string, userName?: string) => void;
-  user: PublicUserInfo;
+  user: PublicUserInfo | undefined;
   isLoading: boolean;
+  authError: ErrorResponse | null;
 }
 const isLoggedIn = () => {
   return localStorage.getItem("access_token") !== null;
@@ -33,40 +36,58 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
 }) => {
   const queryClient = useQueryClient();
   const navigate = useNavigate();
-  const [error, setError] = useState<string | null>(null);
-
-  const signup = async (email: string, password: string, userName?: string) => {
-    const resp = await AuthService.signup({
-      body: { user_name: userName, email: email, password: password },
-    });
-
-    if (resp.data) {
-      console.log(resp.data);
-      navigate({ to: "/login" }); // Redirect after successful signup
+  const [error, setError] = useState<ErrorResponse | null>(null);
+  const handleError = (error: unknown) => {
+    if (error instanceof AxiosError) {
+      const new_error = {
+        type: "Network Error",
+        title: "Can't connect to server",
+        detail: "Please try again later",
+      };
+      setError(new_error);
     } else {
-      setError("Signup failed: " + (resp.error as AxiosError).message);
-      throw resp.error;
+      setError(error as ErrorResponse);
     }
   };
 
-  const { data: user, isLoading } = useQuery<PublicUserInfo, Error>({
+  const signup = async (email: string, password: string, userName?: string) => {
+    try {
+      const resp = await AuthService.signup({
+        body: { user_name: userName, email: email, password: password },
+      });
+      if (resp.error) {
+        throw resp.error;
+      }
+      navigate({ to: "/login" });
+    } catch (error: unknown) {
+      handleError(error);
+    }
+  };
+
+  const { data: user, isLoading } = useQuery<PublicUserInfo | undefined>({
     queryKey: ["user"],
     queryFn: async () => {
-      const response = await UserService.getPublicUser();
-      if (!response.data) {
-        throw new Error(`Failed to get public user: ${response.error}`);
+      try {
+        const resp = await UserService.getPublicUser();
+        if (resp.error) {
+          throw resp.error;
+        }
+        return resp.data;
+      } catch (error: unknown) {
+        handleError(error);
+        throw error;
       }
-      return response.data;
     },
     enabled: isLoggedIn(),
-  }) as { data: PublicUserInfo; isLoading: boolean };
+  });
 
   const login = async (email: string, password: string) => {
     const response = await AuthService.login({
       body: { username: email, password: password },
     });
-    if (!response.data) {
-      throw Error(`Failed to login ${response.error}`);
+
+    if (response.error) {
+      throw response.error;
     }
     const token = response.data;
     localStorage.setItem("access_token", token.access_token);
@@ -78,18 +99,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
     onSuccess: () => {
       navigate({ to: "/" });
     },
-    onError: (error: LoginError) => {
-      let errDetail = error.detail as any;
-
-      if (error instanceof AxiosError) {
-        errDetail = error.message;
-      }
-
-      if (Array.isArray(errDetail)) {
-        errDetail = "Something went wrong";
-      }
-
-      setError(errDetail);
+    onError: (error: ErrorResponse) => {
+      handleError(error);
     },
   });
 
@@ -97,21 +108,23 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
     window.location.href = `${Config.API_AUTH_URL}/google`;
   };
 
-  const logout = () => {
+  const logout = useCallback(() => {
     localStorage.removeItem("access_token");
+    queryClient.setQueryData(["user"], null);
+    queryClient.invalidateQueries({ queryKey: ["user"] });
     navigate({ to: "/login" });
-  };
+  }, [navigate, queryClient]);
 
   return (
     <AuthContext.Provider
       value={{
         loginMutation,
-        // login,
         loginWithGoogle,
         logout,
         signup,
         user,
         isLoading,
+        authError: error,
       }}
     >
       {children}

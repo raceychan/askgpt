@@ -10,7 +10,7 @@ from askgpt.app.api.error_handlers import INTERNAL_ERROR_DETAIL, make_err_respon
 from askgpt.app.api.xheaders import XHeaders
 from askgpt.domain.config import TIME_EPSILON_S, UNKNOWN_NETLOC, Settings, SETTINGS_CONTEXT
 from askgpt.domain.model.base import request_id_factory
-from askgpt.infra._log import logger
+from askgpt.helpers._log import logger
 
 
 def log_request(request: Request, status_code: int, duration: float):

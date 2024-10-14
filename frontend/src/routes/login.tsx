@@ -1,7 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
-// import LoginPage from '@/pages/LoginPage'
 import React, { useEffect } from "react";
-import Login from "@/components/auth/Login";
+import LoginComponent from "@/components/auth/Login";
 import { useAuth } from "@/contexts/AuthContext";
 import { useNavigate } from "@tanstack/react-router";
 
@@ -26,7 +25,7 @@ const LoginPage: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-white flex justify-center items-center">
-      <Login />
+      <LoginComponent />
     </div>
   );
 };

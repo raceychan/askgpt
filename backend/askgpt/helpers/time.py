@@ -187,7 +187,6 @@ def timeit[
     if func__ is None:
         return decorator
     else:
-        # wraps(func__)(decorator)
         return decorator(func__)
 
 

@@ -13,12 +13,68 @@ import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { useToast } from "@/hooks/use-toast";
+import { FaGoogle } from "react-icons/fa";
 
-const Login: React.FC = () => {
+const OAuthLogin: React.FC = () => {
+  const { toast } = useToast();
+  const { loginWithGoogle, isLoading } = useAuth();
+
+  const handleOAuthLogin = async (provider: string) => {
+    try {
+      switch (provider) {
+        case "google":
+          await loginWithGoogle();
+          break;
+        // case "github":
+        //   await loginWithGithub();
+        //   break;
+        // case "twitter":
+        //   await loginWithTwitter();
+        //   break;
+        default:
+          console.error("Unknown provider:", provider);
+      }
+    } catch (error) {
+      console.error(`${provider} login failed:`, error);
+      toast({
+        title: `${provider} login failed`,
+        description: (error as Error).message,
+        variant: "destructive",
+      });
+    }
+    toast({
+      title: `${provider} login successful`,
+      description: "You have been logged in",
+    });
+  };
+
+  return (
+    <div className="w-full">
+      <Separator className="my-4" />
+      <p className="text-center text-sm text-gray-500 mb-4">Or continue with</p>
+      <div className="flex justify-center space-x-4">
+        <Button
+          type="button"
+          variant="outline"
+          size="icon"
+          className="w-10 h-10"
+          onClick={() => handleOAuthLogin("google")}
+          disabled={isLoading}
+        >
+          <FaGoogle className="w-5 h-5" />
+        </Button>
+      </div>
+    </div>
+  );
+};
+
+const LoginForm: React.FC = () => {
+  const { toast } = useToast();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
-  const { loginMutation, loginWithGoogle, isLoading } = useAuth();
+  const { loginMutation, isLoading } = useAuth();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -28,18 +84,80 @@ const Login: React.FC = () => {
     } catch (error) {
       console.log(error);
       setError("Please check your credentials and try again.");
+      toast({
+        title: "Login Failed",
+        description: "Please check your credentials and try again.",
+        variant: "destructive",
+      });
     }
+    toast({
+      title: "Login Successful",
+      description: `Welcome Back`,
+    });
   };
 
-  const handleGoogleLogin = async () => {
-    setError(null);
-    try {
-      await loginWithGoogle();
-    } catch (error) {
-      setError("Google login failed. Please try again.");
-    }
-  };
+  return (
+    <form onSubmit={handleSubmit}>
+      <CardContent>
+        <div className="grid w-full items-center gap-4">
+          <div className="flex flex-col space-y-1.5">
+            <Label htmlFor="email">Email</Label>
+            <Input
+              id="email"
+              type="email"
+              placeholder="Enter your email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              required
+            />
+          </div>
+          <div className="flex flex-col space-y-1.5">
+            <Label htmlFor="password">Password</Label>
+            <Input
+              id="password"
+              type="password"
+              placeholder="Enter your password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              required
+            />
+          </div>
+        </div>
+      </CardContent>
+      <CardFooter className="flex flex-col gap-4">
+        {error && (
+          <Alert variant="destructive" className="mb-2">
+            <AlertTitle className="text-red-600">Login Failed</AlertTitle>
+            <AlertDescription className="text-red-600">
+              {error}
+            </AlertDescription>
+          </Alert>
+        )}
+        <Button
+          type="submit"
+          className="w-full border-2 border-primary"
+          disabled={isLoading}
+        >
+          {isLoading ? "Logging in..." : "Log In"}
+        </Button>
+        <div className="text-center text-sm text-gray-500">
+          Don't have an account?{" "}
+          <Button
+            type="button"
+            variant="link"
+            className="p-0 h-auto text-primary"
+            onClick={() => (window.location.href = "/signup")}
+          >
+            Sign Up
+          </Button>
+        </div>
+        <OAuthLogin />
+      </CardFooter>
+    </form>
+  );
+};
 
+const LoginComponent: React.FC = () => {
   return (
     <div className="flex justify-center items-center h-screen">
       <Card className="w-[350px]">
@@ -49,75 +167,10 @@ const Login: React.FC = () => {
             Enter your credentials to access your account
           </CardDescription>
         </CardHeader>
-        <form onSubmit={handleSubmit}>
-          <CardContent>
-            <div className="grid w-full items-center gap-4">
-              <div className="flex flex-col space-y-1.5">
-                <Label htmlFor="email">Email</Label>
-                <Input
-                  id="email"
-                  type="email"
-                  placeholder="Enter your email"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  required
-                />
-              </div>
-              <div className="flex flex-col space-y-1.5">
-                <Label htmlFor="password">Password</Label>
-                <Input
-                  id="password"
-                  type="password"
-                  placeholder="Enter your password"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  required
-                />
-              </div>
-            </div>
-          </CardContent>
-          <CardFooter className="flex flex-col gap-4">
-            {error && (
-              <Alert variant="destructive" className="mb-2">
-                <AlertTitle className="text-red-600">Login Failed</AlertTitle>
-                <AlertDescription className="text-red-600">
-                  {error}
-                </AlertDescription>
-              </Alert>
-            )}
-            <div className="flex gap-2">
-              <Button
-                type="submit"
-                className="w-1/2 border-2 border-primary"
-                disabled={isLoading}
-              >
-                {isLoading ? "Logging in..." : "Log In"}
-              </Button>
-              <Button
-                type="button"
-                className="w-1/2 border-2 border-secondary"
-                onClick={() => (window.location.href = "/signup")}
-              >
-                Sign Up
-              </Button>
-            </div>
-            <Separator className="flex-grow bg-black" />
-            <span className="px-2 text-sm text-gray-500">Or</span>
-            <span className="px-2 text-sm text-gray-500">Sign In With</span>
-            <Button
-              type="button"
-              variant="outline"
-              className="w-30 text-sm text-gray-500"
-              onClick={handleGoogleLogin}
-              disabled={isLoading}
-            >
-              Google
-            </Button>
-          </CardFooter>
-        </form>
+        <LoginForm />
       </Card>
     </div>
   );
 };
 
-export default Login;
+export default LoginComponent;

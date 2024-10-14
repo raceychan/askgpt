@@ -2,6 +2,7 @@ import React from "react";
 import { AuthProvider } from "@/contexts/AuthContext";
 import { Outlet } from "@tanstack/react-router";
 import NaviBar from "@/components/layout/NaviBar";
+import { Toaster } from "@/components/ui/toaster";
 
 const Header: React.FC = () => {
   return (
@@ -13,20 +14,22 @@ const Header: React.FC = () => {
 
 const Footer: React.FC = () => {
   return (
-    <div className="z-[3] flex flex-col items-center justify-end mt-auto pb-[30px] md:px-0 lg:flex-row">
-      <p className="mb-4 text-center text-sm font-medium text-zinc-500 dark:text-zinc-400 sm:!mb-0 md:text-lg">
-        <span className="mb-4 text-center text-sm text-zinc-500 dark:text-zinc-400 sm:!mb-0 md:text-sm">
-          ©{new Date().getFullYear()} Askgpt AI Platform. All Rights Reserved.
-        </span>
+    <footer className="mt-auto py-4">
+      <p className="text-center text-sm text-zinc-500 dark:text-zinc-400">
+        ©{new Date().getFullYear()} Askgpt AI Platform. All Rights Reserved.
       </p>
-    </div>
+    </footer>
   );
 };
+
 const APPLayout: React.FC = () => {
   return (
-    <div>
+    <div className="flex flex-col min-h-screen">
       <Header />
-      <Outlet />
+      <main className="flex-grow">
+        <Outlet />
+      </main>
+      <Toaster />
       <Footer />
     </div>
   );

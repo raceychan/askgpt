@@ -7,7 +7,7 @@ from sqlalchemy.ext.asyncio import AsyncConnection, AsyncEngine
 from sqlalchemy.sql import Executable, text
 
 from askgpt.helpers.time import timeit
-from askgpt.infra._log import logger
+from askgpt.helpers._log import logger
 
 type StrMap = ty.Mapping[str, ty.Any]
 type SQL_ISOLATIONLEVEL = ty.Literal[

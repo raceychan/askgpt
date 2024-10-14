@@ -141,7 +141,7 @@ def _(request: Request, exc: OrphanSessionError) -> ErrorResponse:
 def _(request: Request, exc: APIKeyNotProvidedError) -> ErrorResponse:
     return make_err_response(
         request=request,
-        code=status.HTTP_429_TOO_MANY_REQUESTS,
+        code=status.HTTP_403_FORBIDDEN,
         error_detail=exc.error_detail,
     )
 

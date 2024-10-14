@@ -13,7 +13,7 @@ from askgpt.domain.base import SupportedGPTs
 from askgpt.domain.config import SETTINGS_CONTEXT
 from askgpt.domain.interface import IEvent
 from askgpt.infra import gptclient, security
-from askgpt.infra._log import logger
+from askgpt.helpers._log import logger
 
 
 class GPTService:

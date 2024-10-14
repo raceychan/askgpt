@@ -1,4 +1,4 @@
-from askgpt.infra._log import debug_sink, prod_sink, update_sink
+from askgpt.helpers._log import debug_sink, prod_sink, update_sink
 
 
 def test_logger():

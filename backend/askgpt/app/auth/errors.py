@@ -78,7 +78,7 @@ class UserAlreadyExistError(AuthenticationError):
     """
 
     def __init__(self, *, email: str):
-        super().__init__(f"User with {email=} already exist")
+        super().__init__(f"User with email {email} already exist")
 
 
 class InvalidCredentialError(AuthenticationError):

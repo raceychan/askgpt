@@ -11,7 +11,7 @@ from askgpt.domain.config import SETTINGS_CONTEXT, Settings, detect_settings
 from askgpt.helpers.error_registry import error_route_factory
 from askgpt.helpers.time import timeout
 from askgpt.infra import schema
-from askgpt.infra._log import logger, prod_sink, update_sink
+from askgpt.helpers._log import logger, prod_sink, update_sink
 from askgpt.infra.locator import adapter_locator, make_database
 
 
