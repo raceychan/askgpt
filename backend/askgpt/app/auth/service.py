@@ -114,19 +114,26 @@ class AuthService:
             if user is None:
                 raise errors.UserNotFoundError(user_id=user_id)
 
-            idem_id = self._encryptor.hash_string(api_type + api_key)
-            encrypted_key = self._encryptor.encrypt_string(api_key).decode()
-            user_api_added = model.UserAPIKeyAdded(
-                user_id=user_id,
-                api_key=encrypted_key,
-                api_type=api_type,
-                idem_id=idem_id,
-            )
+        encrypted_key = self._encryptor.encrypt_string(api_key).decode()
+        idem_id = self._encryptor.hash_string(api_type + api_key).hex()
+        user_api_added = model.UserAPIKeyAdded(
+            user_id=user_id,
+            api_key=encrypted_key,
+            api_type=api_type,
+            idem_id=idem_id,
+        )
 
+        # raise NotImplementedError(
+        #     "would need to implement outbox publisher first(let publisher use uow)"
+        #     "also sqlite can't handle concurrent write, need to switch to other db"
+        # )
+        # TODO: implement model selection in frontend
+
+        async with self._uow.trans():
             await self._user_repo.add_api_key_for_user(
                 user_id, encrypted_key, api_type, idem_id
             )
-            await self._producer.publish(user_api_added)
+        await self._producer.publish(user_api_added)
 
     async def login(self, email: str, password: str) -> str:
         async with self._uow.trans():

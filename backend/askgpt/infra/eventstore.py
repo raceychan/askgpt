@@ -42,7 +42,7 @@ def load_event(row_mapping: sa.RowMapping | dict[str, ty.Any]) -> IEvent:
 
 
 class EventStore(IEventStore):
-
+    # use uow to wrap the transaction
     def __init__(self, aiodb: AsyncDatabase):
         self._aiodb = aiodb
 

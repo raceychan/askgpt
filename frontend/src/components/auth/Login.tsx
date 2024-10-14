@@ -81,6 +81,10 @@ const LoginForm: React.FC = () => {
     setError(null);
     try {
       await loginMutation.mutateAsync({ email, password });
+      toast({
+        title: "Login Successful",
+        description: `Welcome Back`,
+      });
     } catch (error) {
       console.log(error);
       setError("Please check your credentials and try again.");
@@ -90,10 +94,6 @@ const LoginForm: React.FC = () => {
         variant: "destructive",
       });
     }
-    toast({
-      title: "Login Successful",
-      description: `Welcome Back`,
-    });
   };
 
   return (

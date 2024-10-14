@@ -140,7 +140,7 @@ class SessionActor(GPTBaseActor["SessionActor", model.ChatSession]):
         chunks = await client.complete(
             messages=self.chat_context + [message],
             model=completion_model,
-            options=options,  # type: ignore
+            options=options,
         )
 
         if isinstance(chunks, gptclient.openai_chat.ChatCompletion):
@@ -148,13 +148,13 @@ class SessionActor(GPTBaseActor["SessionActor", model.ChatSession]):
             yield answer
         else:
             answer = ""
-            async for resp in chunks:
-                for choice in resp.choices:
-                    content = choice.delta.content
-                    if not content:
-                        continue
-                    answer += content
-                    yield content
+            async for chunk in chunks:
+                if not chunk.choices:
+                    continue
+                choice = chunk.choices[0]
+                content = choice.delta.content or ""
+                answer += content
+                yield content
 
         events = [
             model.ChatMessageSent(

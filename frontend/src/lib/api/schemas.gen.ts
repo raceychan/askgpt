@@ -64,7 +64,8 @@ export const $ChatCompletionRequest = {
         role: {
             type: 'string',
             enum: ['system', 'user', 'assistant', 'function'],
-            title: 'Role'
+            title: 'Role',
+            default: 'user'
         },
         model: {
             type: 'string',
@@ -241,8 +242,7 @@ export const $ChatCompletionRequest = {
                     type: 'null'
                 }
             ],
-            title: 'Extra Headers',
-            default: {}
+            title: 'Extra Headers'
         },
         extra_query: {
             anyOf: [
@@ -253,8 +253,7 @@ export const $ChatCompletionRequest = {
                     type: 'null'
                 }
             ],
-            title: 'Extra Query',
-            default: {}
+            title: 'Extra Query'
         },
         extra_body: {
             anyOf: [
@@ -265,8 +264,7 @@ export const $ChatCompletionRequest = {
                     type: 'null'
                 }
             ],
-            title: 'Extra Body',
-            default: {}
+            title: 'Extra Body'
         },
         timeout: {
             anyOf: [
@@ -283,7 +281,7 @@ export const $ChatCompletionRequest = {
     },
     additionalProperties: false,
     type: 'object',
-    required: ['question', 'role'],
+    required: ['question'],
     title: 'ChatCompletionRequest',
     description: `    Creates a model response for the given chat conversation.
 

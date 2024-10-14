@@ -1,5 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
-import React from "react";
+import React, { useState, useRef, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Send, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -124,26 +124,40 @@ const ChatPage = () => {
     },
   });
 
+  const [streamingMessage, setStreamingMessage] = useState("");
+  const streamingMessageRef = useRef("");
+
   const chatMutation = useMutation({
     mutationFn: async (newMessage: string) => {
+      // axios in browser uses xhttprequests, which does not support SSE(stream response)
+      // so we need to use microsoft/fetch-event-source
+      throw new Error("Not implemented yet!");
       const resp = await GptService.chat({
         body: { question: newMessage, role: "user" },
         path: { session_id: chatId },
       });
 
-      // const stream = resp.data;
+      if (resp.error) {
+        throw new Error("Failed to send chat message");
+      }
 
-      // stream.on("data", (data) => {
-      //   console.log(data);
-      // });
+      const reader = resp.data.getReader();
+      const decoder = new TextDecoder();
 
-      // stream.on("end", () => {
-      //   console.log("stream done");
-      // });
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        const chunk = decoder.decode(value);
+        streamingMessageRef.current += chunk;
+        setStreamingMessage(streamingMessageRef.current);
+      }
     },
     onSuccess: () => {
       // Refetch the chat session to get the updated messages
       queryClient.invalidateQueries({ queryKey: ["chatSession", chatId] });
+      // Clear the streaming message
+      setStreamingMessage("");
+      streamingMessageRef.current = "";
     },
   });
 
@@ -172,6 +186,11 @@ const ChatPage = () => {
         <div className="h-full overflow-hidden p-4 pb-20">
           <ScrollArea className="h-[calc(100%-3rem)]">
             <MessageBox chatSession={chatSession} />
+            {streamingMessage && (
+              <div className="mt-4">
+                <strong>AI:</strong> {streamingMessage}
+              </div>
+            )}
           </ScrollArea>
         </div>
       )}

@@ -63,7 +63,7 @@ def test_user_add_key(user_actor: service.UserActor):
     api_type = "test"
     api_key = encrypt.encrypt_string("random").decode()
 
-    idem_id = encrypt.hash_string(api_type + api_key)
+    idem_id = encrypt.hash_string(api_type + api_key).hex()
     cmd = model.UserAPIKeyAdded(
         user_id=user_actor.entity_id,
         api_key=api_key,

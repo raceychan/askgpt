@@ -118,7 +118,7 @@ class ChatCompletionRequest(RequestBody):
     """
 
     question: str
-    role: ChatGPTRoles
+    role: ChatGPTRoles = "user"
     model: CompletionModels = "gpt-3.5-turbo"
     frequency_penalty: float | None = None
     logit_bias: dict[str, int] | None = None
@@ -134,9 +134,9 @@ class ChatCompletionRequest(RequestBody):
     tools: list[ty.Any] | None = None
     top_p: float | None = None
     user: str | None = None
-    extra_headers: ty.Mapping[str, str | ty.Literal[False]] | None = {}
-    extra_query: ty.Mapping[str, object] | None = {}
-    extra_body: dict[str, ty.Any] | None = {}
+    extra_headers: ty.Mapping[str, str | ty.Literal[False]] | None = None
+    extra_query: ty.Mapping[str, object] | None = None
+    extra_body: dict[str, ty.Any] | None = None
     timeout: float | None = 120  # TODO: preconfig ai client
 
     model_config = {
@@ -232,11 +232,21 @@ async def delete_session(service: Service, session_id: str, token: ParsedToken):
     return EntityDeleted
 
 
-@openai_router.post("/chat/{session_id}", dependencies=[Depends(throttle_user_request)])
+@openai_router.post(
+    "/chat/{session_id}",
+    dependencies=[Depends(throttle_user_request)],
+    response_class=StreamingResponse,
+    # responses={
+    #     200: {
+    #         "content": {"text/event-stream": {}},
+    #         "description": "Stream plain text using utf8 charset.",
+    #     }
+    # },
+)
 async def chat(
     service: Service, session_id: str, req: ChatCompletionRequest, token: ParsedToken
 ) -> StreamingResponse:
-    data = req.model_dump(exclude_unset=True)
+    data = req.model_dump(exclude_none=True)
     data.setdefault("user", token.sub)
 
     stream_ans = await service.chatcomplete(
@@ -247,4 +257,4 @@ async def chat(
         question=data.pop("question"),
         options=data,
     )
-    return StreamingResponse(stream_ans)  # type: ignore
+    return StreamingResponse(stream_ans, media_type="text/event-stream")

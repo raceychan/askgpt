@@ -46,6 +46,7 @@ class UserAPIKeySchema(TableBase):
     api_type = sa.Column("api_type", sa.String, index=True)
     api_key = sa.Column("api_key", sa.String, unique=False, index=True)
     is_active = sa.Column("is_active", sa.Boolean, default=True)
+    idem_id = sa.Column("idem_id", sa.String, nullable=False, unique=True)
 
 
 async def create_tables(aiodb: AsyncDatabase):
@@ -53,5 +54,3 @@ async def create_tables(aiodb: AsyncDatabase):
 
     async with aiodb.begin() as conn:
         await conn.run_sync(TableBase.metadata.create_all)
-
-

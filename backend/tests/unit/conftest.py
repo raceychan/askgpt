@@ -18,3 +18,5 @@ def user_info(test_defaults: UserDefaults):
 @pytest.fixture(scope="package")
 def user_created(test_defaults: UserDefaults):  # , user_info: model.UserInfo):
     return user.UserCreated(user_id=test_defaults.USER_ID)  # user_info=user_info)
+
+

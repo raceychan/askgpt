@@ -12,8 +12,8 @@ from askgpt.app.gpt.gptsystem import GPTSystem, SessionActor, SystemState, UserA
 from askgpt.domain.base import SupportedGPTs
 from askgpt.domain.config import SETTINGS_CONTEXT
 from askgpt.domain.interface import IEvent
-from askgpt.infra import gptclient, security
 from askgpt.helpers._log import logger
+from askgpt.infra import gptclient, security
 
 
 class GPTService:
@@ -23,7 +23,7 @@ class GPTService:
         encryptor: security.Encryptor,
         user_repo: auth_repo.UserRepository,
         session_repo: gpt_repo.SessionRepository,
-        producer: queue.MessageProducer[IEvent],
+        producer: queue.MessageProducer[IEvent],  # replace with event store
     ):
         self._service_state = SystemState.created
         self._system = system
@@ -78,7 +78,7 @@ class GPTService:
         role: params.ChatGPTRoles,
         question: str,
         options: dict[str, ty.Any],
-    ) -> ty.AsyncGenerator[str | None, None]:
+    ) -> ty.AsyncGenerator[str, None]:
         api_pool = await self.build_api_pool(user_id=user_id, api_type=gpt_type)
         async with api_pool.reserve_api_key() as api_key:
             client_factory = self._client_registry[gpt_type]

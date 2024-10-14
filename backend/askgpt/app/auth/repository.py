@@ -78,7 +78,7 @@ class UserRepository(IUserRepository):
         return load_userauth(user_data)
 
     async def add_api_key_for_user(
-        self, user_id: str, encrypted_api_key: str, api_type: str, idem_id: bytes
+        self, user_id: str, encrypted_api_key: str, api_type: str, idem_id: str
     ) -> None:
         stmt = sa.insert(UserAPIKeySchema).values(
             user_id=user_id,

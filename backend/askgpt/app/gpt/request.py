@@ -1,5 +1,6 @@
 import typing as ty
-from collections import deque
+
+# from collections import deque
 from contextlib import asynccontextmanager
 
 from askgpt.adapters import cache
@@ -43,7 +44,7 @@ class APIPool:
 
     async def load_keys(self, keys: ty.Sequence[str]):
         # BUG: should check length of api_pool before pushing
-        # else: 
+        # else:
         await self._cache.rpush(self._pool_key.key, *keys)
 
     @asynccontextmanager
