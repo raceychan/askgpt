@@ -49,6 +49,7 @@ class APIPool:
 
     @asynccontextmanager
     async def reserve_api_key(self):
+        # TODO: use redis transaction/lock
         await self.load_keys(self._api_keys)
         api_key = await self.acquire()
         try:

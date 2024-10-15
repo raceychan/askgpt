@@ -1,7 +1,6 @@
 import typing as ty
 
 from askgpt.adapters.cache import Cache
-from askgpt.app.actor import QueueBox as QueueBox
 from askgpt.app.auth.service import AuthService
 from askgpt.app.gpt.errors import (
     APIKeyNotProvidedError,
