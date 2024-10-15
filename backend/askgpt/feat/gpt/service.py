@@ -2,16 +2,16 @@ import typing as ty
 from contextlib import asynccontextmanager
 
 from askgpt.adapters import queue
-from askgpt.app.actor import QueueBox as QueueBox
-from askgpt.app.auth import repository as auth_repo
-from askgpt.app.gpt import errors, model, params
-from askgpt.app.gpt import repository as gpt_repo
-from askgpt.app.gpt import request
-from askgpt.app.gpt.errors import APIKeyNotProvidedError
-from askgpt.app.gpt.gptsystem import GPTSystem, SessionActor, SystemState, UserActor
 from askgpt.domain.base import SupportedGPTs
 from askgpt.domain.config import SETTINGS_CONTEXT
 from askgpt.domain.interface import IEvent
+from askgpt.feat.actor import QueueBox as QueueBox
+from askgpt.feat.auth import repository as auth_repo
+from askgpt.feat.gpt import errors, model, params
+from askgpt.feat.gpt import repository as gpt_repo
+from askgpt.feat.gpt import request
+from askgpt.feat.gpt.errors import APIKeyNotProvidedError
+from askgpt.feat.gpt.gptsystem import GPTSystem, SessionActor, SystemState, UserActor
 from askgpt.helpers._log import logger
 from askgpt.infra import gptclient, security
 
@@ -21,7 +21,7 @@ class GPTService:
         self,
         system: GPTSystem,
         encryptor: security.Encryptor,
-        user_repo: auth_repo.UserRepository,
+        user_repo: auth_repo.AuthRepository,
         session_repo: gpt_repo.SessionRepository,
         producer: queue.MessageProducer[IEvent],  # replace with event store
     ):

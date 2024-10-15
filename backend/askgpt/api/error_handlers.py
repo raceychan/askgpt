@@ -5,18 +5,14 @@ from fastapi.responses import JSONResponse
 from starlette import status
 from starlette.responses import Response
 
-from askgpt.app.api.errors import (
-    EntityNotFoundError,
-    GeneralWebError,
-    QuotaExceededError,
-)
-from askgpt.app.api.xheaders import XHeaders
-from askgpt.app.auth.errors import (
+from askgpt.api.errors import EntityNotFoundError, GeneralWebError, QuotaExceededError
+from askgpt.api.xheaders import XHeaders
+from askgpt.feat.auth.errors import (
     AuthenticationError,
     UserAlreadyExistError,
     UserNotFoundError,
 )
-from askgpt.app.gpt.errors import (
+from askgpt.feat.gpt.errors import (
     APIKeyNotAvailableError,
     APIKeyNotProvidedError,
     OrphanSessionError,

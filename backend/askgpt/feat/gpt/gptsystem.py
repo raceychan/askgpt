@@ -4,12 +4,12 @@ from functools import cached_property, singledispatchmethod
 
 from askgpt.adapters.cache import Cache, KeySpace
 from askgpt.adapters.queue import MessageProducer
-from askgpt.app.actor import BoxFactory, EntityActor, QueueBox, StatefulActor
-from askgpt.app.auth import model as auth_model
-from askgpt.app.gpt import errors, model
 from askgpt.domain.config import Settings
 from askgpt.domain.interface import ActorRef, ICommand
 from askgpt.domain.model.base import Command, Event, Message
+from askgpt.feat.actor import BoxFactory, EntityActor, QueueBox, StatefulActor
+from askgpt.feat.auth import model as auth_model
+from askgpt.feat.gpt import errors, model
 from askgpt.infra import eventstore, gptclient
 
 
@@ -140,7 +140,7 @@ class SessionActor(GPTBaseActor["SessionActor", model.ChatSession]):
         chunks = await client.complete(
             messages=self.chat_context + [message],
             model=completion_model,
-            options=options,
+            options=options,  # type: ignore
         )
 
         if isinstance(chunks, gptclient.openai_chat.ChatCompletion):
@@ -279,7 +279,8 @@ class GPTSystem(GPTBaseActor[UserActor, None]):
         self._system_state = state
 
     async def publish(self, event: Event):
-        await self._event_store.add(event)
+        async with self._event_store._uow.trans():
+            await self._event_store.add(event)
 
     async def create_user(self, command: model.CreateUser) -> "UserActor":
         event = model.UserCreated(user_id=command.entity_id)
@@ -289,12 +290,14 @@ class GPTSystem(GPTBaseActor[UserActor, None]):
         return user_actor
 
     async def list_events(self, entity_id: str):
-        return await self._event_store.get(entity_id=entity_id)
+        async with self._event_store._uow.trans():
+            return await self._event_store.get(entity_id=entity_id)
 
     async def rebuild_user(self, user_id: str) -> "UserActor":
-        events = await self.list_events(user_id)
-        if not events:
-            raise errors.UserNotRegisteredError(f"No events for user: {user_id}")
+        async with self._event_store._uow.trans():
+            events = await self.list_events(user_id)
+            if not events:
+                raise errors.UserNotRegisteredError(f"No events for user: {user_id}")
 
         created = events.pop(0)
         user_actor = UserActor.apply(created)

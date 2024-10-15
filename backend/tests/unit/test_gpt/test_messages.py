@@ -1,5 +1,5 @@
 import pytest
-from askgpt.app.gpt import model
+from askgpt.feat.gpt import model
 from tests.conftest import dft
 
 

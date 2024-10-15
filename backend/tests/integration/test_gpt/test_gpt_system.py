@@ -1,9 +1,9 @@
 import pytest
 from tests.conftest import dft
 
-from askgpt.app.actor import MailBox
-from askgpt.app.gpt import gptsystem, model, service
 from askgpt.domain import config
+from askgpt.feat.actor import MailBox
+from askgpt.feat.gpt import gptsystem, model, service
 from askgpt.infra.eventstore import EventStore
 
 
@@ -56,17 +56,17 @@ async def test_create_user_from_system(
     eventstore: EventStore,
     create_user: model.CreateUser,
 ):
-    user_events = await eventstore.get(create_user.entity_id)
-    command = model.CreateUser(user_id=dft.USER_ID)
+    async with eventstore._uow.trans():
+        user_events = await eventstore.get(create_user.entity_id)
+        command = model.CreateUser(user_id=dft.USER_ID)
+        await gpt_system.receive(command)
 
-    await gpt_system.receive(command)
+        user = gpt_system.get_child(command.entity_id)
+        assert isinstance(user, service.UserActor)
 
-    user = gpt_system.get_child(command.entity_id)
-    assert isinstance(user, service.UserActor)
-
-    user_events = await eventstore.get(create_user.entity_id)
-    assert len(user_events) == 1
-    assert isinstance(user_events[0], model.UserCreated)
+        user_events = await eventstore.get(create_user.entity_id)
+        assert len(user_events) == 1
+        assert isinstance(user_events[0], model.UserCreated)
 
 
 async def test_system_get_user_actor(gpt_system: service.GPTSystem):
@@ -96,9 +96,10 @@ async def test_create_session_by_command(
     session = user.select_child(create_session.entity_id)
     assert isinstance(session, service.SessionActor)
 
-    user_events = await eventstore.get(user.entity_id)
-    session_events = await eventstore.get(session.entity_id)
-    assert isinstance(user_events[-1], model.SessionCreated)
+    async with eventstore._uow.trans():
+        user_events = await eventstore.get(user.entity_id)
+        session_events = await eventstore.get(session.entity_id)
+        assert isinstance(user_events[-1], model.SessionCreated)
 
 
 async def test_create_user_by_event(user_created: model.UserCreated):
@@ -124,22 +125,23 @@ async def test_event_unduplicate(
     user_created: model.UserCreated,
     session_created: model.SessionCreated,
 ):
-    system_events = await eventstore.get(system_started.entity_id)
-    system_events_set = set(system_events)
-    assert len(system_events) == len(system_events_set)
+    async with eventstore._uow.trans():
+        system_events = await eventstore.get(system_started.entity_id)
+        system_events_set = set(system_events)
+        assert len(system_events) == len(system_events_set)
 
-    user_events = await eventstore.get(user_created.entity_id)
-    user_events_set = set(user_events)
-    assert len(user_events) == len(user_events_set)
+        user_events = await eventstore.get(user_created.entity_id)
+        user_events_set = set(user_events)
+        assert len(user_events) == len(user_events_set)
 
-    session_events = await eventstore.get(session_created.entity_id)
-    session_events_set = set(session_events)
-    assert len(session_events) == len(session_events_set)
+        session_events = await eventstore.get(session_created.entity_id)
+        session_events_set = set(session_events)
+        assert len(session_events) == len(session_events_set)
 
-    all_events = await eventstore.list_all()
+        all_events = await eventstore.list_all()
 
-    all_events_set = set(all_events)
-    assert (
-        all_events_set - system_events_set - user_events_set - session_events_set
-        == set()
-    )
+        all_events_set = set(all_events)
+        assert (
+            all_events_set - system_events_set - user_events_set - session_events_set
+            == set()
+        )

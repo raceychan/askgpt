@@ -3,12 +3,12 @@ import typing as ty
 
 import sqlalchemy as sa
 
-from askgpt.adapters.database import AsyncDatabase
 from askgpt.adapters.queue import MessageProducer
 from askgpt.domain.config import UTC_TZ
 from askgpt.domain.interface import IEvent, IEventStore
 from askgpt.domain.model.base import Event, json_dumps, json_loads
 from askgpt.infra.schema import EventSchema
+from askgpt.infra.uow import UnitOfWork
 
 table_event_mapping = {
     "id": "event_id",
@@ -43,34 +43,31 @@ def load_event(row_mapping: sa.RowMapping | dict[str, ty.Any]) -> IEvent:
 
 class EventStore(IEventStore):
     # use uow to wrap the transaction
-    def __init__(self, aiodb: AsyncDatabase):
-        self._aiodb = aiodb
+    def __init__(self, uow: UnitOfWork):
+        self._uow = uow
 
     async def add(self, event: IEvent) -> None:
         value = dump_event(event)
         stmt = sa.insert(EventSchema).values(value)
-
-        async with self._aiodb.begin() as conn:
-            await conn.execute(stmt)
+        await self._uow.execute(stmt)
 
     async def add_all(self, events: list[IEvent]) -> None:
         values = [dump_event(event) for event in events]
-        sa.insert(EventSchema).values(values)
+        stmt = sa.insert(EventSchema).values(values)
+        await self._uow.execute(stmt)
 
     async def get(self, entity_id: str) -> list[IEvent]:
         stmt = sa.select(EventSchema).where(EventSchema.entity_id == entity_id)
-        async with self._aiodb.begin() as conn:
-            cursor = await conn.execute(stmt)
-            rows = cursor.fetchall()
-            events = [load_event(row._mapping) for row in rows]  # type: ignore
+        cursor = await self._uow.execute(stmt)
+        rows = cursor.fetchall()
+        events = [load_event(row._mapping) for row in rows]
         return events
 
     async def list_all(self) -> list[IEvent]:
         stmt = sa.select(EventSchema)
-        async with self._aiodb.begin() as conn:
-            cursor = await conn.execute(stmt)
-            rows = cursor.fetchall()
-            events = [load_event(row._mapping) for row in rows]  # type: ignore
+        cursor = await self._uow.execute(stmt)
+        rows = cursor.fetchall()
+        events = [load_event(row._mapping) for row in rows]
         return events
 
     async def remove(self, entity_id: str) -> None:

@@ -1,7 +1,7 @@
 import pytest
 from tests.conftest import UserDefaults
 
-from askgpt.app.auth.model import UserAuth
+from askgpt.feat.auth.model import UserAuth
 from askgpt.domain.model.base import utc_now
 
 

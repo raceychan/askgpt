@@ -4,15 +4,14 @@ from fastapi import APIRouter, Depends
 from fastapi.responses import RedirectResponse, StreamingResponse
 from starlette import status
 
-from askgpt.app.api.dependencies import ParsedToken, throttle_user_request
-from askgpt.app.api.model import OK, EntityDeleted, RequestBody, Response, ResponseData
-from askgpt.app.factory import GPTService, gpt_service_factory
-from askgpt.app.gpt.model import ChatSession
-from askgpt.app.gpt.params import ChatGPTRoles, CompletionModels
+from askgpt.api.dependencies import ParsedToken, throttle_user_request
+from askgpt.api.model import OK, EntityDeleted, RequestBody, Response, ResponseData
+from askgpt.feat.factory import GPTService, gpt_service_factory
+from askgpt.feat.gpt.model import ChatSession
+from askgpt.feat.gpt.params import ChatGPTRoles, CompletionModels
 
 gpt_router = APIRouter(prefix="/gpt")
 openai_router = APIRouter(prefix="/openai")
-
 
 Service = ty.Annotated[GPTService, Depends(gpt_service_factory)]
 
@@ -236,12 +235,6 @@ async def delete_session(service: Service, session_id: str, token: ParsedToken):
     "/chat/{session_id}",
     dependencies=[Depends(throttle_user_request)],
     response_class=StreamingResponse,
-    # responses={
-    #     200: {
-    #         "content": {"text/event-stream": {}},
-    #         "description": "Stream plain text using utf8 charset.",
-    #     }
-    # },
 )
 async def chat(
     service: Service, session_id: str, req: ChatCompletionRequest, token: ParsedToken
@@ -258,3 +251,6 @@ async def chat(
         options=data,
     )
     return StreamingResponse(stream_ans, media_type="text/event-stream")
+
+
+gpt_router.include_router(openai_router)

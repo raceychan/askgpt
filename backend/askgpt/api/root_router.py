@@ -2,9 +2,9 @@ from fastapi import APIRouter
 from fastapi.responses import Response
 from fastapi.routing import APIRoute
 
-from askgpt.app.api.routers import auth, gpt, user
-
-gpt.gpt_router.include_router(gpt.openai_router)
+from askgpt.feat.auth import route as auth_route
+from askgpt.feat.gpt import route as gpt_route
+from askgpt.feat.user import route as user_route
 
 
 def route_id_factory(route: APIRoute):
@@ -20,7 +20,6 @@ health_router.get("/")(health_check)
 
 api_router = APIRouter()
 api_router.include_router(health_router, tags=["health"])
-api_router.include_router(auth.auth_router, tags=["auth"])
-api_router.include_router(user.user_router, tags=["user"])
-api_router.include_router(gpt.gpt_router, tags=["gpt"])
-# api_router.include_router(llm.llm_router, tags=["llm"])
+api_router.include_router(auth_route.auth_router, tags=["auth"])
+api_router.include_router(user_route.user_router, tags=["user"])
+api_router.include_router(gpt_route.gpt_router, tags=["gpt"])

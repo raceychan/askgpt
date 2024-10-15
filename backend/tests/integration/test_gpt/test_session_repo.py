@@ -1,6 +1,6 @@
 from tests.conftest import UserDefaults
 
-from askgpt.app.gpt import model, repository
+from askgpt.feat.gpt import model, repository
 from askgpt.infra.uow import UnitOfWork
 
 

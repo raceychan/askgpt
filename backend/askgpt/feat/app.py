@@ -4,14 +4,14 @@ from contextlib import asynccontextmanager
 from fastapi import APIRouter, FastAPI
 from starlette.types import Lifespan
 
-from askgpt.app.api.error_handlers import add_exception_handlers, handler_registry
-from askgpt.app.api.middleware import add_middlewares
-from askgpt.app.api.routers import api_router, health_check, route_id_factory
+from askgpt.api.error_handlers import add_exception_handlers, handler_registry
+from askgpt.api.middleware import add_middlewares
+from askgpt.api.root_router import api_router, route_id_factory
 from askgpt.domain.config import SETTINGS_CONTEXT, Settings, detect_settings
+from askgpt.helpers._log import logger, prod_sink, update_sink
 from askgpt.helpers.error_registry import error_route_factory
 from askgpt.helpers.time import timeout
 from askgpt.infra import schema
-from askgpt.helpers._log import logger, prod_sink, update_sink
 from askgpt.infra.locator import adapter_locator, make_database
 
 

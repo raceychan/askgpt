@@ -2,7 +2,7 @@ import pytest
 from fastapi import FastAPI
 from starlette.testclient import TestClient
 
-from askgpt.app.app import app_factory
+from askgpt.feat.app import app_factory
 from askgpt.domain.config import Settings
 
 

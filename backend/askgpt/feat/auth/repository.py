@@ -2,7 +2,7 @@ import typing as ty
 
 import sqlalchemy as sa
 
-from askgpt.app.auth.model import IUserRepository, UserAuth, UserCredential
+from askgpt.feat.auth.model import UserAuth, UserCredential
 from askgpt.infra.schema import UserAPIKeySchema, UserSchema
 from askgpt.infra.uow import UnitOfWork
 
@@ -35,7 +35,7 @@ def load_userauth(user_data: dict[str, ty.Any]) -> UserAuth:
     )
 
 
-class UserRepository(IUserRepository):
+class AuthRepository:
     def __init__(self, uow: UnitOfWork):
         self._uow = uow
 
@@ -55,7 +55,7 @@ class UserRepository(IUserRepository):
         if not row:
             return None
 
-        return load_userauth(dict(row._mapping))  # type: ignore
+        return load_userauth(dict(row._mapping))
 
     async def remove(self, entity_id: str) -> None:
         stmt = (
@@ -97,6 +97,5 @@ class UserRepository(IUserRepository):
 
         cursor = await self._uow.execute(stmt)
         res = cursor.fetchall()
-
         encrypted_keys = [row.api_key for row in res]
         return encrypted_keys

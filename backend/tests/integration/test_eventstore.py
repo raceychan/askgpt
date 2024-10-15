@@ -1,8 +1,8 @@
 import pytest
 from tests.conftest import dft
 
-from askgpt.app.gpt import model
 from askgpt.domain.config import Settings
+from askgpt.feat.gpt import model
 from askgpt.infra.eventstore import EventStore, dump_event, load_event
 
 
@@ -23,20 +23,22 @@ def test_dump_event_does_not_lose_timestamp(user_created: model.UserCreated):
 
 
 async def test_insert_event(eventstore: EventStore, user_created: model.UserCreated):
-    await eventstore.add(user_created)
-    events = await eventstore.get(user_created.entity_id)
-    e = events[0]
+    async with eventstore._uow.trans():
+        await eventstore.add(user_created)
+        events = await eventstore.get(user_created.entity_id)
+        e = events[0]
 
     assert e.event_id == user_created.event_id
     assert hash(e) == hash(user_created)
 
 
 async def test_list_event(eventstore: EventStore, user_created: model.UserCreated):
-    es = await eventstore.list_all()
-    e = es[0]
-    assert e.event_type == "user_created"
-    assert e.event_id == user_created.event_id
+    async with eventstore._uow.trans():
+        es = await eventstore.list_all()
+        e = es[0]
+        assert e.event_type == "user_created"
+        assert e.event_id == user_created.event_id
 
-    assert e.timestamp == user_created.timestamp
+        assert e.timestamp == user_created.timestamp
 
-    assert hash(e) == hash(user_created)
+        assert hash(e) == hash(user_created)

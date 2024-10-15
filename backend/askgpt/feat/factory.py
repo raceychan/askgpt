@@ -1,9 +1,11 @@
-from askgpt.app.api.throttler import UserRequestThrottler
-from askgpt.app.auth.repository import UserRepository
-from askgpt.app.auth.service import AuthService, TokenRegistry
-from askgpt.app.gpt.repository import SessionRepository
-from askgpt.app.gpt.service import GPTService, GPTSystem, QueueBox
+from askgpt.api.throttler import UserRequestThrottler
 from askgpt.domain.config import SETTINGS_CONTEXT, Settings
+from askgpt.feat.auth.repository import AuthRepository
+from askgpt.feat.auth.service import AuthService, TokenRegistry
+from askgpt.feat.gpt.repository import SessionRepository
+from askgpt.feat.gpt.service import GPTService, GPTSystem, QueueBox
+from askgpt.feat.user.repository import UserRepository
+from askgpt.feat.user.service import UserService
 from askgpt.helpers.functions import simplecache
 from askgpt.infra.eventstore import EventStore, OutBoxProducer
 from askgpt.infra.factory import encrypt_facotry
@@ -32,7 +34,7 @@ def token_registry_factory():
 
 @simplecache
 def event_store_factory():
-    return EventStore(aiodb=adapter_locator.aiodb)
+    return EventStore(uow=uow_factory())
 
 
 @simplecache
@@ -46,13 +48,20 @@ def uow_factory() -> UnitOfWork:
     return uow
 
 
+def user_service_factory():
+    return UserService(
+        user_repo=UserRepository(uow_factory()),
+        event_store=event_store_factory(),
+    )
+
+
 def auth_service_factory():
     settings: Settings = SETTINGS_CONTEXT.get()
     auth_service = AuthService(
-        user_repo=UserRepository(uow_factory()),
+        auth_repo=AuthRepository(uow_factory()),
         token_registry=token_registry_factory(),
         encryptor=encrypt_facotry(),
-        producer=outbox_producer_factory(),
+        eventstore=event_store_factory(),
         security_settings=settings.security,
     )
     return auth_service
@@ -70,7 +79,7 @@ def gpt_service_factory():
     )
 
     session_repo = SessionRepository(uow_factory())
-    user_repo = UserRepository(uow_factory())
+    user_repo = AuthRepository(uow_factory())
     encryptor = encrypt_facotry()
     producer = outbox_producer_factory()
     service = GPTService(

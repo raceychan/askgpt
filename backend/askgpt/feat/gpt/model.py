@@ -3,8 +3,7 @@ from collections import defaultdict
 from functools import singledispatchmethod
 
 from pydantic import AwareDatetime
-from askgpt.app.auth.model import UserAPIKeyAdded, UserSignedUp
-from askgpt.app.gpt.params import ChatGPTRoles, CompletionModels
+
 from askgpt.domain.base import SupportedGPTs
 from askgpt.domain.interface import ICommand, IRepository
 from askgpt.domain.model.base import (
@@ -17,7 +16,10 @@ from askgpt.domain.model.base import (
     computed_field,
 )
 from askgpt.domain.model.base import uuid_factory as uuid_factory
-from askgpt.domain.model.user import CreateUser, UserCreated
+from askgpt.feat.auth.model import UserAPIKeyAdded, UserSignedUp
+from askgpt.feat.gpt.params import ChatGPTRoles, CompletionModels
+
+# from askgpt.domain.model.user import CreateUser, UserCreated
 from askgpt.helpers.time import utc_now
 
 DEFAULT_SESSION_NAME = "New Session"
@@ -154,6 +156,14 @@ class ChatSession(Entity):
     def _(self, event: SessionRenamed) -> ty.Self:
         self.session_name = event.new_name
         return self
+
+
+class CreateUser(Command):
+    entity_id: str = Field(alias="user_id")
+
+
+class UserCreated(Event):
+    entity_id: str = Field(alias="user_id")
 
 
 class User(Entity):

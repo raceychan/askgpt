@@ -1,7 +1,7 @@
 import pytest
 from tests.conftest import UserDefaults
 
-from askgpt.domain.model import user
+from askgpt.feat.gpt.model import UserCreated
 from askgpt.infra import security
 
 
@@ -17,6 +17,4 @@ def user_info(test_defaults: UserDefaults):
 
 @pytest.fixture(scope="package")
 def user_created(test_defaults: UserDefaults):  # , user_info: model.UserInfo):
-    return user.UserCreated(user_id=test_defaults.USER_ID)  # user_info=user_info)
-
-
+    return UserCreated(user_id=test_defaults.USER_ID)

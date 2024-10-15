@@ -48,6 +48,7 @@ def json_loads(obj: str):
     return orjson.loads(obj.encode())
 
 
+# TODO: this should just be a dataclass
 class DomainModel(BaseModel):
     "Base Model for domain objects, provide helper methods for serialization"
 

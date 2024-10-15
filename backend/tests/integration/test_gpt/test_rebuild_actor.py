@@ -5,9 +5,9 @@ from tests.conftest import dft
 
 from askgpt.adapters.cache import Cache, MemoryCache
 from askgpt.adapters.queue import BaseProducer, QueueBroker
-from askgpt.app.actor import QueueBox
-from askgpt.app.gpt import model, service
 from askgpt.domain import config
+from askgpt.feat.actor import QueueBox
+from askgpt.feat.gpt import model, service
 from askgpt.infra import factory
 from askgpt.infra.eventstore import EventStore
 from askgpt.infra.gptclient import OpenAIClient
@@ -113,7 +113,8 @@ async def test_ask_question(
 
 
 async def test_session_self_rebuild(eventstore: EventStore):
-    events = await eventstore.get(dft.SESSION_ID)
+    async with eventstore._uow.trans():
+        events = await eventstore.get(dft.SESSION_ID)
     created = model.SessionCreated(
         user_id=dft.USER_ID,
         session_id=dft.SESSION_ID,
@@ -152,7 +153,8 @@ async def test_user_rebuild_session(user_actor: service.UserActor):
 
 
 async def test_user_self_rebuild(eventstore: EventStore):
-    user_events = await eventstore.get(dft.USER_ID)
+    async with eventstore._uow.trans():
+        user_events = await eventstore.get(dft.USER_ID)
     user_created = user_events[0]
     user_actor = service.UserActor.apply(user_created)
     user_actor.rebuild(user_events[1:])

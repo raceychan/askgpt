@@ -43,6 +43,9 @@ UTC_TZ = datetime.UTC
 
 
 def detect_settings(read_order: tuple[str, ...] = SETTINGS_READ_ORDER) -> "Settings":
+    """
+    TODO: 1. let env variable override the file variable
+    """
     fileutil = FileUtil.from_cwd()
     work_dir = pathlib.Path.cwd()
     if (f := os.environ.get("SETTING_FILE", None)) is not None:
@@ -296,6 +299,16 @@ class Settings(SettingsBase):
     @classmethod
     @simplecache
     def from_file(cls, filename: str | pathlib.Path) -> ty.Self:
+        # TODO: let env variable override the file variable
+        """
+        write a function that does this:
+        given a dict, for every key, if the value is not a dict, return the key
+        else
+        for each key in its value, concate the parent key + "separator" + current key
+        recursively apply the same logic to the nested dict,
+        if os.get(new_key) is not null, override the value in config_data
+        """
+
         fileutil = FileUtil.from_cwd()
         config_data = fileutil.read_file(filename)
         config_data["FILE_NAME"] = str(filename)

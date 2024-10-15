@@ -5,7 +5,6 @@ from functools import singledispatchmethod
 
 from pydantic import field_serializer
 
-from askgpt.domain.interface import IRepository
 from askgpt.domain.model.base import (
     Command,
     EmailStr,
@@ -16,6 +15,36 @@ from askgpt.domain.model.base import (
     utc_now,
 )
 from askgpt.infra import security
+
+
+class UserRoles(enum.StrEnum):
+    # TODO: create corresponding privilages
+    admin = enum.auto()
+    user = enum.auto()
+
+
+class UserLoggedIn(Event):
+    entity_id: str = Field(alias="user_id")
+    last_login: datetime
+
+
+class UserPromotedAdmin(Event):
+    entity_id: str = Field(alias="user_id")
+    is_admin: bool
+
+
+class UserAPIKeyAdded(Event):
+    entity_id: str = Field(alias="user_id")
+    api_key: str
+    api_type: str
+    idem_id: str
+
+
+class AccessPayload(ValueObject):
+    role: UserRoles
+
+
+class AccessToken(security.JWTBase, AccessPayload): ...
 
 
 class UserCredential(ValueObject):
@@ -33,25 +62,9 @@ class UserCredential(ValueObject):
         return security.verify_password(password.encode(), self.hash_password)
 
 
-class UserLoggedIn(Event):
-    entity_id: str = Field(alias="user_id")
-    last_login: datetime
-
-
 class UserDeactivated(Event):
     entity_id: str = Field(alias="user_id")
     is_active: bool = False
-
-
-class UserPromotedAdmin(Event):
-    entity_id: str = Field(alias="user_id")
-    is_admin: bool
-
-
-class UserRoles(enum.StrEnum):
-    # TODO: create corresponding privilages
-    admin = enum.auto()
-    user = enum.auto()
 
 
 class UserSignedUp(Event):
@@ -62,13 +75,6 @@ class UserSignedUp(Event):
     @field_serializer("last_login")
     def serialize_last_login(self, last_login: datetime) -> str:
         return last_login.isoformat()
-
-
-class UserAPIKeyAdded(Event):
-    entity_id: str = Field(alias="user_id")
-    api_key: str
-    api_type: str
-    idem_id: str
 
 
 class UserAuth(Entity):
@@ -112,24 +118,3 @@ class UserAuth(Entity):
     def _(self, event: UserDeactivated) -> ty.Self:
         self.deactivate()
         return self
-
-
-class IUserRepository(IRepository[UserAuth]):
-    async def add(self, entity: UserAuth) -> None: ...
-
-    async def update(self, entity: UserAuth) -> None: ...
-
-    async def get(self, entity_id: str) -> UserAuth | None: ...
-
-    async def remove(self, entity_id: str) -> None: ...
-
-    async def list_all(self) -> list[UserAuth]: ...
-
-    async def search_user_by_email(self, useremail: str) -> UserAuth | None: ...
-
-
-class AccessPayload(ValueObject):
-    role: UserRoles
-
-
-class AccessToken(security.JWTBase, AccessPayload): ...

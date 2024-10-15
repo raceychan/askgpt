@@ -2,11 +2,12 @@ import pytest
 from tests.conftest import UserDefaults
 
 from askgpt.adapters.queue import MessageProducer
-from askgpt.app.auth.repository import UserRepository
-from askgpt.app.auth.service import AuthService
-from askgpt.app.gpt.repository import SessionRepository
-from askgpt.app.gpt.service import GPTService, GPTSystem, SystemState
 from askgpt.domain.interface import IEvent
+from askgpt.feat.auth.repository import AuthRepository
+from askgpt.feat.auth.service import AuthService
+from askgpt.feat.gpt.repository import SessionRepository
+from askgpt.feat.gpt.service import GPTService, GPTSystem, SystemState
+from askgpt.feat.user.service import UserService
 from askgpt.infra.security import Encryptor
 from askgpt.infra.uow import UnitOfWork
 
@@ -20,7 +21,7 @@ async def gpt_service(
     producer: MessageProducer[IEvent],
 ):
 
-    user_repo = UserRepository(uow)
+    user_repo = AuthRepository(uow)
     service = GPTService(
         system=gpt_system,
         encryptor=encryptor,
@@ -49,6 +50,7 @@ async def test_list_created_session(
     test_defaults: UserDefaults,
     auth_service: AuthService,
     gpt_service: GPTService,
+    user_service: UserService,
     uow: UnitOfWork,
 ):
     """
@@ -62,7 +64,7 @@ async def test_list_created_session(
         email=test_defaults.USER_EMAIL,
         password=test_defaults.USER_PASSWORD,
     )
-    user = await auth_service.find_user(test_defaults.USER_EMAIL)
+    user = await user_service.find_user(test_defaults.USER_EMAIL)
     assert user
     user_id = user.entity_id
 

@@ -2,9 +2,9 @@ import pytest
 
 from askgpt.adapters.cache import MemoryCache
 from askgpt.adapters.queue import MessageProducer
-from askgpt.app.actor import QueueBox
-from askgpt.app.gpt.repository import SessionRepository
-from askgpt.app.gpt.service import GPTSystem
+from askgpt.feat.actor import QueueBox
+from askgpt.feat.gpt.repository import SessionRepository
+from askgpt.feat.gpt.service import GPTSystem
 from askgpt.domain import config
 from askgpt.infra.eventstore import EventStore
 from askgpt.infra.uow import UnitOfWork

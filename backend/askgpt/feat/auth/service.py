@@ -1,12 +1,30 @@
 from datetime import datetime, timedelta
 
-from askgpt.adapters import queue
 from askgpt.adapters.cache import Cache, KeySpace
-from askgpt.app.auth import errors, model, repository
 from askgpt.domain.config import Settings
-from askgpt.domain.interface import IEvent
+
+# from askgpt.domain.interface import IEvent
 from askgpt.domain.model.base import utc_now, uuid_factory
-from askgpt.infra import security, uow
+from askgpt.feat.auth.errors import (
+    InvalidPasswordError,
+    UserAlreadyExistError,
+    UserInactiveError,
+    UserNotFoundError,
+)
+from askgpt.feat.auth.model import (
+    AccessToken,
+    UserAPIKeyAdded,
+    UserAuth,
+    UserCredential,
+    UserDeactivated,
+    UserRoles,
+    UserSignedUp,
+)
+from askgpt.feat.auth.repository import AuthRepository
+from askgpt.infra import security
+from askgpt.infra.eventstore import EventStore
+
+# from askgpt.adapters import queue
 
 
 class TokenRegistry:
@@ -32,29 +50,28 @@ class TokenRegistry:
 
 
 class AuthService:
-
     def __init__(
         self,
-        user_repo: repository.UserRepository,
+        auth_repo: AuthRepository,
         token_registry: TokenRegistry,
         encryptor: security.Encryptor,
-        producer: queue.MessageProducer[IEvent],
+        eventstore: EventStore,
         security_settings: Settings.Security,
     ):
-        self._uow = user_repo.uow
-        self._user_repo = user_repo
+        self._uow = auth_repo.uow
+        self._user_repo = auth_repo
         self._token_registry = token_registry
         self._encryptor = encryptor
-        self._producer = producer
+        self._eventstore = eventstore
         self._security_settings = security_settings
 
-    def _create_access_token(self, user_id: str, user_role: model.UserRoles) -> str:
+    def _create_access_token(self, user_id: str, user_role: UserRoles) -> str:
         # TODO: create a separate infra <TokenEncrypt> for this
         now_ = utc_now()
         exp = now_ + timedelta(
             minutes=self._security_settings.ACCESS_TOKEN_EXPIRE_MINUTES
         )
-        token = model.AccessToken(
+        token = AccessToken(
             sub=user_id,
             exp=exp,
             nbf=now_,
@@ -64,42 +81,26 @@ class AuthService:
 
         return self._encryptor.encrypt_jwt(token)
 
-    async def find_user(self, email: str) -> model.UserAuth | None:
-        async with self._uow.trans():
-            user_or_none = await self._user_repo.search_user_by_email(email)
-        return user_or_none
-
     async def signup_user(self, user_name: str, email: str, password: str) -> None:
-        user = await self.find_user(email)
-        if user is not None:
-            raise errors.UserAlreadyExistError(email=email)
+        async with self._uow.trans():
+            user = await self._user_repo.search_user_by_email(email)
+            if user is not None:
+                raise UserAlreadyExistError(email=email)
 
         hash_password = security.hash_password(password.encode())
-        user_info = model.UserCredential(
+        user_info = UserCredential(
             user_name=user_name, user_email=email, hash_password=hash_password
         )
-        user_signed_up = model.UserSignedUp(
+        user_signed_up = UserSignedUp(
             user_id=uuid_factory(),
             credential=user_info,
             last_login=datetime.utcnow(),
         )
-        user_auth = model.UserAuth.apply(user_signed_up)
+        user_auth = UserAuth.apply(user_signed_up)
 
         async with self._uow.trans():
-            # TODO, persist event to eventstore along with user_auth, in a transaction.
             await self._user_repo.add(user_auth)
-
-        await self._producer.publish(user_signed_up)
-
-    async def deactivate_user(self, user_id: str) -> None:
-        async with self._uow.trans():
-            user = await self._user_repo.get(user_id)
-            if user is None:
-                raise errors.UserNotFoundError(user_id=user_id)
-            e = model.UserDeactivated(user_id=user_id)
-            user.apply(e)
-            await self._user_repo.remove(user.entity_id)
-            await self._producer.publish(e)
+            await self._eventstore.add(user_signed_up)
 
     async def add_api_key(self, user_id: str, api_key: str, api_type: str) -> None:
         """
@@ -112,55 +113,55 @@ class AuthService:
         async with self._uow.trans():
             user = await self._user_repo.get(user_id)
             if user is None:
-                raise errors.UserNotFoundError(user_id=user_id)
+                raise UserNotFoundError(user_id=user_id)
 
         encrypted_key = self._encryptor.encrypt_string(api_key).decode()
         idem_id = self._encryptor.hash_string(api_type + api_key).hex()
-        user_api_added = model.UserAPIKeyAdded(
+        user_api_added = UserAPIKeyAdded(
             user_id=user_id,
             api_key=encrypted_key,
             api_type=api_type,
             idem_id=idem_id,
         )
 
-        # raise NotImplementedError(
-        #     "would need to implement outbox publisher first(let publisher use uow)"
-        #     "also sqlite can't handle concurrent write, need to switch to other db"
-        # )
-        # TODO: implement model selection in frontend
-
         async with self._uow.trans():
             await self._user_repo.add_api_key_for_user(
                 user_id, encrypted_key, api_type, idem_id
             )
-        await self._producer.publish(user_api_added)
+            await self._eventstore.add(user_api_added)
 
     async def login(self, email: str, password: str) -> str:
         async with self._uow.trans():
             user = await self._user_repo.search_user_by_email(email)
 
         if user is None:
-            raise errors.UserNotFoundError(user_id=email)
+            raise UserNotFoundError(user_id=email)
 
         if not user.credential.verify_password(password):
-            raise errors.InvalidPasswordError("Invalid password")
+            raise InvalidPasswordError("Invalid password")
 
         if not user.is_active:
-            raise errors.UserInactiveError(user_id=email)
+            raise UserInactiveError(user_id=email)
 
         user.login()
 
         access_token = self._create_access_token(user.entity_id, user.role)
         return access_token
 
-    async def get_user(self, user_id: str) -> model.UserAuth | None:
-        async with self._uow.trans():
-            return await self._user_repo.get(user_id)
-
-    async def get_current_user(self, token: model.AccessToken) -> model.UserAuth:
+    async def get_current_user(self, token: AccessToken) -> UserAuth:
         user_id = token.sub
         async with self._uow.trans():
-            user = await self.get_user(user_id)
+            user = await self._user_repo.get(user_id)
         if not user:
-            raise errors.UserNotFoundError(user_id=user_id)
+            raise UserNotFoundError(user_id=user_id)
         return user
+
+    async def deactivate_user(self, user_id: str):
+        async with self._uow.trans():
+            user = await self._user_repo.get(user_id)
+            if user is None:
+                raise UserNotFoundError(user_id=user_id)
+            e = UserDeactivated(user_id=user_id)
+            user.apply(e)
+            await self._user_repo.remove(user.entity_id)
+            await self._eventstore.add(e)

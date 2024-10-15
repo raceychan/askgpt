@@ -1,4 +1,4 @@
-from askgpt.app.api.errors import EntityNotFoundError, GeneralWebError
+from askgpt.api.errors import EntityNotFoundError, GeneralWebError
 
 """
 TODO: split into UserError, AuthError
