@@ -3,10 +3,10 @@ import typing as ty
 from fastapi import APIRouter, Depends
 
 from askgpt.api.dependencies import ParsedToken
-from askgpt.feat.auth.errors import InvalidCredentialError, UserNotFoundError
-from askgpt.feat.factory import user_service_factory
-from askgpt.feat.user.model import UserInfo
-from askgpt.feat.user.service import UserService
+from askgpt.app.auth.errors import InvalidCredentialError, UserNotFoundError
+from askgpt.app.factory import user_service_factory
+from askgpt.app.user.model import UserInfo
+from askgpt.app.user.service import UserService
 
 user_router = APIRouter(prefix="/users")
 Service = ty.Annotated[UserService, Depends(user_service_factory)]

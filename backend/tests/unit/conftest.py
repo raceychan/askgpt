@@ -1,7 +1,7 @@
 import pytest
 from tests.conftest import UserDefaults
 
-from askgpt.feat.gpt.model import UserCreated
+from askgpt.app.gpt.model import UserCreated
 from askgpt.infra import security
 
 

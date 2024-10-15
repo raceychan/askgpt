@@ -4,12 +4,12 @@ from functools import cached_property, singledispatchmethod
 
 from askgpt.adapters.cache import Cache, KeySpace
 from askgpt.adapters.queue import MessageProducer
+from askgpt.app.actor import BoxFactory, EntityActor, QueueBox, StatefulActor
+from askgpt.app.auth import model as auth_model
+from askgpt.app.gpt import errors, model
 from askgpt.domain.config import Settings
 from askgpt.domain.interface import ActorRef, ICommand
 from askgpt.domain.model.base import Command, Event, Message
-from askgpt.feat.actor import BoxFactory, EntityActor, QueueBox, StatefulActor
-from askgpt.feat.auth import model as auth_model
-from askgpt.feat.gpt import errors, model
 from askgpt.infra import eventstore, gptclient
 
 

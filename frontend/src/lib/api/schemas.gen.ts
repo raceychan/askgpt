@@ -565,61 +565,24 @@ export const $TokenResponse = {
     title: 'TokenResponse'
 } as const;
 
-export const $UserAuth = {
+export const $UserInfo = {
     properties: {
-        user_id: {
+        entity_id: {
             type: 'string',
-            title: 'User Id'
+            title: 'Entity Id'
         },
-        role: {
-            '$ref': '#/components/schemas/UserRoles',
-            default: 'user'
-        },
-        credential: {
-            '$ref': '#/components/schemas/UserCredential'
-        },
-        last_login: {
+        email: {
             type: 'string',
-            format: 'date-time',
-            title: 'Last Login'
+            title: 'Email'
         },
-        is_active: {
-            type: 'boolean',
-            title: 'Is Active',
-            default: true
+        name: {
+            type: 'string',
+            title: 'Name'
         }
     },
     type: 'object',
-    required: ['user_id', 'credential', 'last_login'],
-    title: 'UserAuth'
-} as const;
-
-export const $UserCredential = {
-    properties: {
-        user_name: {
-            type: 'string',
-            title: 'User Name',
-            default: ''
-        },
-        user_email: {
-            type: 'string',
-            format: 'email',
-            title: 'User Email'
-        },
-        hash_password: {
-            type: 'string',
-            title: 'Hash Password'
-        }
-    },
-    type: 'object',
-    required: ['user_email', 'hash_password'],
-    title: 'UserCredential'
-} as const;
-
-export const $UserRoles = {
-    type: 'string',
-    enum: ['admin', 'user'],
-    title: 'UserRoles'
+    required: ['entity_id', 'email', 'name'],
+    title: 'UserInfo'
 } as const;
 
 export const $ValidationError = {

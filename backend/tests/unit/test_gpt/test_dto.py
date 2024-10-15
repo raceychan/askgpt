@@ -1,6 +1,6 @@
 import pytest
 
-from askgpt.feat.gpt.route import ChatCompletionRequest
+from askgpt.app.gpt.route import ChatCompletionRequest
 
 
 @pytest.fixture

@@ -6,7 +6,8 @@ const API_NETLOC = `${ENV.VITE_BACKEND_API_HOST}:${ENV.VITE_BACKEND_API_PORT}`;
 const API_BASE_URL = `http://${API_NETLOC}`;
 
 export const Config = {
-  API_AUTH_URL: `${API_BASE_URL}/auth`,
+  API_AUTH_URL: `${API_BASE_URL}/v1/auth`,
+  API_GPT_URL: `${API_BASE_URL}/v1/gpt`,
   REQUEST: {
     TIMEOUT: 1000,
   },
@@ -42,6 +43,12 @@ export const initializeClient = () => {
   // Response interceptor: Handle 401 responses (Unauthorized)
   client.instance.interceptors.response.use(
     (response) => {
+      console.log(
+        "Received response from ",
+        JSON.stringify(response.data),
+        response.config.baseURL,
+        response.config.url
+      );
       return response; // Let the response pass if it's successful
     },
     (error) => {

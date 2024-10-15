@@ -2,7 +2,7 @@ import typing as ty
 
 from sqlalchemy import RowMapping, insert, select, update
 
-from askgpt.feat.user.model import UserInfo
+from askgpt.app.user.model import UserInfo
 from askgpt.infra.schema import UserSchema
 from askgpt.infra.uow import UnitOfWork
 

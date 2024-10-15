@@ -6,8 +6,8 @@ from tests.conftest import dft
 from askgpt.adapters.cache import Cache, MemoryCache
 from askgpt.adapters.queue import BaseProducer, QueueBroker
 from askgpt.domain import config
-from askgpt.feat.actor import QueueBox
-from askgpt.feat.gpt import model, service
+from askgpt.app.actor import QueueBox
+from askgpt.app.gpt import model, service
 from askgpt.infra import factory
 from askgpt.infra.eventstore import EventStore
 from askgpt.infra.gptclient import OpenAIClient

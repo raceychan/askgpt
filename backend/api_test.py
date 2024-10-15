@@ -1,6 +1,7 @@
 import asyncio
 
 import httpx
+from tests.conftest import dft
 
 from askgpt.domain.config import Settings, detect_settings
 
@@ -12,14 +13,14 @@ def client_factory(settings: Settings) -> httpx.AsyncClient:
 
 
 async def test_signup(client: httpx.AsyncClient) -> str:
-    data = {"email": "test@email.com", "password": "test"}
+    data = {"email": dft.USER_EMAIL, "password": dft.USER_PASSWORD}
     response = await client.post("/auth/signup", json=data, follow_redirects=True)
     assert response.status_code in (200, 409)
     return response.json()
 
 
 async def test_login(test_client: httpx.AsyncClient) -> str:
-    data = {"username": "test@email.com", "password": "test"}
+    data = {"username": dft.USER_EMAIL, "password": dft.USER_PASSWORD}
     response = await test_client.post("/auth/login", data=data, follow_redirects=True)
     assert response.status_code == 200
     return response.json()["access_token"]

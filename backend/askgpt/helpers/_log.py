@@ -79,6 +79,8 @@ def debug_sink(msg: loguru.Message) -> None:
     )
 
     console.print(log, style=COLOR_MAPPER[record["level"].name])
+    # if record["level"].name == "ERROR":
+    #     print()
     if record["exception"]:
         print(traceback.format_exc())
 

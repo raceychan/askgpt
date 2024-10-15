@@ -12,9 +12,9 @@ services:
   askgpt:
     environment:
       - SETTINGS_FILE="dev.settings.toml"
+      - redis__HOST=redis
       - PYTHONUNBUFFERED=1 # send output to terminal
-      # - RUNTIME_ENV=prod
-      - RUNTIME_ENV=dev
+      - RUNTIME_ENV=dev # - RUNTIME_ENV=prod
 
     entrypoint:
       - pixi
@@ -24,7 +24,7 @@ services:
 
     command:
       - "gunicorn"
-      - "askgpt.app.app:app_factory"
+      - "askgpt.feat.app:app_factory"
       - "--workers"
       - "1"
       - "-k"

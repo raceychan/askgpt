@@ -6,9 +6,9 @@ from starlette import status
 
 from askgpt.api.dependencies import ParsedToken, throttle_user_request
 from askgpt.api.model import OK, EntityDeleted, RequestBody, Response, ResponseData
-from askgpt.feat.factory import GPTService, gpt_service_factory
-from askgpt.feat.gpt.model import ChatSession
-from askgpt.feat.gpt.params import ChatGPTRoles, CompletionModels
+from askgpt.app.factory import GPTService, gpt_service_factory
+from askgpt.app.gpt.model import ChatSession
+from askgpt.app.gpt.params import ChatGPTRoles, CompletionModels
 
 gpt_router = APIRouter(prefix="/gpt")
 openai_router = APIRouter(prefix="/openai")

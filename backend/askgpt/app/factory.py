@@ -1,11 +1,11 @@
 from askgpt.api.throttler import UserRequestThrottler
+from askgpt.app.auth.repository import AuthRepository
+from askgpt.app.auth.service import AuthService, TokenRegistry
+from askgpt.app.gpt.repository import SessionRepository
+from askgpt.app.gpt.service import GPTService, GPTSystem, QueueBox
+from askgpt.app.user.repository import UserRepository
+from askgpt.app.user.service import UserService
 from askgpt.domain.config import SETTINGS_CONTEXT, Settings
-from askgpt.feat.auth.repository import AuthRepository
-from askgpt.feat.auth.service import AuthService, TokenRegistry
-from askgpt.feat.gpt.repository import SessionRepository
-from askgpt.feat.gpt.service import GPTService, GPTSystem, QueueBox
-from askgpt.feat.user.repository import UserRepository
-from askgpt.feat.user.service import UserService
 from askgpt.helpers.functions import simplecache
 from askgpt.infra.eventstore import EventStore, OutBoxProducer
 from askgpt.infra.factory import encrypt_facotry

@@ -2,7 +2,7 @@ import pytest
 from tests.conftest import dft
 
 from askgpt.domain.config import Settings
-from askgpt.feat.gpt import model
+from askgpt.app.gpt import model
 from askgpt.infra.eventstore import EventStore, dump_event, load_event
 
 

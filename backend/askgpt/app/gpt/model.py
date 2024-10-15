@@ -4,6 +4,8 @@ from functools import singledispatchmethod
 
 from pydantic import AwareDatetime
 
+from askgpt.app.auth.model import UserAPIKeyAdded, UserSignedUp
+from askgpt.app.gpt.params import ChatGPTRoles, CompletionModels
 from askgpt.domain.base import SupportedGPTs
 from askgpt.domain.interface import ICommand, IRepository
 from askgpt.domain.model.base import (
@@ -16,8 +18,6 @@ from askgpt.domain.model.base import (
     computed_field,
 )
 from askgpt.domain.model.base import uuid_factory as uuid_factory
-from askgpt.feat.auth.model import UserAPIKeyAdded, UserSignedUp
-from askgpt.feat.gpt.params import ChatGPTRoles, CompletionModels
 
 # from askgpt.domain.model.user import CreateUser, UserCreated
 from askgpt.helpers.time import utc_now
@@ -53,6 +53,13 @@ class ChatMessage(ValueObject):
     @classmethod
     def as_prompt(cls, content: str) -> ty.Self:
         return cls(role="system", content=content)
+
+    def asdict(self) -> dict[str, ty.Any]:
+        # TODO: find a better way to handle this
+        # oepnai can't handle datetime objects in the messages
+        d = self.model_dump(exclude={"user_id"})
+        d["timestamp"] = str(d["timestamp"])
+        return d
 
 
 class UserRelated(DataStruct):

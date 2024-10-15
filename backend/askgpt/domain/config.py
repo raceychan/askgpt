@@ -1,3 +1,4 @@
+import copy
 import datetime
 import os
 import pathlib
@@ -11,6 +12,7 @@ from pydantic import field_validator
 
 from askgpt.domain.errors import GeneralAPPError
 from askgpt.domain.interface import SQL_ISOLATIONLEVEL, EventLogRef, SystemRef
+from askgpt.helpers.data import update_config_from_env
 from askgpt.helpers.file import FileUtil
 from askgpt.helpers.functions import freeze, simplecache
 from askgpt.helpers.string import KeySpace
@@ -43,9 +45,6 @@ UTC_TZ = datetime.UTC
 
 
 def detect_settings(read_order: tuple[str, ...] = SETTINGS_READ_ORDER) -> "Settings":
-    """
-    TODO: 1. let env variable override the file variable
-    """
     fileutil = FileUtil.from_cwd()
     work_dir = pathlib.Path.cwd()
     if (f := os.environ.get("SETTING_FILE", None)) is not None:
@@ -299,32 +298,13 @@ class Settings(SettingsBase):
     @classmethod
     @simplecache
     def from_file(cls, filename: str | pathlib.Path) -> ty.Self:
-        # TODO: let env variable override the file variable
-        """
-        write a function that does this:
-        given a dict, for every key, if the value is not a dict, return the key
-        else
-        for each key in its value, concate the parent key + "separator" + current key
-        recursively apply the same logic to the nested dict,
-        if os.get(new_key) is not null, override the value in config_data
-        """
-
         fileutil = FileUtil.from_cwd()
         config_data = fileutil.read_file(filename)
         config_data["FILE_NAME"] = str(filename)
-        return cls.model_validate(config_data)
+        updated_config = update_config_from_env(config_data)
+        return cls.model_validate(updated_config)
 
 
 SETTINGS_CONTEXT: ContextVar[Settings] = ContextVar("settings")
 
-# class GlobalContext:
-#     """
-#     for attribute defined in this class
 
-#     settings: Settings = useContext(Settings)
-
-#     would be automatically transformed to
-#     ContextVar[Settings]("settings)
-#     """
-
-#     ...

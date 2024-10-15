@@ -1,5 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
-import React, { useState, useRef, useEffect } from "react";
+import React, { useState, useRef } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Send, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -8,6 +8,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { GptService } from "@/lib/api/services.gen";
 import { PublicChatSession } from "@/lib/api";
 import { Textarea } from "@/components/ui/textarea";
+import { streamingChat } from "@/lib/api-diy";
 
 const MessageBox: React.FC<{ chatSession?: PublicChatSession }> = ({
   chatSession,
@@ -129,35 +130,14 @@ const ChatPage = () => {
 
   const chatMutation = useMutation({
     mutationFn: async (newMessage: string) => {
-      // axios in browser uses xhttprequests, which does not support SSE(stream response)
-      // so we need to use microsoft/fetch-event-source
-      throw new Error("Not implemented yet!");
-      const resp = await GptService.chat({
-        body: { question: newMessage, role: "user" },
-        path: { session_id: chatId },
-      });
+      setStreamingMessage("");
+      streamingMessageRef.current = "";
 
-      if (resp.error) {
-        throw new Error("Failed to send chat message");
-      }
-
-      const reader = resp.data.getReader();
-      const decoder = new TextDecoder();
-
-      while (true) {
-        const { done, value } = await reader.read();
-        if (done) break;
-        const chunk = decoder.decode(value);
-        streamingMessageRef.current += chunk;
-        setStreamingMessage(streamingMessageRef.current);
-      }
+      await streamingChat(chatId, newMessage, setStreamingMessage);
     },
     onSuccess: () => {
       // Refetch the chat session to get the updated messages
       queryClient.invalidateQueries({ queryKey: ["chatSession", chatId] });
-      // Clear the streaming message
-      setStreamingMessage("");
-      streamingMessageRef.current = "";
     },
   });
 

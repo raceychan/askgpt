@@ -1,6 +1,6 @@
 import uvicorn
 
-from askgpt.feat.app import app_factory
+from askgpt.app.app import app_factory
 from askgpt.domain import config
 from askgpt.helpers.file import relative_path
 

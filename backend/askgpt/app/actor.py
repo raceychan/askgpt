@@ -4,7 +4,7 @@ import typing as ty
 from collections import deque
 from functools import cached_property, singledispatchmethod
 
-from askgpt.feat.interface import AbstractActor, AbstractStetefulActor
+from askgpt.app.interface import AbstractActor, AbstractStetefulActor
 from askgpt.domain.errors import GeneralWebError, SystemNotSetError
 from askgpt.domain.interface import (
     ActorRef,

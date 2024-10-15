@@ -194,21 +194,11 @@ export type TokenResponse = {
 
 export type token_type = 'bearer';
 
-export type UserAuth = {
-    user_id: string;
-    role?: UserRoles;
-    credential: UserCredential;
-    last_login: string;
-    is_active?: boolean;
+export type UserInfo = {
+    entity_id: string;
+    email: string;
+    name: string;
 };
-
-export type UserCredential = {
-    user_name?: string;
-    user_email: string;
-    hash_password: string;
-};
-
-export type UserRoles = 'admin' | 'user';
 
 export type ValidationError = {
     loc: Array<(string | number)>;
@@ -236,33 +226,9 @@ export type SignupResponse = (unknown);
 
 export type SignupError = (HTTPValidationError);
 
-export type FindUserByEmailData = {
-    query: {
-        email: string;
-    };
-};
-
-export type FindUserByEmailResponse = (PublicUserInfo);
-
-export type FindUserByEmailError = (HTTPValidationError);
-
 export type GetPublicUserResponse = (PublicUserInfo);
 
 export type GetPublicUserError = unknown;
-
-export type GetUserDetailData = {
-    path: {
-        user_id: string;
-    };
-};
-
-export type GetUserDetailResponse = ((UserAuth | null));
-
-export type GetUserDetailError = (HTTPValidationError);
-
-export type DeleteUserResponse = (unknown);
-
-export type DeleteUserError = unknown;
 
 export type CreateNewKeyData = {
     body: CreateNewKey;
@@ -271,6 +237,30 @@ export type CreateNewKeyData = {
 export type CreateNewKeyResponse = (unknown);
 
 export type CreateNewKeyError = (HTTPValidationError);
+
+export type DeleteUserResponse = (unknown);
+
+export type DeleteUserError = unknown;
+
+export type FindUserByEmailData = {
+    query: {
+        email: string;
+    };
+};
+
+export type FindUserByEmailResponse = (UserInfo);
+
+export type FindUserByEmailError = (HTTPValidationError);
+
+export type GetUserDetailData = {
+    path: {
+        user_id: string;
+    };
+};
+
+export type GetUserDetailResponse = ((UserInfo | null));
+
+export type GetUserDetailError = (HTTPValidationError);
 
 export type ListSessionsResponse = (Array<PublicSessionInfo>);
 

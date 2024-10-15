@@ -6,9 +6,9 @@ from jose.exceptions import JWTError
 from pydantic import ValidationError
 
 from askgpt.api.errors import QuotaExceededError
-from askgpt.feat import factory as app_fatory
-from askgpt.feat.auth.errors import InvalidCredentialError
-from askgpt.feat.auth.model import AccessToken
+from askgpt.app.auth.errors import InvalidCredentialError
+from askgpt.app.auth.model import AccessToken
+from askgpt.app.factory import user_request_throttler_factory
 from askgpt.infra import factory as infra_factory
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="auth/login")
@@ -27,7 +27,7 @@ def parse_access_token(token: str = Depends(oauth2_scheme)) -> AccessToken:
 async def throttle_user_request(
     access_token: ty.Annotated[AccessToken, Depends(parse_access_token)],
 ):
-    throttler = app_fatory.user_request_throttler_factory()
+    throttler = user_request_throttler_factory()
     wait_time = await throttler.validate(access_token.sub)
     if wait_time:
         raise QuotaExceededError(throttler.max_tokens, wait_time)

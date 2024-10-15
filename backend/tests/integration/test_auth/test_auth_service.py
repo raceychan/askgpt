@@ -1,9 +1,9 @@
 import pytest
 from tests.conftest import UserDefaults
 
-from askgpt.feat.auth import *
-from askgpt.feat.auth.service import AuthService
-from askgpt.feat.user.service import UserService
+from askgpt.app.auth import *
+from askgpt.app.auth.service import AuthService
+from askgpt.app.user.service import UserService
 
 
 async def test_create_user(

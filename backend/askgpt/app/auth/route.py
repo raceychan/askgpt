@@ -8,8 +8,8 @@ from pydantic import EmailStr
 from askgpt.domain.base import EMPTY_STR, SupportedGPTs
 from askgpt.api.dependencies import ParsedToken
 from askgpt.api.model import RequestBody, ResponseData
-from askgpt.feat.auth.model import UserAuth
-from askgpt.feat.factory import AuthService, auth_service_factory
+from askgpt.app.auth.model import UserAuth
+from askgpt.app.factory import AuthService, auth_service_factory
 
 auth_router = APIRouter(prefix="/auth")
 

@@ -3,11 +3,11 @@ from tests.conftest import UserDefaults
 
 from askgpt.adapters.queue import MessageProducer
 from askgpt.domain.interface import IEvent
-from askgpt.feat.auth.repository import AuthRepository
-from askgpt.feat.auth.service import AuthService
-from askgpt.feat.gpt.repository import SessionRepository
-from askgpt.feat.gpt.service import GPTService, GPTSystem, SystemState
-from askgpt.feat.user.service import UserService
+from askgpt.app.auth.repository import AuthRepository
+from askgpt.app.auth.service import AuthService
+from askgpt.app.gpt.repository import SessionRepository
+from askgpt.app.gpt.service import GPTService, GPTSystem, SystemState
+from askgpt.app.user.service import UserService
 from askgpt.infra.security import Encryptor
 from askgpt.infra.uow import UnitOfWork
 

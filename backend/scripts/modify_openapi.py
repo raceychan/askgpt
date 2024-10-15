@@ -1,7 +1,7 @@
 import json
 from pathlib import Path
 
-from askgpt.feat.app import app_factory
+from askgpt.app.app import app_factory
 
 FRONTEND_DIR = Path.cwd().parent / "frontend"
 OPENAPI_PATH = FRONTEND_DIR / "openapi.json"

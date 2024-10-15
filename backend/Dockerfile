@@ -27,4 +27,4 @@ RUN if [ "$RUNTIME_ENV" = "dev" ]; then touch dev.db; fi
 COPY askgpt ./askgpt
 EXPOSE 5000
 ENTRYPOINT ["pixi", "run", "-e", "dev"]
-CMD ["uvicorn", "askgpt.app.app:app_factory"]
+CMD ["uvicorn", "askgpt.feat.app:app_factory"]

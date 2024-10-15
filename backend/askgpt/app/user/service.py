@@ -1,5 +1,5 @@
-from askgpt.feat.user.model import UserInfo
-from askgpt.feat.user.repository import UserRepository
+from askgpt.app.user.model import UserInfo
+from askgpt.app.user.repository import UserRepository
 from askgpt.infra.eventstore import EventStore
 
 

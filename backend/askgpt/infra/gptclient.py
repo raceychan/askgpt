@@ -6,7 +6,7 @@ import openai
 from openai.types import beta as openai_beta
 from openai.types import chat as openai_chat
 
-from askgpt.feat.gpt import model, params
+from askgpt.app.gpt import model, params
 from askgpt.domain.base import SupportedGPTs
 from askgpt.helpers.functions import attribute, lru_cache
 
@@ -100,7 +100,7 @@ class OpenAIClient(GPTClient):
     def message_adapter(
         self, messages: list[model.ChatMessage]
     ) -> list[dict[str, ty.Any]]:
-        return [message.asdict(exclude={"user_id"}) for message in messages]
+        return [message.asdict() for message in messages]
 
     @classmethod
     @lru_cache(maxsize=1000)

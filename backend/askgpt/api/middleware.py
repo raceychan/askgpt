@@ -2,18 +2,26 @@ from time import perf_counter
 from urllib.parse import quote
 
 from fastapi import FastAPI, Request
+from fastapi.responses import Response
 from starlette.middleware.base import BaseHTTPMiddleware, RequestResponseEndpoint
 from starlette.middleware.cors import CORSMiddleware as CORSMiddleware
 from starlette.types import ASGIApp, Receive, Scope, Send
 
 from askgpt.api.error_handlers import INTERNAL_ERROR_DETAIL, make_err_response
 from askgpt.api.xheaders import XHeaders
-from askgpt.domain.config import TIME_EPSILON_S, UNKNOWN_NETLOC, Settings, SETTINGS_CONTEXT
+from askgpt.domain.config import (
+    SETTINGS_CONTEXT,
+    TIME_EPSILON_S,
+    UNKNOWN_NETLOC,
+    Settings,
+)
 from askgpt.domain.model.base import request_id_factory
 from askgpt.helpers._log import logger
 
 
-def log_request(request: Request, status_code: int, duration: float):
+def log_request(
+    request: Request, response: Response, status_code: int, duration: float
+):
     client_host, client_port = request.client or UNKNOWN_NETLOC
     url_parts = request.url.components
     path_query = quote(
@@ -25,6 +33,7 @@ def log_request(request: Request, status_code: int, duration: float):
     msg = f'{client_host}:{client_port} - "{request.method} {path_query} HTTP/{request.scope["http_version"]}" {status_code}'
 
     if status_code >= 400:
+        # TODO: log request and response body
         logger.error(msg, duration=duration)
     else:
         logger.info(msg, duration=duration)
@@ -67,7 +76,7 @@ class LoggingMiddleware(BaseHTTPMiddleware):
                 post_process = perf_counter()
                 duration = max(round(post_process - pre_process, 3), TIME_EPSILON_S)
                 response.headers[XHeaders.PROCESS_TIME.value] = str(duration)
-                log_request(request, status_code, duration)
+                log_request(request, response, status_code, duration)
             return response
 
 

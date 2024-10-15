@@ -1,6 +1,6 @@
 import pytest
 
-from askgpt.feat.auth.repository import (
+from askgpt.app.auth.repository import (
     AuthRepository,
     UserAuth,
     dump_userauth,

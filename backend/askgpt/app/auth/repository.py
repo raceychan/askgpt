@@ -2,7 +2,7 @@ import typing as ty
 
 import sqlalchemy as sa
 
-from askgpt.feat.auth.model import UserAuth, UserCredential
+from askgpt.app.auth.model import UserAuth, UserCredential
 from askgpt.infra.schema import UserAPIKeySchema, UserSchema
 from askgpt.infra.uow import UnitOfWork
 

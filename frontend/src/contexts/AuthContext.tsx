@@ -68,7 +68,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
     queryKey: ["user"],
     queryFn: async () => {
       try {
-        const resp = await UserService.getPublicUser();
+        const resp = await AuthService.getPublicUser();
         if (resp.error) {
           throw resp.error;
         }

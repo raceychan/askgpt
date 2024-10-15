@@ -7,12 +7,12 @@ from starlette.responses import Response
 
 from askgpt.api.errors import EntityNotFoundError, GeneralWebError, QuotaExceededError
 from askgpt.api.xheaders import XHeaders
-from askgpt.feat.auth.errors import (
+from askgpt.app.auth.errors import (
     AuthenticationError,
     UserAlreadyExistError,
     UserNotFoundError,
 )
-from askgpt.feat.gpt.errors import (
+from askgpt.app.gpt.errors import (
     APIKeyNotAvailableError,
     APIKeyNotProvidedError,
     OrphanSessionError,

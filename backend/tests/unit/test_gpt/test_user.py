@@ -1,7 +1,7 @@
 import pytest
 from tests.conftest import dft
 
-from askgpt.feat.gpt import model
+from askgpt.app.gpt import model
 
 
 @pytest.fixture(scope="module")

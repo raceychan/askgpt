@@ -1,5 +1,5 @@
 import pytest
-from askgpt.feat.auth.model import UserCredential
+from askgpt.app.auth.model import UserCredential
 from askgpt.infra import security
 from tests.conftest import dft
 

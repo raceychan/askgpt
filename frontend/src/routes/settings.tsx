@@ -1,5 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { UserService } from "@/lib/api/services.gen";
+import { AuthService } from "@/lib/api/services.gen";
 import { useMutation } from "@tanstack/react-query";
 import { CreateNewKey } from "@/lib/api/types.gen";
 import { useState } from "react";
@@ -14,13 +14,14 @@ import {
 } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
+import { useNavigate } from "@tanstack/react-router";
 
 const UserSettings: React.FC = () => {
   const [apiKey, setApiKey] = useState("");
   const { toast } = useToast();
   const createNewKeyMutation = useMutation({
     mutationFn: async (body: CreateNewKey) => {
-      const resp = await UserService.createNewKey({
+      const resp = await AuthService.createNewKey({
         body: { api_key: body.api_key, api_type: body.api_type },
       });
       if (!resp.data) {
@@ -43,6 +44,7 @@ const UserSettings: React.FC = () => {
       });
     },
   });
+  const navigate = useNavigate();
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -50,7 +52,14 @@ const UserSettings: React.FC = () => {
   };
 
   return (
-    <div className="flex justify-center items-center h-screen">
+    <div className="flex flex-col items-center justify-center min-h-screen p-4">
+      <Button
+        variant="ghost"
+        onClick={() => navigate({ to: "/" })}
+        className="self-start mb-4"
+      >
+        ← Back to Home
+      </Button>
       <Card className="w-[350px]">
         <CardHeader>
           <CardTitle>API Key Settings</CardTitle>

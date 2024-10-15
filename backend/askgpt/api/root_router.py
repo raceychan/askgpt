@@ -2,9 +2,9 @@ from fastapi import APIRouter
 from fastapi.responses import Response
 from fastapi.routing import APIRoute
 
-from askgpt.feat.auth import route as auth_route
-from askgpt.feat.gpt import route as gpt_route
-from askgpt.feat.user import route as user_route
+from askgpt.app.auth import route as auth_route
+from askgpt.app.gpt import route as gpt_route
+from askgpt.app.user import route as user_route
 
 
 def route_id_factory(route: APIRoute):

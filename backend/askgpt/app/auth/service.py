@@ -5,13 +5,13 @@ from askgpt.domain.config import Settings
 
 # from askgpt.domain.interface import IEvent
 from askgpt.domain.model.base import utc_now, uuid_factory
-from askgpt.feat.auth.errors import (
+from askgpt.app.auth.errors import (
     InvalidPasswordError,
     UserAlreadyExistError,
     UserInactiveError,
     UserNotFoundError,
 )
-from askgpt.feat.auth.model import (
+from askgpt.app.auth.model import (
     AccessToken,
     UserAPIKeyAdded,
     UserAuth,
@@ -20,7 +20,7 @@ from askgpt.feat.auth.model import (
     UserRoles,
     UserSignedUp,
 )
-from askgpt.feat.auth.repository import AuthRepository
+from askgpt.app.auth.repository import AuthRepository
 from askgpt.infra import security
 from askgpt.infra.eventstore import EventStore
 

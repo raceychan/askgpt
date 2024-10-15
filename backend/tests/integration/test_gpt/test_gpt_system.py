@@ -2,8 +2,8 @@ import pytest
 from tests.conftest import dft
 
 from askgpt.domain import config
-from askgpt.feat.actor import MailBox
-from askgpt.feat.gpt import gptsystem, model, service
+from askgpt.app.actor import MailBox
+from askgpt.app.gpt import gptsystem, model, service
 from askgpt.infra.eventstore import EventStore
 
 

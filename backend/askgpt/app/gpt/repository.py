@@ -1,6 +1,6 @@
 import sqlalchemy as sa
 
-from askgpt.feat.gpt.model import ChatSession, ISessionRepository
+from askgpt.app.gpt.model import ChatSession, ISessionRepository
 from askgpt.infra.schema import SessionSchema
 from askgpt.infra.uow import UnitOfWork
 

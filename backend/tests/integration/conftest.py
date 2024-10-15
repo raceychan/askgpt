@@ -9,13 +9,13 @@ from askgpt.adapters.cache import MemoryCache
 from askgpt.adapters.database import AsyncDatabase
 from askgpt.adapters.queue import QueueBroker
 from askgpt.domain.config import Settings
-from askgpt.feat.actor import MailBox
-from askgpt.feat.auth.model import UserAuth
-from askgpt.feat.auth.repository import AuthRepository, UserAuth
-from askgpt.feat.auth.service import AuthService, TokenRegistry
-from askgpt.feat.gpt.params import ChatResponse
-from askgpt.feat.user.repository import UserRepository
-from askgpt.feat.user.service import UserService
+from askgpt.app.actor import MailBox
+from askgpt.app.auth.model import UserAuth
+from askgpt.app.auth.repository import AuthRepository, UserAuth
+from askgpt.app.auth.service import AuthService, TokenRegistry
+from askgpt.app.gpt.params import ChatResponse
+from askgpt.app.user.repository import UserRepository
+from askgpt.app.user.service import UserService
 from askgpt.infra.eventstore import EventStore, OutBoxProducer
 from askgpt.infra.gptclient import ClientRegistry, OpenAIClient
 from askgpt.infra.schema import create_tables
