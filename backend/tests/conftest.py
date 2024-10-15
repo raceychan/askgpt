@@ -1,7 +1,6 @@
 import asyncio
 
 import pytest
-
 from askgpt.domain.config import SETTINGS_CONTEXT, SecretStr, Settings
 from askgpt.helpers.file import FileLoader, FileUtil
 from askgpt.helpers.security import generate_secrete
@@ -22,8 +21,8 @@ def settings() -> Settings:
     ss = Settings(
         RUNTIME_ENV="test",
         actor_refs=Settings.ActorRefs(
-            EVENTLOG="test_eventlog",
-            SYSTEM="test_system",
+            EVENTLOG="test_eventlog",  # type: ignore
+            SYSTEM="test_system",  # type: ignore
         ),
         db=Settings.SqliteDB(
             DATABASE=":memory:",

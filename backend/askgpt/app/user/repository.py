@@ -4,7 +4,7 @@ from sqlalchemy import RowMapping, insert, select, update
 
 from askgpt.app.user.model import UserInfo
 from askgpt.infra.schema import UserSchema
-from askgpt.infra.uow import UnitOfWork
+from askgpt.adapters.uow import UnitOfWork
 
 
 def load_user(user: RowMapping) -> UserInfo:

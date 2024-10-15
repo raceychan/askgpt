@@ -1,7 +1,7 @@
 from tests.conftest import UserDefaults
 
+from askgpt.adapters.uow import UnitOfWork
 from askgpt.app.gpt import model, repository
-from askgpt.infra.uow import UnitOfWork
 
 
 async def test_create_and_list_sessions(

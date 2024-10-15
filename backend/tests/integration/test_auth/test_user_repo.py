@@ -6,7 +6,7 @@ from askgpt.app.auth.repository import (
     dump_userauth,
     load_userauth,
 )
-from askgpt.infra.uow import UnitOfWork
+from askgpt.adapters.uow import UnitOfWork
 
 
 @pytest.fixture(scope="module")

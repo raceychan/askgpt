@@ -14,20 +14,12 @@ from openai.types.chat.completion_create_params import (
 from openai.types.chat.completion_create_params import (
     CompletionCreateParamsStreaming as CompletionCreateParamsStreaming,
 )
+
 from askgpt.domain.model.base import ValueObject
 
 # TODO: read
 # https://learn.microsoft.com/en-us/dotnet/architecture/microservices/microservice-ddd-cqrs-patterns/domain-events-design-implementation
 
-
-# class ModelEndpoint(BaseModel):
-#     endpoint: Path
-#     models: tuple[str, ...]
-
-
-# class CompletionEndPoint(ModelEndpoint):
-#     endpoint: Path = Path("/v1/chat/completion")
-#     model: CompletionModels
 
 CompletionModels = ty.Literal[
     "gpt-3.5-turbo",
@@ -78,5 +70,4 @@ class ChatResponse(ValueObject):
 
     chunk: ChatCompletionChunk
 
-    async def __aiter__(self) -> ty.Any:
-        ...
+    async def __aiter__(self) -> ty.Any: ...

@@ -1,4 +1,3 @@
-import copy
 import datetime
 import os
 import pathlib
@@ -10,7 +9,7 @@ from pydantic import AnyUrl, BaseModel, ConfigDict
 from pydantic import SecretStr as SecretStr
 from pydantic import field_validator
 
-from askgpt.domain.errors import GeneralAPPError
+from askgpt.domain.errors import StaticAPPError
 from askgpt.domain.interface import SQL_ISOLATIONLEVEL, EventLogRef, SystemRef
 from askgpt.helpers.data import update_config_from_env
 from askgpt.helpers.file import FileUtil
@@ -87,7 +86,7 @@ def settingfactory[T: ty.Any](factory: SettingsFactory[T]) -> SettingsFactory[T]
     return simplecache(max_size=1, size_check=True)(factory)  # type: ignore
 
 
-class MissingConfigError(GeneralAPPError):
+class MissingConfigError(StaticAPPError):
     """
     Essential config is missing for some components.
     """
@@ -306,5 +305,3 @@ class Settings(SettingsBase):
 
 
 SETTINGS_CONTEXT: ContextVar[Settings] = ContextVar("settings")
-
-

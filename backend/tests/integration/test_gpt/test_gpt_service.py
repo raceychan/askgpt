@@ -1,49 +1,35 @@
 import pytest
-from tests.conftest import UserDefaults
-
-from askgpt.adapters.queue import MessageProducer
-from askgpt.domain.interface import IEvent
+from askgpt.adapters.cache import Cache
+from askgpt.adapters.uow import UnitOfWork
 from askgpt.app.auth.repository import AuthRepository
 from askgpt.app.auth.service import AuthService
 from askgpt.app.gpt.repository import SessionRepository
-from askgpt.app.gpt.service import GPTService, GPTSystem, SystemState
+from askgpt.app.gpt.service import GPTService
 from askgpt.app.user.service import UserService
+from askgpt.infra.eventstore import EventStore
 from askgpt.infra.security import Encryptor
-from askgpt.infra.uow import UnitOfWork
+from tests.conftest import UserDefaults
 
 
 @pytest.fixture(scope="module")
 async def gpt_service(
-    gpt_system: GPTSystem,
-    uow: UnitOfWork,
     session_repo: SessionRepository,
     encryptor: Encryptor,
-    producer: MessageProducer[IEvent],
+    cache: Cache[str, str],
+    user_service: UserService,
+    auth_service: AuthService,
+    event_store: EventStore,
 ):
 
-    user_repo = AuthRepository(uow)
     service = GPTService(
-        system=gpt_system,
         encryptor=encryptor,
-        user_repo=user_repo,
+        user_service=user_service,
+        auth_service=auth_service,
+        event_store=event_store,
+        cache=cache,
         session_repo=session_repo,
-        producer=producer,
     )
-    async with service.lifespan():
-        yield service
-
-
-@pytest.mark.skip(reason="TODO: fix this test")
-async def test_start_when_already_running(gpt_service: GPTService):
-    gpt_service.state = SystemState.running
-    await gpt_service.start()
-    assert gpt_service.state.is_running
-
-    # Assert that no further actions are taken if the state is already running
-    assert gpt_service.system.state.is_running
-
-    await gpt_service.stop()
-    assert gpt_service.state.is_stopped
+    return service
 
 
 async def test_list_created_session(
@@ -51,7 +37,6 @@ async def test_list_created_session(
     auth_service: AuthService,
     gpt_service: GPTService,
     user_service: UserService,
-    uow: UnitOfWork,
 ):
     """
     TO FIX BUG: when user create a session,
@@ -69,9 +54,7 @@ async def test_list_created_session(
     user_id = user.entity_id
 
     session = await gpt_service.create_session(user_id)
-
-    actor = await gpt_service.get_session_actor(user_id, session_id=session.entity_id)
-    user_session = actor.entity
+    user_session = await gpt_service.get_session(user_id, session_id=session.entity_id)
     assert session.entity_id == user_session.entity_id
     assert session.user_id == user_session.user_id == user_id
     assert len(session.messages) == len(user_session.messages)

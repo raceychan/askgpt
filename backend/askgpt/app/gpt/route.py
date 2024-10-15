@@ -1,14 +1,13 @@
 import typing as ty
 
-from fastapi import APIRouter, Depends
-from fastapi.responses import RedirectResponse, StreamingResponse
-from starlette import status
-
 from askgpt.api.dependencies import ParsedToken, throttle_user_request
 from askgpt.api.model import OK, EntityDeleted, RequestBody, Response, ResponseData
 from askgpt.app.factory import GPTService, gpt_service_factory
 from askgpt.app.gpt.model import ChatSession
 from askgpt.app.gpt.params import ChatGPTRoles, CompletionModels
+from fastapi import APIRouter, Depends
+from fastapi.responses import RedirectResponse, StreamingResponse
+from starlette import status
 
 gpt_router = APIRouter(prefix="/gpt")
 openai_router = APIRouter(prefix="/openai")
@@ -210,10 +209,8 @@ async def list_sessions(service: Service, token: ParsedToken):
 async def get_session(
     service: Service, session_id: str, token: ParsedToken
 ) -> PublicChatSession:
-    session_actor = await service.get_session_actor(
-        user_id=token.sub, session_id=session_id
-    )
-    chat = PublicChatSession.from_chat(session_actor.entity)
+    session = await service.get_session(user_id=token.sub, session_id=session_id)
+    chat = PublicChatSession.from_chat(session)
     return chat
 
 
@@ -241,8 +238,9 @@ async def chat(
 ) -> StreamingResponse:
     data = req.model_dump(exclude_none=True)
     data.setdefault("user", token.sub)
-
-    stream_ans = await service.chatcomplete(
+    # TODO: separate stream and non-stream
+    # if req.stream
+    stream_ans = service.chatcomplete(
         user_id=token.sub,
         session_id=session_id,
         gpt_type="openai",
@@ -250,6 +248,7 @@ async def chat(
         question=data.pop("question"),
         options=data,
     )
+    # BUG? if stream started and exception occurs, client would get error
     return StreamingResponse(stream_ans, media_type="text/event-stream")
 
 

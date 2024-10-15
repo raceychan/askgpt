@@ -9,6 +9,4 @@ they are good for:
 
 
 This is not part of the onion architecture or ddd
-
-TODO: we should consider make this a private repo
 """

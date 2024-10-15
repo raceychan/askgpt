@@ -11,10 +11,9 @@ from askgpt.adapters.database import (
     StrMap,
     text,
 )
-from askgpt.domain.errors import GeneralWebError
 
 
-class OutOfContextError(GeneralWebError):
+class OutOfContextError(Exception):
     "raised when caller tries get connection before entering uow"
 
     def __init__(self, msg: str = ""):
@@ -69,7 +68,7 @@ class UnitOfWork:
         connection = await transaction.__aenter__()
         token = self._connection_context.set(connection)
         try:
-            yield self  # Yield the current UnitOfWork instance
+            yield self
         finally:
             await transaction.__aexit__(None, None, None)
             self._connection_context.reset(token)

@@ -1,14 +1,12 @@
-# import json
 import typing as ty
 
 import sqlalchemy as sa
-
 from askgpt.adapters.queue import MessageProducer
+from askgpt.adapters.uow import UnitOfWork
 from askgpt.domain.config import UTC_TZ
 from askgpt.domain.interface import IEvent, IEventStore
 from askgpt.domain.model.base import Event, json_dumps, json_loads
 from askgpt.infra.schema import EventSchema
-from askgpt.infra.uow import UnitOfWork
 
 table_event_mapping = {
     "id": "event_id",
@@ -42,7 +40,6 @@ def load_event(row_mapping: sa.RowMapping | dict[str, ty.Any]) -> IEvent:
 
 
 class EventStore(IEventStore):
-    # use uow to wrap the transaction
     def __init__(self, uow: UnitOfWork):
         self._uow = uow
 
@@ -59,15 +56,26 @@ class EventStore(IEventStore):
     async def get(self, entity_id: str) -> list[IEvent]:
         stmt = sa.select(EventSchema).where(EventSchema.entity_id == entity_id)
         cursor = await self._uow.execute(stmt)
-        rows = cursor.fetchall()
-        events = [load_event(row._mapping) for row in rows]
+        rows = cursor.mappings().all()
+        events = [load_event(row) for row in rows]
+        return events
+
+    async def get_by_type(self, entity_id: str, event_type: str) -> list[IEvent]:
+        stmt = (
+            sa.select(EventSchema)
+            .where(EventSchema.entity_id == entity_id)
+            .where(EventSchema.event_type == event_type)
+        )
+        cursor = await self._uow.execute(stmt)
+        rows = cursor.mappings().all()
+        events = [load_event(row) for row in rows]
         return events
 
     async def list_all(self) -> list[IEvent]:
         stmt = sa.select(EventSchema)
         cursor = await self._uow.execute(stmt)
-        rows = cursor.fetchall()
-        events = [load_event(row._mapping) for row in rows]
+        rows = cursor.mappings().all()
+        events = [load_event(row) for row in rows]
         return events
 
     async def remove(self, entity_id: str) -> None:
@@ -75,6 +83,11 @@ class EventStore(IEventStore):
 
 
 class OutBoxProducer(MessageProducer[IEvent]):
+    """
+    a dumb implementation of the producer that just adds the event to the event store
+    when we have cdc, we need to publish the event from cdc to the message queue
+    """
+
     def __init__(self, eventstore: EventStore):
         self._es = eventstore
 

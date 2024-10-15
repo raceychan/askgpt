@@ -3,12 +3,11 @@ import typing as ty
 
 import httpx
 import openai
-from openai.types import beta as openai_beta
-from openai.types import chat as openai_chat
-
 from askgpt.app.gpt import model, params
 from askgpt.domain.base import SupportedGPTs
 from askgpt.helpers.functions import attribute, lru_cache
+from openai.types import beta as openai_beta
+from openai.types import chat as openai_chat
 
 MAX_RETRIES: int = 3
 
@@ -48,10 +47,8 @@ class GPTClient(abc.ABC):
         self,
         messages: list[model.ChatMessage],
         model: model.CompletionModels,
-        options: params.CompletionOptions,  # type: ignore
-    ) -> (
-        ty.AsyncIterable[openai_chat.ChatCompletionChunk] | openai_chat.ChatCompletion
-    ): ...
+        options: params.CompletionOptions,
+    ) -> ty.AsyncGenerator[str, None]: ...
 
     @classmethod
     @abc.abstractmethod
@@ -85,17 +82,27 @@ class OpenAIClient(GPTClient):
         messages: list[model.ChatMessage],
         model: model.CompletionModels,
         options: params.CompletionOptions,  # type: ignore
-    ) -> ty.AsyncIterable[openai_chat.ChatCompletionChunk] | openai_chat.ChatCompletion:
+    ) -> ty.AsyncGenerator[
+        str, None
+    ]:  # ty.AsyncIterable[openai_chat.ChatCompletionChunk] | openai_chat.ChatCompletion:
         msgs = self.message_adapter(messages)
-        resp: ty.AsyncIterable[openai_chat.ChatCompletionChunk] = (
+        stream_resp: ty.AsyncIterable[openai_chat.ChatCompletionChunk] = (
             await self._client.chat.completions.create(
                 messages=msgs,  # type: ignore
                 model=model,
                 **options,
             )
         )
-
-        return resp
+        if isinstance(stream_resp, openai_chat.ChatCompletion):
+            # when stream = False 
+            yield (stream_resp.choices[0].message.content or "")
+        else:
+            async for chunk in stream_resp:
+                if not chunk.choices:
+                    continue
+                choice = chunk.choices[0]
+                content = choice.delta.content or ""
+                yield content
 
     def message_adapter(
         self, messages: list[model.ChatMessage]

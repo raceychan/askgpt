@@ -7,6 +7,9 @@ from functools import singledispatchmethod
 
 import orjson
 import sqlalchemy as sa
+from askgpt.domain.model.interface import ICommand, IEvent
+from askgpt.helpers.string import str_to_snake
+from askgpt.helpers.time import utc_now as utc_now
 from pydantic import AwareDatetime
 from pydantic import BaseModel as BaseModel
 from pydantic import ConfigDict as ConfigDict
@@ -15,10 +18,6 @@ from pydantic import Field as Field
 from pydantic import SerializeAsAny as SerializeAsAny
 from pydantic import computed_field as computed_field
 from pydantic import field_serializer as field_serializer
-
-from askgpt.domain.model.interface import ICommand, IEvent
-from askgpt.helpers.string import str_to_snake
-from askgpt.helpers.time import utc_now as utc_now
 
 # from pydantic import validator as validator
 

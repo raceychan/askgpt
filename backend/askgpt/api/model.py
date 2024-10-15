@@ -39,6 +39,7 @@ class ResponseData(DTO):
     as they don't need validation.
     but fastapi has bad support for typeddict in terms of
     openapi schema generation
+
     Isolating the changes happen on domain object
     """
 

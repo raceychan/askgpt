@@ -1,8 +1,14 @@
 import sqlalchemy as sa
 
+from askgpt.adapters.uow import UnitOfWork
 from askgpt.app.gpt.model import ChatSession, ISessionRepository
 from askgpt.infra.schema import SessionSchema
-from askgpt.infra.uow import UnitOfWork
+
+
+def session_from_row(row: sa.RowMapping) -> ChatSession:
+    return ChatSession(
+        session_id=row.id, user_id=row.user_id, session_name=row.session_name
+    )
 
 
 class SessionRepository(ISessionRepository):
@@ -16,14 +22,8 @@ class SessionRepository(ISessionRepository):
     async def list_sessions(self, user_id: str) -> list[ChatSession]:
         stmt = sa.select(SessionSchema).where(SessionSchema.user_id == user_id)
         cursor = await self._uow.execute(stmt)
-        rows = cursor.fetchall()
-        sessions = [
-            ChatSession(
-                session_id=row.id, user_id=row.user_id, session_name=row.session_name
-            )
-            for row in rows
-        ]
-        return sessions
+        rows = cursor.mappings().all()
+        return [session_from_row(row) for row in rows]
 
     async def add(self, entity: ChatSession):
         stmt = sa.insert(SessionSchema).values(
@@ -49,9 +49,15 @@ class SessionRepository(ISessionRepository):
     async def get(self, entity_id: str) -> ChatSession | None:
         stmt = sa.select(SessionSchema).where(SessionSchema.id == entity_id)
         cursor = await self._uow.execute(stmt)
-        row = cursor.one_or_none()
+        row = cursor.mappings().one_or_none()
         if not row:
             return None
-        return ChatSession(
-            session_id=row.id, user_id=row.user_id, session_name=row.session_name
-        )
+        return session_from_row(row)
+
+    async def get_user_session(self, session_id: str) -> ChatSession | None:
+        stmt = sa.select(SessionSchema).where(SessionSchema.id == session_id)
+        cursor = await self._uow.execute(stmt)
+        row = cursor.mappings().one_or_none()
+        if not row:
+            return None
+        return session_from_row(row)

@@ -1,8 +1,9 @@
+from askgpt.adapters.uow import UnitOfWork
 from askgpt.api.throttler import UserRequestThrottler
 from askgpt.app.auth.repository import AuthRepository
 from askgpt.app.auth.service import AuthService, TokenRegistry
 from askgpt.app.gpt.repository import SessionRepository
-from askgpt.app.gpt.service import GPTService, GPTSystem, QueueBox
+from askgpt.app.gpt.service import GPTService
 from askgpt.app.user.repository import UserRepository
 from askgpt.app.user.service import UserService
 from askgpt.domain.config import SETTINGS_CONTEXT, Settings
@@ -10,7 +11,6 @@ from askgpt.helpers.functions import simplecache
 from askgpt.infra.eventstore import EventStore, OutBoxProducer
 from askgpt.infra.factory import encrypt_facotry
 from askgpt.infra.locator import adapter_locator
-from askgpt.infra.uow import UnitOfWork
 
 
 def user_request_throttler_factory():
@@ -69,24 +69,15 @@ def auth_service_factory():
 
 def gpt_service_factory():
     settings: Settings = SETTINGS_CONTEXT.get()
-    system: GPTSystem = GPTSystem(
-        settings=settings,
-        ref=settings.actor_refs.SYSTEM,
-        event_store=event_store_factory(),
-        boxfactory=QueueBox,
-        cache=adapter_locator.aiocache,
-        producer=outbox_producer_factory(),
-    )
 
     session_repo = SessionRepository(uow_factory())
-    user_repo = AuthRepository(uow_factory())
     encryptor = encrypt_facotry()
-    producer = outbox_producer_factory()
     service = GPTService(
-        system=system,
         encryptor=encryptor,
-        user_repo=user_repo,
+        auth_service=auth_service_factory(),
+        user_service=user_service_factory(),
+        event_store=event_store_factory(),
+        cache=adapter_locator.aiocache,
         session_repo=session_repo,
-        producer=producer,
     )
     return service

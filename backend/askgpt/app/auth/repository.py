@@ -4,7 +4,7 @@ import sqlalchemy as sa
 
 from askgpt.app.auth.model import UserAuth, UserCredential
 from askgpt.infra.schema import UserAPIKeySchema, UserSchema
-from askgpt.infra.uow import UnitOfWork
+from askgpt.adapters.uow import UnitOfWork
 
 
 def dump_userauth(user: UserAuth) -> dict[str, ty.Any]:

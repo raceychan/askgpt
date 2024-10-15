@@ -2,13 +2,10 @@ import datetime
 import typing as ty
 
 import pytest
-from sqlalchemy.ext import asyncio as sa_aio
-from tests.conftest import UserDefaults
-
 from askgpt.adapters.cache import MemoryCache
 from askgpt.adapters.database import AsyncDatabase
 from askgpt.adapters.queue import QueueBroker
-from askgpt.domain.config import Settings
+from askgpt.adapters.uow import UnitOfWork
 from askgpt.app.actor import MailBox
 from askgpt.app.auth.model import UserAuth
 from askgpt.app.auth.repository import AuthRepository, UserAuth
@@ -16,11 +13,13 @@ from askgpt.app.auth.service import AuthService, TokenRegistry
 from askgpt.app.gpt.params import ChatResponse
 from askgpt.app.user.repository import UserRepository
 from askgpt.app.user.service import UserService
+from askgpt.domain.config import Settings
 from askgpt.infra.eventstore import EventStore, OutBoxProducer
 from askgpt.infra.gptclient import ClientRegistry, OpenAIClient
 from askgpt.infra.schema import create_tables
 from askgpt.infra.security import Encryptor
-from askgpt.infra.uow import UnitOfWork
+from sqlalchemy.ext import asyncio as sa_aio
+from tests.conftest import UserDefaults
 
 
 class EchoMailbox(MailBox):
@@ -92,6 +91,11 @@ def producer(eventstore: EventStore):
 #     )
 #     async with redis.lifespan():
 #         yield redis
+
+
+@pytest.fixture(scope="module")
+async def event_store(uow: UnitOfWork):
+    return EventStore(uow)
 
 
 @pytest.fixture(scope="module")

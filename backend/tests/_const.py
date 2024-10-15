@@ -11,6 +11,7 @@ class UserDefaults:
     USER_EMAIL: str = "admin@gmail.com"
     USER_PASSWORD: str = "password"
     SESSION_ID: str = "e0b5ee4a-ef76-4ed9-89fb-5f7a64122dc8"
+    QUESTION: str = "This is a test question, return 'okay' if question received"
     SESSION_NAME: str = "default_session"
     MODEL: str = "gpt-3.5-turbo"
     USER_ROLE: UserRoles = UserRoles.user

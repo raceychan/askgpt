@@ -95,3 +95,13 @@ class UserAPIKeyNotProvidedError(AuthenticationError):
     def __init__(self, *, user_id: str, api_type: str):
         msg = f"user {user_id} api key not provided for {api_type}"
         super().__init__(msg)
+
+
+class DuplicatedAPIKeyError(AuthenticationError):
+    """
+    User API key already exist
+    """
+
+    def __init__(self, *, api_type: str):
+        msg = f"same api key already exist for {api_type}"
+        super().__init__(msg)

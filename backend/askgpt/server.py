@@ -1,5 +1,4 @@
 import uvicorn
-
 from askgpt.app.app import app_factory
 from askgpt.domain import config
 from askgpt.helpers.file import relative_path
@@ -12,6 +11,6 @@ if __name__ == "__main__":
         port=5000,
         factory=True,
         reload=True,
-        reload_excludes=["test_*.py", "conftest.py"],
+        reload_excludes=["test_*.py", "conftest.py", "api_test.py"],
         log_config=None,
     )

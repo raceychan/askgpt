@@ -1,11 +1,8 @@
 from datetime import datetime, timedelta
 
 from askgpt.adapters.cache import Cache, KeySpace
-from askgpt.domain.config import Settings
-
-# from askgpt.domain.interface import IEvent
-from askgpt.domain.model.base import utc_now, uuid_factory
 from askgpt.app.auth.errors import (
+    DuplicatedAPIKeyError,
     InvalidPasswordError,
     UserAlreadyExistError,
     UserInactiveError,
@@ -21,12 +18,13 @@ from askgpt.app.auth.model import (
     UserSignedUp,
 )
 from askgpt.app.auth.repository import AuthRepository
+from askgpt.domain.config import Settings
+from askgpt.domain.model.base import utc_now, uuid_factory
 from askgpt.infra import security
 from askgpt.infra.eventstore import EventStore
 
+
 # from askgpt.adapters import queue
-
-
 class TokenRegistry:
     """
     a registry for access-token, validated by redis
@@ -59,7 +57,7 @@ class AuthService:
         security_settings: Settings.Security,
     ):
         self._uow = auth_repo.uow
-        self._user_repo = auth_repo
+        self._auth_repo = auth_repo
         self._token_registry = token_registry
         self._encryptor = encryptor
         self._eventstore = eventstore
@@ -83,7 +81,7 @@ class AuthService:
 
     async def signup_user(self, user_name: str, email: str, password: str) -> None:
         async with self._uow.trans():
-            user = await self._user_repo.search_user_by_email(email)
+            user = await self._auth_repo.search_user_by_email(email)
             if user is not None:
                 raise UserAlreadyExistError(email=email)
 
@@ -99,19 +97,12 @@ class AuthService:
         user_auth = UserAuth.apply(user_signed_up)
 
         async with self._uow.trans():
-            await self._user_repo.add(user_auth)
+            await self._auth_repo.add(user_auth)
             await self._eventstore.add(user_signed_up)
 
     async def add_api_key(self, user_id: str, api_key: str, api_type: str) -> None:
-        """
-        TODO: calculate the hash_value of api_key so that we can avoid duplicated api_key
-        key_hash = hash(api_key)
-        is_duplicate = await self._user_repo.check_for_key_duplicate(user_id, key_hash)
-        if is_duplicate:
-            raise DuplicatedAPIKeyError
-        """
         async with self._uow.trans():
-            user = await self._user_repo.get(user_id)
+            user = await self._auth_repo.get(user_id)
             if user is None:
                 raise UserNotFoundError(user_id=user_id)
 
@@ -124,15 +115,28 @@ class AuthService:
             idem_id=idem_id,
         )
 
+        try:
+            async with self._uow.trans():
+                await self._auth_repo.add_api_key_for_user(
+                    user_id, encrypted_key, api_type, idem_id
+                )
+                await self._eventstore.add(user_api_added)
+        except Exception as e:
+            # TODO: catch specific error
+            raise DuplicatedAPIKeyError(api_type=api_type) from e
+
+    async def list_api_keys(self, user_id: str, api_type: str) -> tuple[str, ...]:
         async with self._uow.trans():
-            await self._user_repo.add_api_key_for_user(
-                user_id, encrypted_key, api_type, idem_id
+            encrypted_keys = await self._auth_repo.get_api_keys_for_user(
+                user_id=user_id, api_type=api_type
             )
-            await self._eventstore.add(user_api_added)
+
+        api_keys = tuple(self._encryptor.decrypt_string(key) for key in encrypted_keys)
+        return api_keys
 
     async def login(self, email: str, password: str) -> str:
         async with self._uow.trans():
-            user = await self._user_repo.search_user_by_email(email)
+            user = await self._auth_repo.search_user_by_email(email)
 
         if user is None:
             raise UserNotFoundError(user_id=email)
@@ -151,17 +155,17 @@ class AuthService:
     async def get_current_user(self, token: AccessToken) -> UserAuth:
         user_id = token.sub
         async with self._uow.trans():
-            user = await self._user_repo.get(user_id)
+            user = await self._auth_repo.get(user_id)
         if not user:
             raise UserNotFoundError(user_id=user_id)
         return user
 
     async def deactivate_user(self, user_id: str):
         async with self._uow.trans():
-            user = await self._user_repo.get(user_id)
+            user = await self._auth_repo.get(user_id)
             if user is None:
                 raise UserNotFoundError(user_id=user_id)
             e = UserDeactivated(user_id=user_id)
             user.apply(e)
-            await self._user_repo.remove(user.entity_id)
+            await self._auth_repo.remove(user.entity_id)
             await self._eventstore.add(e)

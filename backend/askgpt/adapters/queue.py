@@ -130,12 +130,6 @@ class BaseConsumer[TMessage](MessageConsumer[TMessage]):
         return await self._broker.get()
 
 
-"""
-TODO: implement PulsarBroker, PulsarProducer, PulsarConsumer
-(bridge pattern)
-"""
-
-
 class PulsarBroker[IMessage: ty.Any](MessageBroker[IMessage]): ...
 
 

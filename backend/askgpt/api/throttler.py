@@ -26,22 +26,3 @@ class UserRequestThrottler:
             refill_rate_s=self._refill_rate,
         )
         return await bucket.acquire(1)
-
-
-# def user_request_throttler(
-#     bucket_factory: TokenBucketFactory, max_requests: int, refill_duration_s: int
-# ):
-# """
-# should we use function or class?
-# function is simpler, but it does not provide good typing support
-# """
-
-# def validator(user_id: str):
-#     bucket = bucket_factory.create_bucket(
-#         bucket_key=user_id,
-#         max_tokens=max_requests,
-#         refill_rate_s=refill_duration_s,
-#     )
-#     return bucket.acquire(1)
-
-# return validator
