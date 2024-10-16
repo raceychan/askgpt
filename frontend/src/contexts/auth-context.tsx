@@ -1,10 +1,10 @@
 import React, { createContext, useContext, useCallback, useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { Config } from "@/config/config";
+import { Config } from "@/config";
 import { useNavigate } from "@tanstack/react-router";
 import { AxiosError } from "axios";
 import { UseMutationResult } from "@tanstack/react-query";
-import { AuthService, UserService, PublicUserInfo } from "@/lib/api";
+import { AuthService, PublicUserInfo } from "@/lib/api";
 
 type ErrorResponse = {
   type: string;

@@ -1,7 +1,7 @@
 import React from "react";
-import { AuthProvider } from "@/contexts/AuthContext";
+import { AuthProvider } from "@/contexts/auth-context";
 import { Outlet } from "@tanstack/react-router";
-import NaviBar from "@/components/layout/NaviBar";
+import NaviBar from "@/components/layout/navi-bar";
 import { Toaster } from "@/components/ui/toaster";
 
 const Header: React.FC = () => {

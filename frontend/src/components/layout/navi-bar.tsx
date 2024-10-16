@@ -1,7 +1,7 @@
 import React from "react";
 
-import Profile from "./bar-items/Profile";
-import Features from "./bar-items/Feature";
+import Profile from "./bar-items/profile";
+import Features from "./bar-items/feature";
 
 const NaviBar: React.FC = () => {
   return (

@@ -7,10 +7,10 @@ import {
   NavigationMenuTrigger,
   NavigationMenuContent,
 } from "@/components/ui/navigation-menu";
-import { useAuth } from "@/contexts/AuthContext";
+import { useAuth } from "@/contexts/auth-context";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
-import ListItem from "./ListItem";
+import ListItem from "./listitem";
 
 type UserMenuProps = {
   user: { email: string } | null;

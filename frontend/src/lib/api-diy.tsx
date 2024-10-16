@@ -1,6 +1,6 @@
 import { fetchEventSource } from "@microsoft/fetch-event-source";
 
-import { Config } from "@/config/config";
+import { Config } from "@/config";
 
 export async function streamingChat(
   sessionId: string,

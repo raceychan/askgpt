@@ -7,7 +7,7 @@ import {
   CardFooter,
 } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import useAuth from "@/contexts/AuthContext";
+import useAuth from "@/contexts/auth-context";
 import { Link } from "@tanstack/react-router";
 
 type Session = {

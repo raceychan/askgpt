@@ -3,13 +3,12 @@ import {
   Link,
   ErrorComponentProps,
 } from "@tanstack/react-router";
-import App from "@/app/App.tsx";
+import App from "@/app/app";
 
 import React from "react";
 
 import { Button } from "@/components/ui/button";
-
-const ErrorPage: React.FC<ErrorComponentProps> = ({ error }) => {
+const ErrorPrompt: React.FC<ErrorComponentProps> = ({ error }) => {
   return (
     <div
       id="error-page"
@@ -27,8 +26,9 @@ const ErrorPage: React.FC<ErrorComponentProps> = ({ error }) => {
   );
 };
 
+// Provide a global layout for the app
 export const Route = createRootRoute({
   component: App,
-  errorComponent: ErrorPage,
-  notFoundComponent: ErrorPage,
+  errorComponent: ErrorPrompt,
+  notFoundComponent: ErrorPrompt,
 });

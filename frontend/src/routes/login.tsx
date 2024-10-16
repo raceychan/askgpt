@@ -1,34 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
-import React, { useEffect } from "react";
-import LoginComponent from "@/components/auth/Login";
-import { useAuth } from "@/contexts/AuthContext";
-import { useNavigate } from "@tanstack/react-router";
-
-const LoginPage: React.FC = () => {
-  const { user } = useAuth();
-  const navigate = useNavigate();
-  useEffect(() => {
-    if (user) {
-      navigate({ to: "/" });
-    }
-  }, [user, navigate]);
-
-  if (user) {
-    return (
-      <div className="min-h-screen bg-white flex justify-center items-center">
-        <p className="text-lg font-semibold">
-          welcome back! You are being redirected to the homepage...
-        </p>
-      </div>
-    );
-  }
-
-  return (
-    <div className="min-h-screen bg-white flex justify-center items-center">
-      <LoginComponent />
-    </div>
-  );
-};
+import LoginPage from "@/app/auth/login";
 
 export const Route = createFileRoute("/login")({
   component: LoginPage,
