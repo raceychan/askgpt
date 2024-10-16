@@ -230,6 +230,10 @@ export type GetPublicUserResponse = (PublicUserInfo);
 
 export type GetPublicUserError = unknown;
 
+export type DeleteUserResponse = (unknown);
+
+export type DeleteUserError = unknown;
+
 export type CreateNewKeyData = {
     body: CreateNewKey;
 };
@@ -238,9 +242,16 @@ export type CreateNewKeyResponse = (unknown);
 
 export type CreateNewKeyError = (HTTPValidationError);
 
-export type DeleteUserResponse = (unknown);
+export type ListKeysData = {
+    query: {
+        api_type: SupportedGPTs;
+        as_secret?: boolean;
+    };
+};
 
-export type DeleteUserError = unknown;
+export type ListKeysResponse = (Array<(string)>);
+
+export type ListKeysError = (HTTPValidationError);
 
 export type FindUserByEmailData = {
     query: {

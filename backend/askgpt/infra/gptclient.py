@@ -94,7 +94,7 @@ class OpenAIClient(GPTClient):
             )
         )
         if isinstance(stream_resp, openai_chat.ChatCompletion):
-            # when stream = False 
+            # when stream = False
             yield (stream_resp.choices[0].message.content or "")
         else:
             async for chunk in stream_resp:

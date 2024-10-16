@@ -251,6 +251,3 @@ async def chat(
     # BUG? if stream started and exception occurs, client would get error
     # check issue here https://github.com/fastapi/fastapi/discussions/10138
     return StreamingResponse(stream_ans, media_type="text/event-stream")
-
-
-gpt_router.include_router(openai_router)

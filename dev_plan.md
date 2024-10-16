@@ -4,7 +4,7 @@
 
 ### FRONTEND
 
-- [ ] use microsoft/fetch-event-source to replace axios for chat api call
+- [x] use microsoft/fetch-event-source to replace axios for chat api call
 
 - [ ] let child component use parent component's error message
 

@@ -24,6 +24,10 @@ from askgpt.infra import security
 from askgpt.infra.eventstore import EventStore
 
 
+def partial_secret(key: str, secret_len: int = 3) -> str:
+    return key[:secret_len] + ("*" * (len(key) - secret_len))
+
+
 # from askgpt.adapters import queue
 class TokenRegistry:
     """
@@ -125,13 +129,17 @@ class AuthService:
             # TODO: catch specific error
             raise DuplicatedAPIKeyError(api_type=api_type) from e
 
-    async def list_api_keys(self, user_id: str, api_type: str) -> tuple[str, ...]:
+    async def list_api_keys(
+        self, user_id: str, api_type: str, as_secret: bool = False
+    ) -> tuple[str, ...]:
         async with self._uow.trans():
             encrypted_keys = await self._auth_repo.get_api_keys_for_user(
                 user_id=user_id, api_type=api_type
             )
 
         api_keys = tuple(self._encryptor.decrypt_string(key) for key in encrypted_keys)
+        if as_secret:
+            return tuple(partial_secret(key) for key in api_keys)
         return api_keys
 
     async def login(self, email: str, password: str) -> str:

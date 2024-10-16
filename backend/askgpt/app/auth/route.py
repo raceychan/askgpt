@@ -1,15 +1,14 @@
 import typing as ty
 
-from fastapi import APIRouter, Depends
-from fastapi.responses import RedirectResponse
-from fastapi.security import OAuth2PasswordRequestForm
-from pydantic import EmailStr
-
-from askgpt.domain.base import EMPTY_STR, SupportedGPTs
 from askgpt.api.dependencies import ParsedToken
-from askgpt.api.model import RequestBody, ResponseData
+from askgpt.api.model import OK, RequestBody, ResponseData
 from askgpt.app.auth.model import UserAuth
 from askgpt.app.factory import AuthService, auth_service_factory
+from askgpt.domain.base import EMPTY_STR, SupportedGPTs
+from fastapi import APIRouter, Depends
+from fastapi.responses import RedirectResponse, Response
+from fastapi.security import OAuth2PasswordRequestForm
+from pydantic import EmailStr
 
 auth_router = APIRouter(prefix="/auth")
 
@@ -63,16 +62,36 @@ async def get_public_user(service: Service, token: ParsedToken) -> PublicUserInf
     return PublicUserInfo.from_auth(user)
 
 
+@auth_router.delete("/{user_id}", status_code=200)
+async def delete_user(service: Service, token: ParsedToken):
+    await service.deactivate_user(token.sub)
+    return Response(status_code=200)
+
+
 class CreateNewKey(RequestBody):
     api_key: str
     api_type: SupportedGPTs = "openai"
 
 
-@auth_router.post("/apikeys")
+api_key_router = APIRouter(prefix="/apikeys")
+
+
+@api_key_router.post("/", status_code=201)
 async def create_new_key(service: Service, r: CreateNewKey, token: ParsedToken):
     await service.add_api_key(user_id=token.sub, api_key=r.api_key, api_type=r.api_type)
+    return Response(status_code=201)
 
 
-@auth_router.delete("/{user_id}")
-async def delete_user(service: Service, token: ParsedToken):
-    await service.deactivate_user(token.sub)
+@api_key_router.get("/", response_model=tuple[str, ...])
+async def list_keys(
+    service: Service,
+    token: ParsedToken,
+    api_type: SupportedGPTs,
+    as_secret: bool = False,
+):
+    keys = await service.list_api_keys(
+        user_id=token.sub,
+        api_type=api_type,
+        as_secret=as_secret,
+    )
+    return keys

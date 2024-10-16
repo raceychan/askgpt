@@ -1,18 +1,17 @@
 import typing as ty
 from contextlib import asynccontextmanager
 
-from fastapi import APIRouter, FastAPI
-from starlette.types import Lifespan
-
 from askgpt.api.error_handlers import add_exception_handlers, handler_registry
 from askgpt.api.middleware import add_middlewares
-from askgpt.api.root_router import api_router, route_id_factory
+from askgpt.api.router import feature_router, route_id_factory
 from askgpt.domain.config import SETTINGS_CONTEXT, Settings, detect_settings
 from askgpt.helpers._log import logger, prod_sink, update_sink
 from askgpt.helpers.error_registry import error_route_factory
 from askgpt.helpers.time import timeout
 from askgpt.infra import schema
 from askgpt.infra.locator import adapter_locator, make_database
+from fastapi import APIRouter, FastAPI
+from starlette.types import Lifespan
 
 
 class BoostrapingFailedError(Exception): ...
@@ -87,7 +86,7 @@ def app_factory(
     error_route = error_route_factory(handler_registry, route_path="/errors")
 
     root_router = APIRouter(prefix=settings.api.API_VERSION_STR)
-    root_router.include_router(api_router)
+    root_router.include_router(feature_router)
     root_router.include_router(error_route)
 
     app.include_router(root_router)

@@ -47,4 +47,5 @@ class ResponseData(DTO):
 
 
 OK = Response(status_code=status.HTTP_200_OK)
+Created = Response(status_code=status.HTTP_201_CREATED)
 EntityDeleted = Response(status_code=status.HTTP_204_NO_CONTENT)
