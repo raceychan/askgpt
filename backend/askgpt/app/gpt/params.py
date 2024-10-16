@@ -1,5 +1,6 @@
 import typing as ty
 
+from askgpt.domain.model.base import ValueObject
 from openai._types import Body, Headers, Query
 from openai.types.chat import (
     ChatCompletionChunk,
@@ -12,10 +13,11 @@ from openai.types.chat.completion_create_params import (
     CompletionCreateParams as CompletionCreateParams,
 )
 from openai.types.chat.completion_create_params import (
+    CompletionCreateParamsBase as CompletionCreateParamsBase,
+)
+from openai.types.chat.completion_create_params import (
     CompletionCreateParamsStreaming as CompletionCreateParamsStreaming,
 )
-
-from askgpt.domain.model.base import ValueObject
 
 # TODO: read
 # https://learn.microsoft.com/en-us/dotnet/architecture/microservices/microservice-ddd-cqrs-patterns/domain-events-design-implementation
@@ -34,8 +36,10 @@ CompletionModels = ty.Literal[
     "gpt-4-vision-preview",
 ]
 
-# TODO: use enum
 ChatGPTRoles = ty.Literal["system", "user", "assistant", "function"]
+
+# we should use pydantic to validate options
+# https://docs.pydantic.dev/2.3/usage/types/dicts_mapping/#typeddict
 
 
 class CompletionOptions(ty.TypedDict, total=False):
@@ -61,6 +65,9 @@ class CompletionOptions(ty.TypedDict, total=False):
     extra_query: Query | None
     extra_body: Body | None
     timeout: float | None
+class CompleteMessage(ty.TypedDict):
+    role: ChatGPTRoles
+    content: str
 
 
 class ChatResponse(ValueObject):

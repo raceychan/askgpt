@@ -2,8 +2,6 @@ import typing as ty
 from collections import defaultdict
 from functools import singledispatchmethod
 
-from pydantic import AwareDatetime
-
 from askgpt.app.auth.model import UserAPIKeyAdded, UserSignedUp
 from askgpt.app.gpt.params import ChatGPTRoles, CompletionModels
 from askgpt.domain.base import SupportedGPTs
@@ -21,6 +19,7 @@ from askgpt.domain.model.base import uuid_factory as uuid_factory
 
 # from askgpt.domain.model.user import CreateUser, UserCreated
 from askgpt.helpers.time import utc_now
+from pydantic import AwareDatetime
 
 DEFAULT_SESSION_NAME = "New Session"
 
@@ -54,11 +53,10 @@ class ChatMessage(ValueObject):
     def as_prompt(cls, content: str) -> ty.Self:
         return cls(role="system", content=content)
 
-    def asdict(self) -> dict[str, ty.Any]:
+    def asdict(self):
         # TODO: find a better way to handle this
         # oepnai can't handle datetime objects in the messages
-        d = self.model_dump(exclude={"user_id"})
-        d["timestamp"] = str(d["timestamp"])
+        d = self.model_dump(exclude={"user_id", "timestamp"})
         return d
 
 

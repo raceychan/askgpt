@@ -74,6 +74,8 @@ class CreateNewKey(RequestBody):
 
 
 api_key_router = APIRouter(prefix="/apikeys")
+# should be /user/apikeys
+# POST /user/apikeys -> create new key
 
 
 @api_key_router.post("/", status_code=201)

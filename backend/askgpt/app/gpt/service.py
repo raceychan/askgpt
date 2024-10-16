@@ -2,6 +2,7 @@ import typing as ty
 
 from askgpt.adapters.cache import Cache
 from askgpt.app.auth.service import AuthService
+from askgpt.app.gpt.api_pool import APIPool
 from askgpt.app.gpt.errors import (
     APIKeyNotProvidedError,
     OrphanSessionError,
@@ -18,18 +19,20 @@ from askgpt.app.gpt.model import (
     SessionRenamed,
     uuid_factory,
 )
-from askgpt.app.gpt.params import ChatGPTRoles
+from askgpt.app.gpt.params import CompletionCreateParamsBase
 from askgpt.app.gpt.repository import SessionRepository
-from askgpt.app.gpt.request import APIPool
 from askgpt.app.user.service import UserService
 from askgpt.domain.base import SupportedGPTs
 from askgpt.domain.config import SETTINGS_CONTEXT
 from askgpt.infra.eventstore import EventStore
-from askgpt.infra.gptclient import ClientRegistry
+from askgpt.infra.gptclient import OpenAIClient
 from askgpt.infra.security import Encryptor
 
 
 class GPTService:
+    # TODO: should be subclassable
+    # instead of using client registry,
+    # we should have OpenAIGPT(GPTService)
     def __init__(
         self,
         encryptor: Encryptor,
@@ -48,7 +51,6 @@ class GPTService:
         #
         self._uow = self._session_repo.uow
         self._settings = SETTINGS_CONTEXT.get()
-        self._client_registry = ClientRegistry()
 
     async def _build_api_pool(self, user_id: str, api_type: str):
         decrypted_api_keys = await self._auth_service.list_api_keys(
@@ -87,21 +89,16 @@ class GPTService:
         self,
         user_id: str,
         session_id: str,
-        gpt_type: SupportedGPTs,
-        role: ChatGPTRoles,
-        question: str,
-        options: dict[str, ty.Any],
+        gpt_type: SupportedGPTs,  # TODO: this should be class attribute
+        message: ChatMessage,
+        params: CompletionCreateParamsBase,
     ) -> ty.AsyncGenerator[str, None]:
         session = await self._rebuild_session(user_id=user_id, session_id=session_id)
         api_pool = await self._build_api_pool(user_id=user_id, api_type=gpt_type)
         async with api_pool.reserve_api_key() as api_key:
-            client_factory = self._client_registry[gpt_type]
-            client = client_factory.from_apikey(api_key)
-            message = ChatMessage(role=role, content=question)
+            client = OpenAIClient.from_apikey(api_key)
             messages = session.messages + [message]
-            ans_gen = client.complete(
-                messages=messages, model=options.pop("model"), options=options
-            )
+            ans_gen = client.complete(messages=messages, params=params)
             answer = ""
             async for chunk in ans_gen:
                 yield chunk

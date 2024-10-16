@@ -40,10 +40,19 @@ def request_id_factory() -> bytes:
 
 
 def json_dumps(obj) -> str:
+
     return orjson.dumps(obj).decode()
 
 
 def json_loads(obj: str):
+    # TODO: let orjson dumps bytes 
+    """
+    my_bytes_value = b'[{\'Date\': \'2016-05-21T21:35:40Z\', \'CreationDate\': \'2012-05-05\', \'LogoType\': \'png\', \'Ref\': 164611595, \'Classe\': [\'Email addresses\', \'Passwords\'],\'Link\':\'http://some_link.com\'}]'
+
+    fix_bytes_value = my_bytes_value.replace(b"'", b'"')
+
+    my_json = json.load(io.BytesIO(fix_bytes_value))
+    """
     return orjson.loads(obj.encode())
 
 

@@ -42,13 +42,7 @@ class ClientRegistry:
         return inner
 
 
-class GPTClient(abc.ABC):
-    async def complete(
-        self,
-        messages: list[model.ChatMessage],
-        model: model.CompletionModels,
-        options: params.CompletionOptions,
-    ) -> ty.AsyncGenerator[str, None]: ...
+class GPTClient(ty.Protocol):
 
     @classmethod
     @abc.abstractmethod
@@ -56,7 +50,7 @@ class GPTClient(abc.ABC):
 
 
 @ClientRegistry.register("openai")
-class OpenAIClient(GPTClient):
+class OpenAIClient:
     def __init__(self, client: openai.AsyncOpenAI):
         self._client = client
 
@@ -80,17 +74,16 @@ class OpenAIClient(GPTClient):
     async def complete(
         self,
         messages: list[model.ChatMessage],
-        model: model.CompletionModels,
-        options: params.CompletionOptions,  # type: ignore
+        params: params.CompletionCreateParamsBase,
     ) -> ty.AsyncGenerator[
         str, None
     ]:  # ty.AsyncIterable[openai_chat.ChatCompletionChunk] | openai_chat.ChatCompletion:
         msgs = self.message_adapter(messages)
+        params["messages"] = msgs
         stream_resp: ty.AsyncIterable[openai_chat.ChatCompletionChunk] = (
             await self._client.chat.completions.create(
-                messages=msgs,  # type: ignore
-                model=model,
-                **options,
+                stream=True,
+                **params,
             )
         )
         if isinstance(stream_resp, openai_chat.ChatCompletion):
@@ -106,13 +99,17 @@ class OpenAIClient(GPTClient):
 
     def message_adapter(
         self, messages: list[model.ChatMessage]
-    ) -> list[dict[str, ty.Any]]:
-        return [message.asdict() for message in messages]
+    ) -> list[openai_chat.ChatCompletionMessageParam]:
+        adapted = ty.cast(
+            list[openai_chat.ChatCompletionMessageParam],
+            [dict(content=message.content, role=message.role) for message in messages],
+        )
+        return adapted
 
     @classmethod
     @lru_cache(maxsize=1000)
-    def from_apikey(cls, api_key: str) -> "OpenAIClient":
-        return cls.build(api_key=api_key, timeout=30.0)
+    def from_apikey(cls, api_key: str, timeout: float = 30.0) -> "OpenAIClient":
+        return cls.build(api_key=api_key, timeout=timeout)
 
     @classmethod
     def build(
@@ -139,5 +136,4 @@ class OpenAIClient(GPTClient):
             http_client=http_client,
             _strict_response_validation=_strict_response_validation,
         )
-
         return cls(openai_client)

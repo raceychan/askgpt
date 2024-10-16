@@ -1,10 +1,8 @@
 import typing as ty
-
-# from collections import deque
 from contextlib import asynccontextmanager
 
 from askgpt.adapters import cache
-from askgpt.app.gpt.errors import APIKeyNotAvailableError, APIKeyNotProvidedError
+from askgpt.app.gpt.errors import APIKeyNotAvailableError
 from askgpt.domain.base import SupportedGPTs
 
 
