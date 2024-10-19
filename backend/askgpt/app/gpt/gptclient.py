@@ -1,11 +1,16 @@
 import abc
+
+# import asyncio
 import typing as ty
 
 import httpx
 import openai
-from askgpt.app.gpt import model, params
-from askgpt.domain.base import SupportedGPTs
+from askgpt.app.gpt.errors import OpenAIRequestError
+from askgpt.app.gpt.params import ChatCompletionMessageParam, CompletionOptions
+from askgpt.domain.types import SupportedGPTs
+from askgpt.helpers._log import logger
 from askgpt.helpers.functions import attribute, lru_cache
+from openai._exceptions import APIStatusError, RateLimitError
 from openai.types import beta as openai_beta
 from openai.types import chat as openai_chat
 
@@ -71,44 +76,38 @@ class OpenAIClient:
         """
         return await self._client.beta.threads.create()
 
+    @property
+    def chatgpt(self):
+        return self._client.chat.completions
+
     async def complete(
         self,
-        messages: list[model.ChatMessage],
-        params: params.CompletionCreateParamsBase,
-    ) -> ty.AsyncGenerator[
-        str, None
-    ]:  # ty.AsyncIterable[openai_chat.ChatCompletionChunk] | openai_chat.ChatCompletion:
-        msgs = self.message_adapter(messages)
-        params["messages"] = msgs
-        stream_resp: ty.AsyncIterable[openai_chat.ChatCompletionChunk] = (
-            await self._client.chat.completions.create(
-                stream=True,
-                **params,
-            )
-        )
-        if isinstance(stream_resp, openai_chat.ChatCompletion):
-            # when stream = False
-            yield (stream_resp.choices[0].message.content or "")
+        messages: list[ChatCompletionMessageParam],
+        params: CompletionOptions,
+    ) -> ty.AsyncGenerator[str, None]:
+        # ty.AsyncIterable[openai_chat.ChatCompletionChunk] | openai_chat.ChatCompletion:
+        params["max_tokens"] = 10
+        s_resp: ty.AsyncIterable[openai_chat.ChatCompletionChunk]
+        try:
+            s_resp = await self.chatgpt.create(stream=False, messages=messages, **params)  # type: ignore
+        except APIStatusError as e:
+            raise OpenAIRequestError(e.status_code, e.message)
+
+        if isinstance(s_resp, openai_chat.ChatCompletion):
+
+            yield (s_resp.choices[0].message.content or "")
         else:
-            async for chunk in stream_resp:
+            async for chunk in s_resp:
+                logger.success(f"chunk: {chunk}")
                 if not chunk.choices:
                     continue
                 choice = chunk.choices[0]
                 content = choice.delta.content or ""
                 yield content
 
-    def message_adapter(
-        self, messages: list[model.ChatMessage]
-    ) -> list[openai_chat.ChatCompletionMessageParam]:
-        adapted = ty.cast(
-            list[openai_chat.ChatCompletionMessageParam],
-            [dict(content=message.content, role=message.role) for message in messages],
-        )
-        return adapted
-
     @classmethod
     @lru_cache(maxsize=1000)
-    def from_apikey(cls, api_key: str, timeout: float = 30.0) -> "OpenAIClient":
+    def from_apikey(cls, api_key: str, timeout: float = 10.0) -> "OpenAIClient":
         return cls.build(api_key=api_key, timeout=timeout)
 
     @classmethod

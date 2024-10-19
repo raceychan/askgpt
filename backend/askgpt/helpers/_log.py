@@ -4,13 +4,16 @@ import datetime
 import sys
 import traceback
 import typing as ty
+from urllib.parse import quote
 
 import loguru
 import orjson
+from askgpt.helpers.file import relative_path
+from fastapi import Request
+from fastapi.responses import Response, StreamingResponse
 from loguru import logger
 from rich.console import Console
-
-from askgpt.helpers.file import relative_path
+from starlette.responses import ContentStream, Response
 
 __all__ = ["logger"]
 
@@ -79,8 +82,6 @@ def debug_sink(msg: loguru.Message) -> None:
     )
 
     console.print(log, style=COLOR_MAPPER[record["level"].name])
-    # if record["level"].name == "ERROR":
-    #     print()
     if record["exception"]:
         print(traceback.format_exc())
 
@@ -92,3 +93,36 @@ def update_sink(sink: ty.Callable[[loguru.Message], None]) -> loguru.Logger:
 
 
 update_sink(debug_sink)
+
+
+def log_request(
+    request: Request,
+    response: Response,
+    request_body: bytes,
+    response_body: bytes,
+    status_code: int,
+    duration: float,
+):
+    client_host, client_port = request.client or ("unknown", "unknown")
+    url_parts = request.url.components
+    path_query = quote(
+        "{}?{}".format(url_parts.path, url_parts.query)
+        if url_parts.query
+        else url_parts.path
+    )
+
+    msg = f""" \
+    {client_host}:{client_port} - "{request.method} {path_query} HTTP/{request.scope["http_version"]}" {status_code} \
+    """.strip()
+
+    if status_code < 400:
+        logger.info(msg, duration=duration)
+    else:
+        req_json = request_body.decode()
+        res_json = response_body.decode()
+        logger.error(
+            msg,
+            request_body=req_json,
+            response_body=res_json,
+            duration=duration,
+        )

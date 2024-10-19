@@ -3,7 +3,7 @@ from contextlib import asynccontextmanager
 
 from askgpt.adapters import cache
 from askgpt.app.gpt.errors import APIKeyNotAvailableError
-from askgpt.domain.base import SupportedGPTs
+from askgpt.domain.types import SupportedGPTs
 
 
 class PoolFacotry:

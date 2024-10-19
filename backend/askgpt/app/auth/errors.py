@@ -22,7 +22,6 @@ class AuthenticationError(GeneralWebError):
     """
     Failed to authenticate user
     """
-
     service: str = "auth"
 
 

@@ -1,10 +1,10 @@
 import typing as ty
 
 from askgpt.domain.model.base import ValueObject
-from openai._types import Body, Headers, Query
+from openai.types import ChatModel as CompletionModels
+from openai.types.chat import ChatCompletionChunk
+from openai.types.chat import ChatCompletionMessageParam as ChatCompletionMessageParam
 from openai.types.chat import (
-    ChatCompletionChunk,
-    ChatCompletionMessageParam,
     ChatCompletionToolChoiceOptionParam,
     ChatCompletionToolParam,
     completion_create_params,
@@ -19,32 +19,18 @@ from openai.types.chat.completion_create_params import (
     CompletionCreateParamsStreaming as CompletionCreateParamsStreaming,
 )
 
-# TODO: read
-# https://learn.microsoft.com/en-us/dotnet/architecture/microservices/microservice-ddd-cqrs-patterns/domain-events-design-implementation
+type ChatGPTRoles = ty.Literal["system", "user", "assistant", "function"]
 
 
-CompletionModels = ty.Literal[
-    "gpt-3.5-turbo",
-    # "gpt-3.5-turbo-0613", not
-    "gpt-3.5-turbo-16k",
-    # "gpt-3.5-turbo-16k-0613",
-    "gpt-4",
-    # "gpt-4-0613", not available
-    "gpt-4-32k",
-    # "gpt-4-32k-0613", not available
-    "gpt-4-1106-preview",
-    "gpt-4-vision-preview",
-]
-
-ChatGPTRoles = ty.Literal["system", "user", "assistant", "function"]
-
-# we should use pydantic to validate options
-# https://docs.pydantic.dev/2.3/usage/types/dicts_mapping/#typeddict
+class CompletionMessage(ty.TypedDict, total=False):
+    role: ty.Required[ChatGPTRoles]
+    content: ty.Required[str]
+    name: str | None
 
 
 class CompletionOptions(ty.TypedDict, total=False):
-    messages: ty.List[ChatCompletionMessageParam]
-    model: CompletionModels
+    message: ty.Required[CompletionMessage]
+    model: ty.Required[CompletionModels]
     frequency_penalty: float | None
     function_call: completion_create_params.FunctionCall
     functions: list[completion_create_params.Function]
@@ -61,10 +47,12 @@ class CompletionOptions(ty.TypedDict, total=False):
     tools: list[ChatCompletionToolParam]
     top_p: float | None
     user: str
-    extra_headers: Headers | None
-    extra_query: Query | None
-    extra_body: Body | None
+    extra_headers: ty.Any | None
+    extra_query: ty.Any | None
+    extra_body: ty.Any | None
     timeout: float | None
+
+
 class CompleteMessage(ty.TypedDict):
     role: ChatGPTRoles
     content: str

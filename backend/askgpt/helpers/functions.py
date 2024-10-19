@@ -4,10 +4,14 @@ from functools import lru_cache, update_wrapper
 AnyCallable = ty.Callable[..., ty.Any]
 
 
-class _Missing: ...
+class _NotGiven: ...
 
 
-MISSING = _Missing()
+NOT_GIVEN = _NotGiven()
+
+
+# Where None does not mean default value, but a valid value to be set
+type Nullable[T] = T | _NotGiven | None
 
 
 class SimpleCacheFullError(Exception): ...
@@ -233,7 +237,7 @@ class ClassAttr[AttrType]:
         self,
         name_or_getter: str | ty.Callable[[type], AttrType],
         *,
-        default: AttrType | _Missing = MISSING,
+        default: Nullable[AttrType] = NOT_GIVEN,
     ):
         self._name_or_getter = name_or_getter
         self._default = default
@@ -266,10 +270,8 @@ class ClassAttr[AttrType]:
             try:
                 _val: AttrType = getattr(owner_type, self._name_or_getter)
             except AttributeError as ae:
-                if self._default is not MISSING:
+                if self._default is not NOT_GIVEN:
                     self._default = ty.cast(AttrType, self._default)
                     return self._default
                 raise ae
         return _val
-
-

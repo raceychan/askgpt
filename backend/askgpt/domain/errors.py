@@ -38,4 +38,9 @@ class GeneralWebError(GeneralAPPError, RFC9457):
         return f"<{self.error_detail}>"
 
 
-class SystemNotSetError(GeneralWebError): ...
+class BoostrapingFailedError(GeneralAPPError):
+    """
+    Raised when the app failed to bootstrap.
+    """
+
+    ...

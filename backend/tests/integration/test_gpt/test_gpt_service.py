@@ -4,7 +4,7 @@ from askgpt.adapters.uow import UnitOfWork
 from askgpt.app.auth.repository import AuthRepository
 from askgpt.app.auth.service import AuthService
 from askgpt.app.gpt.repository import SessionRepository
-from askgpt.app.gpt.service import GPTService
+from askgpt.app.gpt.service import OpenAIGPT
 from askgpt.app.user.service import UserService
 from askgpt.infra.eventstore import EventStore
 from askgpt.infra.security import Encryptor
@@ -21,7 +21,7 @@ async def gpt_service(
     event_store: EventStore,
 ):
 
-    service = GPTService(
+    service = OpenAIGPT(
         encryptor=encryptor,
         user_service=user_service,
         auth_service=auth_service,
@@ -35,7 +35,7 @@ async def gpt_service(
 async def test_list_created_session(
     test_defaults: UserDefaults,
     auth_service: AuthService,
-    gpt_service: GPTService,
+    gpt_service: OpenAIGPT,
     user_service: UserService,
 ):
     """

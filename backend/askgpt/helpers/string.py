@@ -4,11 +4,8 @@ import typing as ty
 PATTERN_UPPERCASE = re.compile(r"([A-Z]+)([A-Z][a-z])")
 PATTERN_CAMEL_CASE = re.compile(r"([a-z\d])([A-Z])")
 
-# PUNCTUATION_PATTERN = re.compile(r"[?!.,\'\"]")
-# CAPITALS_PATTERN = re.compile(r"(?<!^)(?=[A-Z])")
-# UNDERSCORE_PATTERN = re.compile(r"_")
-# MULTISPACE_PATTERN = re.compile(r"\s+")
-# SPACES_PATTERN = re.compile(r" ")
+# use as default value for str, singleton
+EMPTY_STR: ty.Annotated[str, "EMPTY_STR"] = ""
 
 
 def str_to_kebab(string: str) -> str:

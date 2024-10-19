@@ -1,12 +1,13 @@
 import typing as ty
 
 from askgpt.api.dependencies import ParsedToken, throttle_user_request
-from askgpt.api.model import OK, EntityDeleted, RequestBody, Response, ResponseData
-from askgpt.app.factory import GPTService, gpt_service_factory
-from askgpt.app.gpt.model import ChatMessage, ChatSession
-from askgpt.app.gpt.params import ChatGPTRoles
+from askgpt.api.model import EmptyResponse, RequestBody, Response, ResponseData
+from askgpt.app.factory import OpenAIGPT, gpt_service_factory
+from askgpt.app.gpt.model import ChatSession
+from askgpt.app.gpt.params import ChatGPTRoles, CompletionOptions
 from fastapi import APIRouter, Depends
-from fastapi.params import Body
+
+# from fastapi.params import Body
 from fastapi.responses import RedirectResponse, StreamingResponse
 from starlette import status
 
@@ -15,7 +16,7 @@ openai_router = APIRouter(prefix="/openai")
 session_router = APIRouter(prefix="/sessions")
 
 
-Service = ty.Annotated[GPTService, Depends(gpt_service_factory)]
+Service = ty.Annotated[OpenAIGPT, Depends(gpt_service_factory)]
 
 
 class SessionRenameRequest(RequestBody):
@@ -86,36 +87,31 @@ async def rename_session(
     service: Service, token: ParsedToken, session_id: str, req: SessionRenameRequest
 ) -> Response:
     await service.rename_session(session_id=session_id, new_name=req.name)
-    return OK
+    return EmptyResponse.OK
 
 
 @session_router.delete("/{session_id}", status_code=204)
 async def delete_session(service: Service, token: ParsedToken, session_id: str):
     await service.delete_session(session_id=session_id)
-    return EntityDeleted
+    return EmptyResponse.EntityDeleted
 
 
-from openai.types.chat.completion_create_params import CompletionCreateParamsBase
-
-
-@session_router.put(
-    "/{session_id}",
+@session_router.post(
+    "/{session_id}/messages",
     dependencies=[Depends(throttle_user_request)],
 )
 async def add_chat_message(
     service: Service,
     token: ParsedToken,
     session_id: str,
-    message: ty.Annotated[ChatMessage, Body()],
-    params: ty.Annotated[CompletionCreateParamsBase, Body()],
+    params: CompletionOptions,
 ) -> StreamingResponse:
     "Create a chat message"
-    if params.get("stream", False):
+    stream = params.pop("stream")
+    if stream:
         stream_ans = service.chatcomplete(
             user_id=token.sub,
             session_id=session_id,
-            gpt_type="openai",
-            message=message,
             params=params,
         )
         return StreamingResponse(stream_ans)

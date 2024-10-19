@@ -14,6 +14,18 @@ if ty.TYPE_CHECKING:
     from loguru import Logger
 
 
+class TimeScale:
+    "A more type-aware approach to time scale"
+    Second = ty.NewType("Second", int)
+    Minute = ty.NewType("Minute", int)
+    Hour = ty.NewType("Hour", int)
+    Day = ty.NewType("Day", int)
+    Week = ty.NewType("Week", int)
+
+
+
+
+
 def utc_now(timestamp: float | None = None) -> datetime.datetime:
     """
     UTC datetime

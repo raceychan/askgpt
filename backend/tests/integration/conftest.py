@@ -9,12 +9,12 @@ from askgpt.adapters.uow import UnitOfWork
 from askgpt.app.auth.model import UserAuth
 from askgpt.app.auth.repository import AuthRepository, UserAuth
 from askgpt.app.auth.service import AuthService, TokenRegistry
+from askgpt.app.gpt.gptclient import ClientRegistry, OpenAIClient
 from askgpt.app.gpt.params import ChatResponse
 from askgpt.app.user.repository import UserRepository
 from askgpt.app.user.service import UserService
 from askgpt.domain.config import Settings
 from askgpt.infra.eventstore import EventStore, OutBoxProducer
-from askgpt.infra.gptclient import ClientRegistry, OpenAIClient
 from askgpt.infra.schema import create_tables
 from askgpt.infra.security import Encryptor
 from sqlalchemy.ext import asyncio as sa_aio

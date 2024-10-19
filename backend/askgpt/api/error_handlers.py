@@ -1,10 +1,5 @@
 import typing as ty
 
-from fastapi import FastAPI, Request
-from fastapi.responses import JSONResponse
-from starlette import status
-from starlette.responses import Response
-
 from askgpt.api.errors import EntityNotFoundError, GeneralWebError, QuotaExceededError
 from askgpt.api.xheaders import XHeaders
 from askgpt.app.auth.errors import (
@@ -15,11 +10,16 @@ from askgpt.app.auth.errors import (
 from askgpt.app.gpt.errors import (
     APIKeyNotAvailableError,
     APIKeyNotProvidedError,
+    GPTError,
+    OpenAIRequestError,
     OrphanSessionError,
 )
 from askgpt.helpers.error_registry import ErrorDetail, HandlerRegistry
+from fastapi import Request
+from fastapi.responses import JSONResponse
+from starlette import status
+from starlette.responses import Response
 
-# BUG? (pylance), if we defined generic var lhs of =, it would be contravariant, otherwise it would be covariant
 handler_registry: ty.Final[HandlerRegistry[GeneralWebError]] = HandlerRegistry()
 
 
@@ -160,7 +160,10 @@ def _(request: Request, exc: QuotaExceededError) -> ErrorResponse:
     )
 
 
-def add_exception_handlers(app: "FastAPI") -> None:
-    if not handler_registry.handlers:
-        raise Exception("Empty error handler registry")
-    handler_registry.inject_handlers(app)
+@handler_registry.register
+def _(request: Request, exc: OpenAIRequestError) -> ErrorResponse:
+    return make_err_response(
+        request=request,
+        code=exc.status_code,
+        error_detail=exc.error_detail,
+    )

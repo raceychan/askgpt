@@ -4,7 +4,6 @@ from functools import singledispatchmethod
 
 from askgpt.app.auth.model import UserAPIKeyAdded, UserSignedUp
 from askgpt.app.gpt.params import ChatGPTRoles, CompletionModels
-from askgpt.domain.base import SupportedGPTs
 from askgpt.domain.interface import ICommand, IRepository
 from askgpt.domain.model.base import (
     Command,
@@ -16,6 +15,7 @@ from askgpt.domain.model.base import (
     computed_field,
 )
 from askgpt.domain.model.base import uuid_factory as uuid_factory
+from askgpt.domain.types import SupportedGPTs
 
 # from askgpt.domain.model.user import CreateUser, UserCreated
 from askgpt.helpers.time import utc_now

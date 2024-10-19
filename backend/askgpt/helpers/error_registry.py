@@ -3,13 +3,12 @@ import types
 import typing as ty
 from string import Template
 
-from fastapi import APIRouter, FastAPI, Request
-from fastapi.responses import HTMLResponse
-from pydantic import BaseModel, Field
-
 from askgpt.helpers.functions import ClassAttr
 from askgpt.helpers.string import str_to_kebab
 from askgpt.helpers.time import iso_now
+from fastapi import APIRouter, FastAPI, Request
+from fastapi.responses import HTMLResponse, Response
+from pydantic import BaseModel, Field
 
 """
 RFC 9457
@@ -55,9 +54,6 @@ class IErrorResponse(ty.Protocol):
     content: "ErrorDetail"
     headers: dict[str, str]
     status_code: int
-
-
-type ExceptionHandler[Exc] = ty.Callable[[Request, Exc], IErrorResponse]
 
 
 class ErrorDetail(BaseModel):
@@ -172,6 +168,13 @@ class RFC9457(Exception):
         return self.error_detail.model_dump_json()
 
 
+type ExceptionHandler[Exc] = ty.Callable[[Request, Exc], IErrorResponse]
+type FastAPIExceptionHandler = dict[
+    int | type[Exception],
+    ty.Callable[[Request, ty.Any], ty.Coroutine[ty.Any, ty.Any, Response]],
+]
+
+
 class HandlerRegistry[Exc: Exception]:
     """
     Add error handler to fastapi according to their signature
@@ -189,10 +192,12 @@ class HandlerRegistry[Exc: Exception]:
         return iter(self._handlers.items())
 
     @property
-    def handlers(self):
-        return self._handlers
+    def handlers(self) -> FastAPIExceptionHandler:
+        return ty.cast(FastAPIExceptionHandler, self._handlers)
 
-    def register(self, handler: ExceptionHandler[Exc]) -> ExceptionHandler[Exc]:
+    def register(
+        self, handler: ty.Callable[[Request, ty.Any], IErrorResponse]
+    ) -> ty.Callable[[Request, ty.Any], IErrorResponse]:
         """\
         >>> @HandlerRegistry.register
         def any_error_handler(request: Request, exc: Exception | ty.Literal[500]) -> ErrorResponse:

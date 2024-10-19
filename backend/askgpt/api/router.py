@@ -1,8 +1,8 @@
+from askgpt.api.model import EmptyResponse
 from askgpt.app.auth.route import api_key_router, auth_router
 from askgpt.app.gpt.route import gpt_router, openai_router, session_router
 from askgpt.app.user.route import user_router
 from fastapi import APIRouter
-from fastapi.responses import Response
 from fastapi.routing import APIRoute
 
 
@@ -11,7 +11,7 @@ def route_id_factory(route: APIRoute):
 
 
 def health_check():
-    return Response(status_code=200)
+    return EmptyResponse.OK
 
 
 health_router = APIRouter(prefix="/health")

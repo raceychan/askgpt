@@ -8,6 +8,7 @@ from askgpt.app.gpt.errors import (
     OrphanSessionError,
     SessionNotFoundError,
 )
+from askgpt.app.gpt.gptclient import OpenAIClient
 from askgpt.app.gpt.model import (
     DEFAULT_SESSION_NAME,
     ChatMessage,
@@ -19,20 +20,23 @@ from askgpt.app.gpt.model import (
     SessionRenamed,
     uuid_factory,
 )
-from askgpt.app.gpt.params import CompletionCreateParamsBase
+from askgpt.app.gpt.params import ChatCompletionMessageParam, CompletionOptions
 from askgpt.app.gpt.repository import SessionRepository
 from askgpt.app.user.service import UserService
-from askgpt.domain.base import SupportedGPTs
 from askgpt.domain.config import SETTINGS_CONTEXT
+from askgpt.domain.types import SupportedGPTs
+
+# from askgpt.helpers._log import logger
 from askgpt.infra.eventstore import EventStore
-from askgpt.infra.gptclient import OpenAIClient
 from askgpt.infra.security import Encryptor
 
 
-class GPTService:
-    # TODO: should be subclassable
-    # instead of using client registry,
-    # we should have OpenAIGPT(GPTService)
+class AbstractGPTService: ...
+
+
+class OpenAIGPT(AbstractGPTService):
+    gpt_type: ty.ClassVar[SupportedGPTs] = "openai"
+
     def __init__(
         self,
         encryptor: Encryptor,
@@ -85,39 +89,6 @@ class GPTService:
                 session.apply(event)
             return session
 
-    async def chatcomplete(
-        self,
-        user_id: str,
-        session_id: str,
-        gpt_type: SupportedGPTs,  # TODO: this should be class attribute
-        message: ChatMessage,
-        params: CompletionCreateParamsBase,
-    ) -> ty.AsyncGenerator[str, None]:
-        session = await self._rebuild_session(user_id=user_id, session_id=session_id)
-        api_pool = await self._build_api_pool(user_id=user_id, api_type=gpt_type)
-        async with api_pool.reserve_api_key() as api_key:
-            client = OpenAIClient.from_apikey(api_key)
-            messages = session.messages + [message]
-            ans_gen = client.complete(messages=messages, params=params)
-            answer = ""
-            async for chunk in ans_gen:
-                yield chunk
-                answer += chunk
-
-            events = [
-                ChatMessageSent(
-                    session_id=session_id,
-                    chat_message=message,
-                ),
-                ChatResponseReceived(
-                    session_id=session_id,
-                    chat_message=ChatMessage(role="assistant", content=answer),
-                ),
-            ]
-            for e in events:
-                session.apply(e)
-            await self._event_store.add_all(events)
-
     async def create_session(
         self, user_id: str, session_name: str = DEFAULT_SESSION_NAME
     ) -> ChatSession:
@@ -164,3 +135,46 @@ class GPTService:
         async with self._uow.trans():
             await self._event_store.add(session_removed)
             await self._session_repo.remove(session_id=session_id)
+
+    def _message_adapter(
+        self, messages: list[ChatMessage]
+    ) -> list[ChatCompletionMessageParam]:
+        adapted = ty.cast(
+            list[ChatCompletionMessageParam],
+            [dict(content=message.content, role=message.role) for message in messages],
+        )
+        return adapted
+
+    async def chatcomplete(
+        self,
+        user_id: str,
+        session_id: str,
+        params: CompletionOptions,
+    ) -> ty.AsyncGenerator[str, None]:
+        session = await self._rebuild_session(user_id=user_id, session_id=session_id)
+        api_pool = await self._build_api_pool(user_id=user_id, api_type=self.gpt_type)
+
+        async with api_pool.reserve_api_key() as api_key:
+            client = OpenAIClient.from_apikey(api_key, timeout=3.0)
+            message = params.pop("message")  # type: ignore
+            msg = ChatMessage(role=message["role"], content=message["content"])
+            messages = session.messages + [msg]
+            msgs = self._message_adapter(messages)
+            answer = ""
+            async for chunk in client.complete(messages=msgs, params=params):
+                yield chunk
+                answer += chunk
+
+            events = [
+                ChatMessageSent(
+                    session_id=session_id,
+                    chat_message=msg,
+                ),
+                ChatResponseReceived(
+                    session_id=session_id,
+                    chat_message=ChatMessage(role="assistant", content=answer),
+                ),
+            ]
+            for e in events:
+                session.apply(e)
+            await self._event_store.add_all(events)
