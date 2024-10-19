@@ -2,8 +2,8 @@ import datetime
 
 from jose.exceptions import JWTError as JWTError
 from pydantic import ValidationError as ValidationError
+from pydantic import BaseModel, ConfigDict
 
-from askgpt.domain.model.base import ValueObject
 from askgpt.helpers.security import decode_jwt as decode_jwt
 from askgpt.helpers.security import decrypt_string as decrypt_string
 from askgpt.helpers.security import encode_jwt as encode_jwt
@@ -13,7 +13,8 @@ from askgpt.helpers.security import hash_password as hash_password
 from askgpt.helpers.security import verify_password as verify_password
 
 
-class JWTBase(ValueObject):
+class JWTBase(BaseModel):
+    model_config = ConfigDict(frozen=True, use_enum_values=True)
     # reff: https://en.wikipedia.org/wiki/JSON_Web_Token
     """
     | Code | Name | Description |
@@ -42,7 +43,7 @@ class Encryptor:
 
     def encrypt_jwt(self, token: JWTBase) -> str:
         return encode_jwt(
-            token.asdict(exclude_none=True),
+            token.model_dump(exclude_none=True),
             secret_key=self._secret_key,
             algorithm=self._algorithm,
         )

@@ -80,6 +80,7 @@ class ErrorResponseMiddleWare(BaseHTTPMiddleware):
 
     __DUMB_RESPONSE__ = Response()
 
+    # here request is _CachedRequest built by BaseHTTPMiddleware.__call__
     async def dispatch(self, request: Request, call_next: RequestResponseEndpoint):
         """
         we return a dummy response here in the first user defined middleware,
