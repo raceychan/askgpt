@@ -59,7 +59,7 @@ class UnitOfWork:
         )
 
     @asynccontextmanager
-    async def trans(self):
+    async def trans(self) -> ty.AsyncGenerator[ty.Self, None]:
         """
         An async context manager to handle the lifecycle of the UnitOfWork transaction.
         This allows for reusing the same UnitOfWork instance across multiple objects.

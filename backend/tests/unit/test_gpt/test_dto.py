@@ -1,29 +1,17 @@
 import pytest
 
-from askgpt.app.gpt.route import ChatCompletionRequest
+from askgpt.app.gpt._params import CompletionOptions
 
 
 @pytest.fixture
 def req():
-    return ChatCompletionRequest(
-        question="Hello, world!",
+    return CompletionOptions(
+        message={"role": "user", "content": "Hello, world!"},
+        model="gpt-3.5-turbo",
     )
 
 
-def test_chat_completion_request(req: ChatCompletionRequest):
-    req = ChatCompletionRequest(
-        question="Hello, world!",
-    )
-    assert req.model == "gpt-3.5-turbo"
-    assert req.role == "user"
-
-
-def test_chat_completion_request_model_dump(req: ChatCompletionRequest):
-    req = ChatCompletionRequest(
-        question="Hello, world!",
-    )
-    assert req.model == "gpt-3.5-turbo"
-    assert req.role == "user"
-
-    data = req.model_dump(exclude_none=True)
-    assert data["question"] == "Hello, world!"
+def test_chat_completion_request_model_dump(req: CompletionOptions):
+    assert req["model"] == "gpt-3.5-turbo"
+    assert req["message"]["role"] == "user"
+    assert req["message"]["content"] == "Hello, world!"

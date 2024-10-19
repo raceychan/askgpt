@@ -1,5 +1,6 @@
-from askgpt.api.errors import EntityNotFoundError, GeneralWebError, ThrottlingError
-from askgpt.app.auth.errors import AuthenticationError
+from askgpt.api.errors import GeneralWebError, ThrottlingError
+from askgpt.app.auth._errors import AuthenticationError
+from askgpt.domain.errors import EntityNotFoundError
 
 
 class InvalidStateError(Exception): ...

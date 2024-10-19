@@ -2,9 +2,10 @@ import typing as ty
 
 import sqlalchemy as sa
 
-from askgpt.app.auth.model import UserAuth, UserCredential
-from askgpt.infra.schema import UserAPIKeySchema, UserSchema
 from askgpt.adapters.uow import UnitOfWork
+from askgpt.infra.schema import UserAPIKeySchema, UserSchema
+
+from ._model import UserAuth, UserCredential
 
 
 def dump_userauth(user: UserAuth) -> dict[str, ty.Any]:
@@ -51,11 +52,11 @@ class AuthRepository:
     async def get(self, entity_id: str) -> UserAuth | None:
         stmt = sa.select(UserSchema).where(UserSchema.id == entity_id)
         res = await self._uow.execute(stmt)
-        row = res.one_or_none()
+        row = res.mappings().one_or_none()
         if not row:
             return None
 
-        return load_userauth(dict(row._mapping))
+        return load_userauth(dict(row))
 
     async def remove(self, entity_id: str) -> None:
         stmt = (
@@ -69,12 +70,12 @@ class AuthRepository:
         stmt = sa.select(UserSchema).where(UserSchema.email == useremail)
 
         cursor = await self._uow.execute(stmt)
-        res = cursor.one_or_none()
+        res = cursor.mappings().one_or_none()
 
         if not res:
             return None
 
-        user_data = dict(res._mapping)  # type: ignore
+        user_data = dict(res)
         return load_userauth(user_data)
 
     async def add_api_key_for_user(

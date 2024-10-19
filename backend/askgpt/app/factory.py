@@ -1,10 +1,10 @@
 from askgpt.adapters.uow import UnitOfWork
 from askgpt.api.throttler import UserRequestThrottler
-from askgpt.app.auth.repository import AuthRepository
+from askgpt.app.auth._repository import AuthRepository
 from askgpt.app.auth.service import AuthService, TokenRegistry
-from askgpt.app.gpt.repository import SessionRepository
+from askgpt.app.gpt._repository import SessionRepository
 from askgpt.app.gpt.service import OpenAIGPT
-from askgpt.app.user.repository import UserRepository
+from askgpt.app.user._repository import UserRepository
 from askgpt.app.user.service import UserService
 from askgpt.domain.config import SETTINGS_CONTEXT, Settings
 from askgpt.helpers.functions import simplecache

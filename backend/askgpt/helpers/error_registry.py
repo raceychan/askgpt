@@ -3,12 +3,13 @@ import types
 import typing as ty
 from string import Template
 
-from askgpt.helpers.functions import ClassAttr
-from askgpt.helpers.string import str_to_kebab
-from askgpt.helpers.time import iso_now
 from fastapi import APIRouter, FastAPI, Request
 from fastapi.responses import HTMLResponse, Response
 from pydantic import BaseModel, Field
+
+from askgpt.helpers.functions import ClassAttr
+from askgpt.helpers.string import str_to_kebab
+from askgpt.helpers.time import iso_now
 
 """
 RFC 9457
@@ -121,7 +122,7 @@ class ErrorDetail(BaseModel):
         self, exclude_unset: bool = True, exclude_none: bool = True, **kwargs
     ):
         return super().model_dump_json(
-            exclude_unset=exclude_unset, exclude_none=exclude_none
+            exclude_unset=exclude_unset, exclude_none=exclude_none, **kwargs
         )
 
 
@@ -310,7 +311,10 @@ FIELD_TMPLT = """
 
 
 def error_route_factory(
-    registry: HandlerRegistry, *, route_path: str = "/errors", route_tag: str = "errors"
+    registry: HandlerRegistry[ty.Any],
+    *,
+    route_path: str = "/errors",
+    route_tag: str = "errors",
 ):
 
     def generate_error_page(error_type: str = "") -> str:

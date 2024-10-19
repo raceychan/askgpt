@@ -1,15 +1,20 @@
 import typing as ty
 
-from askgpt.api.dependencies import ParsedToken, throttle_user_request
-from askgpt.api.model import EmptyResponse, RequestBody, Response, ResponseData
-from askgpt.app.factory import OpenAIGPT, gpt_service_factory
-from askgpt.app.gpt.model import ChatSession
-from askgpt.app.gpt.params import ChatGPTRoles, CompletionOptions
 from fastapi import APIRouter, Depends
-
-# from fastapi.params import Body
 from fastapi.responses import RedirectResponse, StreamingResponse
 from starlette import status
+
+from askgpt.api.errors import QuotaExceededError
+from askgpt.api.model import EmptyResponse, RequestBody, Response, ResponseData
+from askgpt.app.auth.api import ParsedToken
+from askgpt.app.factory import (
+    OpenAIGPT,
+    gpt_service_factory,
+    user_request_throttler_factory,
+)
+
+from ._model import ChatSession
+from ._params import ChatGPTRoles, CompletionOptions
 
 gpt_router = APIRouter(prefix="/gpt")
 openai_router = APIRouter(prefix="/openai")
@@ -17,6 +22,15 @@ session_router = APIRouter(prefix="/sessions")
 
 
 Service = ty.Annotated[OpenAIGPT, Depends(gpt_service_factory)]
+
+
+async def throttle_user_request(
+    access_token: ParsedToken,
+):
+    throttler = user_request_throttler_factory()
+    wait_time = await throttler.validate(access_token.sub)
+    if wait_time:
+        raise QuotaExceededError(throttler.max_tokens, wait_time)
 
 
 class SessionRenameRequest(RequestBody):
@@ -109,6 +123,7 @@ async def add_chat_message(
     "Create a chat message"
     stream = params.pop("stream")
     if stream:
+        # service.stream_chatcomplete()
         stream_ans = service.chatcomplete(
             user_id=token.sub,
             session_id=session_id,
@@ -116,4 +131,5 @@ async def add_chat_message(
         )
         return StreamingResponse(stream_ans)
     else:
+        # service.chatcomplete()
         raise NotImplementedError("Not implemented")

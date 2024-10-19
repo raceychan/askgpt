@@ -2,9 +2,10 @@ import typing as ty
 
 from sqlalchemy import RowMapping, insert, select, update
 
-from askgpt.app.user.model import UserInfo
-from askgpt.infra.schema import UserSchema
 from askgpt.adapters.uow import UnitOfWork
+from askgpt.infra.schema import UserSchema
+
+from ._model import UserInfo
 
 
 def load_user(user: RowMapping) -> UserInfo:

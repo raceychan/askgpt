@@ -1,21 +1,22 @@
 import typing as ty
 from time import perf_counter
 
-from askgpt.api.xheaders import XHeaders
-from askgpt.domain.config import SETTINGS_CONTEXT, TIME_EPSILON_S, Settings
-from askgpt.domain.model.base import request_id_factory
-from askgpt.helpers._log import log_request, logger
 from fastapi import Request
 from fastapi.responses import Response
-from starlette.background import BackgroundTask
+
+# from starlette.background import BackgroundTask
 from starlette.middleware import Middleware
+from starlette.middleware.base import BaseHTTPMiddleware, RequestResponseEndpoint
 from starlette.middleware.base import (
-    BaseHTTPMiddleware,
-    RequestResponseEndpoint,
-    _StreamingResponse,
+    _StreamingResponse as StreamingResponse,  # type: ignore
 )
 from starlette.middleware.cors import CORSMiddleware as CORSMiddleware
 from starlette.types import ASGIApp, Receive, Scope, Send
+
+from askgpt.api.xheaders import XHeaders
+from askgpt.domain.config import TIME_EPSILON_S, Settings
+from askgpt.domain.model.base import request_id_factory
+from askgpt.helpers._log import log_request, logger
 
 
 class TraceMiddleware:
@@ -49,7 +50,7 @@ class LoggingMiddleware(BaseHTTPMiddleware):
 
             # TODO: ignoer large stream file
             if status_code > 400:
-                body_stream = ty.cast(_StreamingResponse, response).body_iterator
+                body_stream = ty.cast(StreamingResponse, response).body_iterator
                 async for chunk in body_stream:
                     res_body += chunk  # type: ignore
 

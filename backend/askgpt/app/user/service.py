@@ -1,6 +1,7 @@
-from askgpt.app.user.model import UserInfo
-from askgpt.app.user.repository import UserRepository
 from askgpt.infra.eventstore import EventStore
+
+from ._model import UserInfo
+from ._repository import UserRepository
 
 
 class UserService:

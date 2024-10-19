@@ -2,10 +2,10 @@ import typing as ty
 
 from fastapi import APIRouter, Depends
 
-from askgpt.api.dependencies import ParsedToken
-from askgpt.app.auth.errors import InvalidCredentialError, UserNotFoundError
+from askgpt.app.auth._errors import InvalidCredentialError, UserNotFoundError
+from askgpt.app.auth.api import ParsedToken
 from askgpt.app.factory import user_service_factory
-from askgpt.app.user.model import UserInfo
+from askgpt.app.user._model import UserInfo
 from askgpt.app.user.service import UserService
 
 user_router = APIRouter(prefix="/users")

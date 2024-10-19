@@ -1,9 +1,8 @@
 import pytest
+
 from askgpt.adapters.cache import Cache
-from askgpt.adapters.uow import UnitOfWork
-from askgpt.app.auth.repository import AuthRepository
 from askgpt.app.auth.service import AuthService
-from askgpt.app.gpt.repository import SessionRepository
+from askgpt.app.gpt._repository import SessionRepository
 from askgpt.app.gpt.service import OpenAIGPT
 from askgpt.app.user.service import UserService
 from askgpt.infra.eventstore import EventStore
@@ -63,7 +62,7 @@ async def test_list_created_session(
 
     assert len(sessions) == 1
 
-    second_ss = await gpt_service.create_session(user_id)
+    _ = await gpt_service.create_session(user_id)
     sessions = await gpt_service.list_sessions(user_id)
     assert len(sessions) == 2
 

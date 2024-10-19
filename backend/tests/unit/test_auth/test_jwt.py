@@ -1,12 +1,12 @@
 import datetime
 
 import pytest
-from tests.conftest import UserDefaults
 
-from askgpt.app.auth.model import AccessToken
+from askgpt.app.auth._model import AccessToken
 from askgpt.domain.config import Settings
 from askgpt.domain.model.base import utc_now
 from askgpt.infra import security
+from tests.conftest import UserDefaults
 
 
 @pytest.fixture(scope="module")

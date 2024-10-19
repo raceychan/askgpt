@@ -1,14 +1,23 @@
-from datetime import datetime, timedelta
+from datetime import timedelta
+
+from jose.exceptions import JWTError
+from pydantic import ValidationError
 
 from askgpt.adapters.cache import Cache, KeySpace
-from askgpt.app.auth.errors import (
+from askgpt.domain.config import Settings
+from askgpt.domain.model.base import utc_now, uuid_factory
+from askgpt.infra import security
+from askgpt.infra.eventstore import EventStore
+
+from ._errors import (
     DuplicatedAPIKeyError,
+    InvalidCredentialError,
     InvalidPasswordError,
     UserAlreadyExistError,
     UserInactiveError,
     UserNotFoundError,
 )
-from askgpt.app.auth.model import (
+from ._model import (
     AccessToken,
     UserAPIKeyAdded,
     UserAuth,
@@ -17,18 +26,13 @@ from askgpt.app.auth.model import (
     UserRoles,
     UserSignedUp,
 )
-from askgpt.app.auth.repository import AuthRepository
-from askgpt.domain.config import Settings
-from askgpt.domain.model.base import utc_now, uuid_factory
-from askgpt.infra import security
-from askgpt.infra.eventstore import EventStore
+from ._repository import AuthRepository
 
 
 def partial_secret(key: str, secret_len: int = 3) -> str:
     return key[:secret_len] + ("*" * (len(key) - secret_len))
 
 
-# from askgpt.adapters import queue
 class TokenRegistry:
     """
     a registry for access-token, validated by redis
@@ -83,6 +87,13 @@ class AuthService:
 
         return self._encryptor.encrypt_jwt(token)
 
+    def decrypt_access_token(self, token: str) -> AccessToken:
+        try:
+            token_dict = self._encryptor.decrypt_jwt(token)
+            return AccessToken.model_validate(token_dict)
+        except (JWTError, ValidationError) as e:
+            raise InvalidCredentialError("Your access token is invalid") from e
+
     async def signup_user(self, user_name: str, email: str, password: str) -> None:
         async with self._uow.trans():
             user = await self._auth_repo.search_user_by_email(email)
@@ -96,7 +107,7 @@ class AuthService:
         user_signed_up = UserSignedUp(
             user_id=uuid_factory(),
             credential=user_info,
-            last_login=datetime.utcnow(),
+            last_login=utc_now(),
         )
         user_auth = UserAuth.apply(user_signed_up)
 

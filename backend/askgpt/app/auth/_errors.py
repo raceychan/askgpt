@@ -1,27 +1,11 @@
-from askgpt.api.errors import EntityNotFoundError, GeneralWebError
-
-"""
-TODO: split into UserError, AuthError
-class UserError(APPErrorBase):
-    instance = "/users/{user_id}"
-
-    def __init__(self, user_id: str):
-
-        super().__init__(
-            msg="User {user_id} not found", instance=instance.format(user_id=user_id)
-        )
-
-"""
-
-
-class ServiceError(GeneralWebError):
-    service: str
+from askgpt.domain.errors import EntityNotFoundError, GeneralWebError
 
 
 class AuthenticationError(GeneralWebError):
     """
     Failed to authenticate user
     """
+
     service: str = "auth"
 
 

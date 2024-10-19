@@ -1,9 +1,6 @@
 from askgpt.domain.errors import GeneralWebError
 
 
-class EntityNotFoundError(GeneralWebError):
-    "Entity not found"
-
 
 class ThrottlingError(GeneralWebError):
     "Request throttled"

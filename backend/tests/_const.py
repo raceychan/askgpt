@@ -1,6 +1,6 @@
 # from dataclasses import dataclass
 
-from askgpt.app.auth.model import UserCredential, UserRoles
+from askgpt.app.auth._model import UserCredential, UserRoles
 from askgpt.infra import security
 
 

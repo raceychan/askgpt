@@ -1,8 +1,9 @@
 import sqlalchemy as sa
 
 from askgpt.adapters.uow import UnitOfWork
-from askgpt.app.gpt.model import ChatSession, ISessionRepository
 from askgpt.infra.schema import SessionSchema
+
+from ._model import ChatSession, ISessionRepository
 
 
 def session_from_row(row: sa.RowMapping) -> ChatSession:
@@ -42,8 +43,8 @@ class SessionRepository(ISessionRepository):
         )
         await self._uow.execute(stmt)
 
-    async def remove(self, session_id: str):
-        stmt = sa.delete(SessionSchema).where(SessionSchema.id == session_id)
+    async def remove(self, entity_id: str):
+        stmt = sa.delete(SessionSchema).where(SessionSchema.id == entity_id)
         await self._uow.execute(stmt)
 
     async def get(self, entity_id: str) -> ChatSession | None:
@@ -54,8 +55,8 @@ class SessionRepository(ISessionRepository):
             return None
         return session_from_row(row)
 
-    async def get_user_session(self, session_id: str) -> ChatSession | None:
-        stmt = sa.select(SessionSchema).where(SessionSchema.id == session_id)
+    async def get_user_session(self, entity_id: str) -> ChatSession | None:
+        stmt = sa.select(SessionSchema).where(SessionSchema.id == entity_id)
         cursor = await self._uow.execute(stmt)
         row = cursor.mappings().one_or_none()
         if not row:

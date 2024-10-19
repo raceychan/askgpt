@@ -1,24 +1,26 @@
 import typing as ty
 
-from askgpt.api.errors import EntityNotFoundError, GeneralWebError, QuotaExceededError
+from fastapi import Request
+from fastapi.responses import JSONResponse
+from starlette import status
+from starlette.responses import Response
+
+from askgpt.api.errors import QuotaExceededError
 from askgpt.api.xheaders import XHeaders
-from askgpt.app.auth.errors import (
+from askgpt.app.auth._errors import (
     AuthenticationError,
     UserAlreadyExistError,
     UserNotFoundError,
 )
-from askgpt.app.gpt.errors import (
+from askgpt.app.gpt._errors import (
     APIKeyNotAvailableError,
     APIKeyNotProvidedError,
     GPTError,
     OpenAIRequestError,
     OrphanSessionError,
 )
+from askgpt.domain.errors import EntityNotFoundError, GeneralWebError
 from askgpt.helpers.error_registry import ErrorDetail, HandlerRegistry
-from fastapi import Request
-from fastapi.responses import JSONResponse
-from starlette import status
-from starlette.responses import Response
 
 handler_registry: ty.Final[HandlerRegistry[GeneralWebError]] = HandlerRegistry()
 
@@ -29,12 +31,11 @@ class ServerResponse(Response):
 
 class ErrorResponse(JSONResponse):
     content: ErrorDetail
-    headers: dict[str, str]
+    headers: dict[str, str]  # type: ignore
     status_code: int
 
     def render(self, content: ErrorDetail) -> bytes:
-        content.model_json_schema()
-        return content.model_dump_json().encode("utf-8")
+        return content.model_dump_json().encode("utf-8")  # type: ignore
 
 
 INTERNAL_ERROR_DETAIL = ErrorDetail(
@@ -121,6 +122,15 @@ def _(request: Request, exc: EntityNotFoundError) -> ErrorResponse:
         code=status.HTTP_404_NOT_FOUND,
         error_detail=exc.error_detail,
         headers={"WWW-Authenticate": "Bearer"},
+    )
+
+
+@handler_registry.register
+def _(request: Request, exc: GPTError) -> ErrorResponse:
+    return make_err_response(
+        request=request,
+        code=status.HTTP_400_BAD_REQUEST,
+        error_detail=exc.error_detail,
     )
 
 

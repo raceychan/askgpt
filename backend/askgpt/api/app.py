@@ -1,21 +1,20 @@
 import typing as ty
 from contextlib import asynccontextmanager
 
+from fastapi import APIRouter, FastAPI
+from starlette.types import Lifespan
+
 from askgpt.adapters.request import client_factory
 from askgpt.api.error_handlers import handler_registry
 from askgpt.api.middleware import middlewares
 from askgpt.api.router import feature_router, route_id_factory
 from askgpt.domain.config import SETTINGS_CONTEXT, Settings, detect_settings
+from askgpt.domain.errors import BoostrapingFailedError
 from askgpt.helpers._log import logger, prod_sink, update_sink
 from askgpt.helpers.error_registry import error_route_factory
 from askgpt.helpers.time import timeout
 from askgpt.infra.locator import adapter_locator, make_database
 from askgpt.infra.schema import create_tables
-from fastapi import APIRouter, FastAPI
-from starlette.types import Lifespan
-from askgpt.domain.errors import BoostrapingFailedError
-
-
 
 
 async def check_openai_endpoint(settings: Settings):
@@ -70,7 +69,7 @@ async def lifespan(app: FastAPI | None = None):
 
 
 def app_factory(
-    lifespan: Lifespan = lifespan,
+    lifespan: Lifespan[FastAPI] = lifespan,
     start_response: ty.Any = None,
     *,
     settings: Settings | None = None,

@@ -1,6 +1,4 @@
-import typing as ty
-
-from fastapi.responses import RedirectResponse, Response
+from fastapi.responses import Response
 from pydantic import BaseModel, ConfigDict
 from starlette import status
 

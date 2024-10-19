@@ -2,14 +2,14 @@ import typing as ty
 
 from askgpt.adapters.cache import Cache
 from askgpt.app.auth.service import AuthService
-from askgpt.app.gpt.api_pool import APIPool
-from askgpt.app.gpt.errors import (
+from askgpt.app.gpt._api_pool import APIPool
+from askgpt.app.gpt._errors import (
     APIKeyNotProvidedError,
     OrphanSessionError,
     SessionNotFoundError,
 )
-from askgpt.app.gpt.gptclient import OpenAIClient
-from askgpt.app.gpt.model import (
+from askgpt.app.gpt._gptclient import OpenAIClient
+from askgpt.app.gpt._model import (
     DEFAULT_SESSION_NAME,
     ChatMessage,
     ChatMessageSent,
@@ -20,8 +20,8 @@ from askgpt.app.gpt.model import (
     SessionRenamed,
     uuid_factory,
 )
-from askgpt.app.gpt.params import ChatCompletionMessageParam, CompletionOptions
-from askgpt.app.gpt.repository import SessionRepository
+from askgpt.app.gpt._params import ChatCompletionMessageParam, CompletionOptions
+from askgpt.app.gpt._repository import SessionRepository
 from askgpt.app.user.service import UserService
 from askgpt.domain.config import SETTINGS_CONTEXT
 from askgpt.domain.types import SupportedGPTs
@@ -134,7 +134,7 @@ class OpenAIGPT(AbstractGPTService):
         session_removed = SessionRemoved(session_id=session_id)
         async with self._uow.trans():
             await self._event_store.add(session_removed)
-            await self._session_repo.remove(session_id=session_id)
+            await self._session_repo.remove(entity_id=session_id)
 
     def _message_adapter(
         self, messages: list[ChatMessage]

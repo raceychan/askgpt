@@ -5,14 +5,15 @@ import typing as ty
 
 import httpx
 import openai
-from askgpt.app.gpt.errors import OpenAIRequestError
-from askgpt.app.gpt.params import ChatCompletionMessageParam, CompletionOptions
+from openai._exceptions import APIStatusError
+from openai.types import beta as openai_beta
+from openai.types import chat as openai_chat
+
+from askgpt.app.gpt._errors import OpenAIRequestError
+from askgpt.app.gpt._params import ChatCompletionMessageParam, CompletionOptions
 from askgpt.domain.types import SupportedGPTs
 from askgpt.helpers._log import logger
 from askgpt.helpers.functions import attribute, lru_cache
-from openai._exceptions import APIStatusError, RateLimitError
-from openai.types import beta as openai_beta
-from openai.types import chat as openai_chat
 
 MAX_RETRIES: int = 3
 
@@ -54,7 +55,6 @@ class GPTClient(ty.Protocol):
     def from_apikey(cls, api_key: str) -> ty.Self: ...
 
 
-@ClientRegistry.register("openai")
 class OpenAIClient:
     def __init__(self, client: openai.AsyncOpenAI):
         self._client = client
@@ -94,9 +94,9 @@ class OpenAIClient:
             raise OpenAIRequestError(e.status_code, e.message)
 
         if isinstance(s_resp, openai_chat.ChatCompletion):
-
             yield (s_resp.choices[0].message.content or "")
         else:
+            s_resp = ty.cast(ty.AsyncIterable[openai_chat.ChatCompletionChunk], s_resp)
             async for chunk in s_resp:
                 logger.success(f"chunk: {chunk}")
                 if not chunk.choices:

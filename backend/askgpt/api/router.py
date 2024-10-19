@@ -1,9 +1,10 @@
-from askgpt.api.model import EmptyResponse
-from askgpt.app.auth.route import api_key_router, auth_router
-from askgpt.app.gpt.route import gpt_router, openai_router, session_router
-from askgpt.app.user.route import user_router
 from fastapi import APIRouter
 from fastapi.routing import APIRoute
+
+from askgpt.api.model import EmptyResponse
+from askgpt.app.auth.api import api_key_router, auth_router
+from askgpt.app.gpt.api import gpt_router, openai_router, session_router
+from askgpt.app.user.api import user_router
 
 
 def route_id_factory(route: APIRoute):

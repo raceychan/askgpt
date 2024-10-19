@@ -2,8 +2,9 @@ import typing as ty
 from collections import defaultdict
 from functools import singledispatchmethod
 
-from askgpt.app.auth.model import UserAPIKeyAdded, UserSignedUp
-from askgpt.app.gpt.params import ChatGPTRoles, CompletionModels
+from pydantic import AwareDatetime
+
+from askgpt.app.auth._model import UserAPIKeyAdded, UserSignedUp
 from askgpt.domain.interface import ICommand, IRepository
 from askgpt.domain.model.base import (
     Command,
@@ -16,10 +17,9 @@ from askgpt.domain.model.base import (
 )
 from askgpt.domain.model.base import uuid_factory as uuid_factory
 from askgpt.domain.types import SupportedGPTs
-
-# from askgpt.domain.model.user import CreateUser, UserCreated
 from askgpt.helpers.time import utc_now
-from pydantic import AwareDatetime
+
+from ._params import ChatGPTRoles, CompletionModels
 
 DEFAULT_SESSION_NAME = "New Session"
 
@@ -53,7 +53,7 @@ class ChatMessage(ValueObject):
     def as_prompt(cls, content: str) -> ty.Self:
         return cls(role="system", content=content)
 
-    def asdict(self):
+    def asdict(self):  # type: ignore
         # TODO: find a better way to handle this
         # oepnai can't handle datetime objects in the messages
         d = self.model_dump(exclude={"user_id", "timestamp"})
@@ -171,10 +171,13 @@ class UserCreated(Event):
     entity_id: str = Field(alias="user_id")
 
 
+# TODO: move this to auth service
 class User(Entity):
     entity_id: str = Field(alias="user_id")
     session_ids: list[str] = Field(default_factory=list)
-    api_keys: dict[str, list[str]] = Field(default_factory=lambda: defaultdict(list))
+    api_keys: dict[str, list[str]] = Field(
+        default_factory=lambda: defaultdict[str, list[str]](list)
+    )
 
     def predict_command(self, command: ICommand) -> list[SessionCreated]:
         if isinstance(command, CreateSession):

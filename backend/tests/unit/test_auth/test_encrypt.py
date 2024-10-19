@@ -1,5 +1,6 @@
 import pytest
-from askgpt.app.auth.model import UserCredential
+
+from askgpt.app.auth._model import UserCredential
 from askgpt.infra import security
 from tests.conftest import dft
 
@@ -13,5 +14,3 @@ def hashed(user_info: UserCredential) -> bytes:
 
 def test_verify_password(hashed: bytes):
     assert security.verify_password(password.encode(), hashed)
-
-

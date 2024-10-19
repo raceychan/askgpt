@@ -2,22 +2,23 @@ import datetime
 import typing as ty
 
 import pytest
+from sqlalchemy.ext import asyncio as sa_aio
+
 from askgpt.adapters.cache import MemoryCache
 from askgpt.adapters.database import AsyncDatabase
 from askgpt.adapters.queue import QueueBroker
 from askgpt.adapters.uow import UnitOfWork
-from askgpt.app.auth.model import UserAuth
-from askgpt.app.auth.repository import AuthRepository, UserAuth
+from askgpt.app.auth._model import UserAuth
+from askgpt.app.auth._repository import AuthRepository
 from askgpt.app.auth.service import AuthService, TokenRegistry
-from askgpt.app.gpt.gptclient import ClientRegistry, OpenAIClient
-from askgpt.app.gpt.params import ChatResponse
-from askgpt.app.user.repository import UserRepository
+from askgpt.app.gpt._gptclient import ClientRegistry, OpenAIClient
+from askgpt.app.gpt._params import ChatResponse
+from askgpt.app.user._repository import UserRepository
 from askgpt.app.user.service import UserService
 from askgpt.domain.config import Settings
 from askgpt.infra.eventstore import EventStore, OutBoxProducer
 from askgpt.infra.schema import create_tables
 from askgpt.infra.security import Encryptor
-from sqlalchemy.ext import asyncio as sa_aio
 from tests.conftest import UserDefaults
 
 

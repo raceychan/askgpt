@@ -7,9 +7,6 @@ from functools import singledispatchmethod
 
 import orjson
 import sqlalchemy as sa
-from askgpt.domain.model.interface import ICommand, IEvent
-from askgpt.helpers.string import str_to_snake
-from askgpt.helpers.time import utc_now as utc_now
 from pydantic import AwareDatetime
 from pydantic import BaseModel as BaseModel
 from pydantic import ConfigDict as ConfigDict
@@ -18,6 +15,10 @@ from pydantic import Field as Field
 from pydantic import SerializeAsAny as SerializeAsAny
 from pydantic import computed_field as computed_field
 from pydantic import field_serializer as field_serializer
+
+from askgpt.domain.model.interface import ICommand, IEvent
+from askgpt.helpers.string import str_to_snake
+from askgpt.helpers.time import utc_now as utc_now
 
 # from pydantic import validator as validator
 
@@ -39,13 +40,13 @@ def request_id_factory() -> bytes:
     return uuid_factory().encode()
 
 
-def json_dumps(obj) -> str:
+def json_dumps(obj: ty.Any) -> str:
 
     return orjson.dumps(obj).decode()
 
 
 def json_loads(obj: str):
-    # TODO: let orjson dumps bytes 
+    # TODO: let orjson dumps bytes
     """
     my_bytes_value = b'[{\'Date\': \'2016-05-21T21:35:40Z\', \'CreationDate\': \'2012-05-05\', \'LogoType\': \'png\', \'Ref\': 164611595, \'Classe\': [\'Email addresses\', \'Passwords\'],\'Link\':\'http://some_link.com\'}]'
 

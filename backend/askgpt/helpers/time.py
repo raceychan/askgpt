@@ -23,9 +23,6 @@ class TimeScale:
     Week = ty.NewType("Week", int)
 
 
-
-
-
 def utc_now(timestamp: float | None = None) -> datetime.datetime:
     """
     UTC datetime
@@ -53,7 +50,9 @@ type AsyncSimpleDecor[**P, R] = ty.Callable[P, ty.Awaitable[R]]
 type AsyncParamDecor[**P, R] = ty.Callable[
     [ty.Callable[P, ty.Awaitable[R]]], ty.Callable[P, ty.Awaitable[R]]
 ]
-type FlexDecor[**P, R] = SimpleDecor | ParamDecor | AsyncSimpleDecor | AsyncParamDecor
+type FlexDecor[**P, R] = SimpleDecor[P, R] | ParamDecor[P, R] | AsyncSimpleDecor[
+    P, R
+] | AsyncParamDecor[P, R]
 
 
 # Sync function, no kwargs
@@ -127,7 +126,7 @@ def timeit[
     log_threshold: float = 0.1,
     with_args: bool = False,
     show_fino: bool = True,
-) -> FlexDecor:
+) -> FlexDecor[P, R]:
 
     @ty.overload
     def decorator(func: ty.Callable[P, ty.Awaitable[R]]) -> ty.Callable[P, R]: ...
@@ -140,8 +139,8 @@ def timeit[
     ) -> ty.Callable[P, R] | ty.Callable[P, ty.Awaitable[R]]:
         def build_logmsg(
             timecost: float,
-            func_args: tuple,
-            func_kwargs: dict,
+            func_args: tuple[ty.Any, ...],
+            func_kwargs: dict[ty.Any, ty.Any],
         ):
 
             func_repr = func.__qualname__
@@ -160,7 +159,7 @@ def timeit[
             return msg
 
         @contextmanager
-        def log_callback(args, kwargs):
+        def log_callback(*args: P.args, **kwargs: P.kwargs):
             pre = perf_counter()
             yield
             aft = perf_counter()
@@ -180,14 +179,14 @@ def timeit[
         @wraps(func)
         def wrapper(*args: P.args, **kwargs: P.kwargs) -> R:
             f = ty.cast(ty.Callable[P, R], func)
-            with log_callback(args, kwargs):
+            with log_callback(*args, **kwargs):
                 res = f(*args, **kwargs)
             return res
 
         @wraps(func)
         async def awrapper(*args: P.args, **kwargs: P.kwargs) -> R:
             f = ty.cast(ty.Callable[P, ty.Awaitable[R]], func)
-            with log_callback(args, kwargs):
+            with log_callback(*args, **kwargs):
                 res = await f(*args, **kwargs)
             return res
 
@@ -224,8 +223,8 @@ class Timeout:
 
 
 def timeout(seconds: int, *, logger: ty.Optional["Logger"] = None):
-    def decor_dispatch(func):
-        def sync_timeout(*args, **kwargs):
+    def decor_dispatch(func: ty.Callable[..., ty.Any]):
+        def sync_timeout(*args: ty.Any, **kwargs: ty.Any):
             import platform
 
             if platform.uname().system == "Windows":
@@ -239,7 +238,7 @@ def timeout(seconds: int, *, logger: ty.Optional["Logger"] = None):
             # use threading.join for this
             raise NotImplementedError
 
-        async def async_timeout(*args, **kwargs):
+        async def async_timeout(*args: ty.Any, **kwargs: ty.Any):
             coro = func(*args, **kwargs)
             try:
                 res = await asyncio.wait_for(coro, seconds)
@@ -249,7 +248,7 @@ def timeout(seconds: int, *, logger: ty.Optional["Logger"] = None):
                 raise te
             return res
 
-        return async_timeout
+        return async_timeout if inspect.iscoroutinefunction(func) else sync_timeout
 
     return decor_dispatch
 
@@ -258,7 +257,7 @@ if __name__ == "__main__":
     from loguru import logger
 
     @timeit(logger=logger, with_args=True, log_threshold=-1)
-    def test_timeit(a: int, b: int, *, c: str, d: dict):
+    def test_timeit(a: int, b: int, *, c: str, d: dict[ty.Any, ty.Any]):
         return None
 
     test_timeit(3, 5, c="test", d={"name": "test"})

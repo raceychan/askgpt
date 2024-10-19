@@ -1,4 +1,4 @@
-from askgpt.app.gpt.model import UserCreated
+from askgpt.app.gpt._model import UserCreated
 from askgpt.domain.model.base import Event
 
 

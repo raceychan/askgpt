@@ -2,7 +2,7 @@ import typing as ty
 from contextlib import asynccontextmanager
 
 from askgpt.adapters import cache
-from askgpt.app.gpt.errors import APIKeyNotAvailableError
+from askgpt.app.gpt._errors import APIKeyNotAvailableError
 from askgpt.domain.types import SupportedGPTs
 
 

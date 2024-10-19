@@ -1,8 +1,8 @@
 import pytest
-from tests.conftest import UserDefaults
 
-from askgpt.app.gpt.model import UserCreated
+from askgpt.app.gpt._model import UserCreated
 from askgpt.infra import security
+from tests.conftest import UserDefaults
 
 
 @pytest.fixture(scope="package")

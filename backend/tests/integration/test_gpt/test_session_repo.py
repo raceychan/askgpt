@@ -1,15 +1,15 @@
-from tests.conftest import UserDefaults
-
 from askgpt.adapters.uow import UnitOfWork
-from askgpt.app.gpt import model, repository
+from askgpt.app.gpt._model import ChatSession
+from askgpt.app.gpt._repository import SessionRepository
+from tests.conftest import UserDefaults
 
 
 async def test_create_and_list_sessions(
-    session_repo: repository.SessionRepository,
+    session_repo: SessionRepository,
     test_defaults: UserDefaults,
     uow: UnitOfWork,
 ):
-    ss = model.ChatSession(
+    ss = ChatSession(
         user_id=test_defaults.USER_ID,
         session_id=test_defaults.SESSION_ID,
         session_name=test_defaults.SESSION_NAME,
