@@ -43,6 +43,10 @@ class EventStore(IEventStore):
     def __init__(self, uow: UnitOfWork):
         self._uow = uow
 
+    @property
+    def uow(self) -> UnitOfWork:
+        return self._uow
+
     async def add(self, event: IEvent) -> None:
         value = dump_event(event)
         stmt = sa.insert(EventSchema).values(value)
