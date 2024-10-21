@@ -40,6 +40,10 @@ but currently these are the ones we have tested, and ones you can call directly 
 use multiple gpt agent in a same session, change model every message.
 ![image](https://github.com/user-attachments/assets/05e706c9-12de-4354-a921-b0f8638395e3)
 
+### Switch gpt model every message
+![image](https://github.com/user-attachments/assets/bdda3c5d-478b-45aa-958f-57fb6da99de2)
+
+
 ## Local Model Serving
 
 Local model serving is supported using llama.cpp, due to the size restriction
