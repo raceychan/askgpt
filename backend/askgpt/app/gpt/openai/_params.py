@@ -29,7 +29,7 @@ class CompletionMessage(ty.TypedDict, total=False):
 
 
 class OpenAIChatMessageOptions(CompletionCreateParamsBase, total=False):
-    message: ty.Required[CompletionMessage]
+    messages: ty.Required[list[CompletionMessage]]
     model: ty.Required[CompletionModels]
     frequency_penalty: float | None
     function_call: completion_create_params.FunctionCall
@@ -51,11 +51,6 @@ class OpenAIChatMessageOptions(CompletionCreateParamsBase, total=False):
     extra_query: ty.Any | None
     extra_body: ty.Any | None
     timeout: float | None
-
-
-class CompleteMessage(ty.TypedDict):
-    role: ChatGPTRoles
-    content: str
 
 
 class ChatResponse(ValueObject):

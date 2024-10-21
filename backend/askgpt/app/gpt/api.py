@@ -10,7 +10,7 @@ from askgpt.app.factory import (
     session_service_factory,
     user_request_throttler_factory,
 )
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Body, Depends, Query
 from fastapi.responses import RedirectResponse, StreamingResponse
 from starlette import status
 
@@ -114,6 +114,18 @@ async def delete_session(service: DSessionService, token: ParsedToken, session_i
     return EmptyResponse.EntityDeleted
 
 
+# async def validate_params(
+#     gpt_type: str = Query(...),
+#     params: OpenAIChatMessageOptions | AnthropicChatMessageOptions = Body(),
+# ):
+#     if gpt_type == "openai":
+#         return OpenAIChatMessageOptions(**params)
+#     elif gpt_type == "anthropic":
+#         return AnthropicChatMessageOptions(**params)
+#     else:
+#         raise ValueError("Invalid query parameter value")
+
+
 @sessions.post(
     "/{session_id}/messages",
     dependencies=[Depends(throttle_user_request)],
@@ -122,12 +134,12 @@ async def add_chat_message(
     token: ParsedToken,
     service: DGPTService,
     session_id: str,
-    params: OpenAIChatMessageOptions | AnthropicChatMessageOptions,
+    params: AnthropicChatMessageOptions | OpenAIChatMessageOptions = Body(),
 ) -> StreamingResponse:
     "Create a chat message"
-    stream = params.pop("stream")  # type: ignore
+    stream = params.pop("stream", True)
+
     if stream:
-        # service.stream_chatcomplete()
         stream_ans = service.chatcomplete(
             user_id=token.sub,
             session_id=session_id,
@@ -135,5 +147,4 @@ async def add_chat_message(
         )
         return StreamingResponse(stream_ans)
     else:
-        # service.chatcomplete()
         raise NotImplementedError("Not implemented")
