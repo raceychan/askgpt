@@ -31,6 +31,7 @@ class TraceMiddleware:
         if scope["type"] != "http":
             await self.app(scope, receive, send)
             return
+
         x_request_id_key = XHeaders.REQUEST_ID.encoded
         if x_request_id_key not in dict(scope["headers"]):
             scope["headers"].append((x_request_id_key, request_id_factory()))
@@ -61,6 +62,7 @@ class LoggingMiddleware(BaseHTTPMiddleware):
                     media_type=response.media_type,
                     background=response.background,
                 )
+            res_body = ty.cast(bytes, res_body)
 
             duration = max(round(perf_counter() - pre_process, 3), TIME_EPSILON_S)
             response.headers[XHeaders.REQUEST_ID.value] = request_id
@@ -94,6 +96,7 @@ class ErrorResponseMiddleWare(BaseHTTPMiddleware):
             """the servererror middleware provided by starlette would make sure only the Exception class itself,
             or subclasses of Exception that did not defined in the exception handlers would be raise here
             """
+            logger.error("uncaught exception", exc_info=uncaught)
             return self.__DUMB_RESPONSE__
         return resp
 

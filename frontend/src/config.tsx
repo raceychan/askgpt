@@ -13,6 +13,15 @@ export const Config = {
   },
 };
 
+export const logApiResponse = (response: any) => {
+  // if (response?.status > 400) {
+  console.error(
+    `API Error: ${response.config.method} ${response.config.url} - Status: ${response.status}, Data: ${JSON.stringify(response.data)}, Request: ${JSON.stringify(response.config.data)}
+    Response: ${JSON.stringify(response)}`
+  );
+  // }
+};
+
 const isTokenExpired = (token: string) => {
   const decoded: any = jwtDecode(token);
   const expirationTime = decoded.exp * 1000; // seconds to milliseconds
@@ -26,7 +35,7 @@ export const initializeClient = () => {
   });
 
   client.instance.interceptors.request.use((config) => {
-    console.log("Sending request to ", config.baseURL, config.url);
+    // console.log("Sending request to ", config.baseURL, config.url);
     const accessToken = localStorage.getItem("access_token") || "";
     if (accessToken) {
       if (isTokenExpired(accessToken)) {
@@ -40,15 +49,8 @@ export const initializeClient = () => {
     return config;
   });
 
-  // Response interceptor: Handle 401 responses (Unauthorized)
   client.instance.interceptors.response.use(
     (response) => {
-      console.log(
-        "Received response from ",
-        JSON.stringify(response.data),
-        response.config.baseURL,
-        response.config.url
-      );
       return response; // Let the response pass if it's successful
     },
     (error) => {
@@ -57,8 +59,8 @@ export const initializeClient = () => {
           localStorage.removeItem("access_token");
           window.location.href = "/login";
         }
+        logApiResponse(error.response);
       }
-
       return Promise.reject(error);
     }
   );

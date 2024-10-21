@@ -3,9 +3,9 @@ import typing as ty
 import sqlalchemy as sa
 from askgpt.adapters.queue import MessageProducer
 from askgpt.adapters.uow import UnitOfWork
-from askgpt.domain.config import UTC_TZ
 from askgpt.domain.interface import IEvent, IEventStore
 from askgpt.domain.model.base import Event, json_dumps, json_loads
+from askgpt.domain.types import UTC_TZ
 from askgpt.infra.schema import EventSchema
 
 table_event_mapping = {

@@ -1,5 +1,4 @@
 import sqlalchemy as sa
-
 from askgpt.adapters.database import AsyncDatabase
 from askgpt.helpers.sql import TableBase
 
@@ -44,7 +43,8 @@ class UserAPIKeySchema(TableBase):
     id = sa.Column("id", sa.Integer, autoincrement=True, primary_key=True)
     user_id = sa.Column("user_id", sa.String, sa.ForeignKey("users.id"))
     api_type = sa.Column("api_type", sa.String, index=True)
-    api_key = sa.Column("api_key", sa.String, unique=False, index=True)
+    api_key = sa.Column("api_key", sa.String, unique=False, index=False)
+    key_name = sa.Column("key_name", sa.String, unique=True, index=True)
     is_active = sa.Column("is_active", sa.Boolean, default=True)
     idem_id = sa.Column("idem_id", sa.String, nullable=False, unique=True)
 

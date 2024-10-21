@@ -1,5 +1,4 @@
 import pytest
-
 from askgpt.app.gpt._model import (
     ChatMessage,
     ChatMessageSent,
@@ -12,7 +11,7 @@ from tests.conftest import dft
 
 @pytest.fixture(scope="module")
 def chat_message():
-    return ChatMessage(role="user", content="ping")
+    return ChatMessage(role="user", content="ping", gpt_type="openai")
 
 
 @pytest.fixture(scope="module")
@@ -36,7 +35,7 @@ def chat_message_sent(chat_message: ChatMessage):
 def chat_response_received():
     return ChatResponseReceived(
         session_id=dft.SESSION_ID,
-        chat_message=ChatMessage(role="system", content="pong"),
+        chat_message=ChatMessage(role="system", content="pong", gpt_type="openai"),
     )
 
 
@@ -48,11 +47,11 @@ def chatsession(session_created: SessionCreated):
 @pytest.fixture(scope="module")
 def chat_messages():
     return [
-        ChatMessage.as_prompt(content="answer me seriously!"),
-        ChatMessage.as_user(content="ping"),
-        ChatMessage.as_assistant(content="pong"),
-        ChatMessage.as_user(content="ask"),
-        ChatMessage.as_assistant(content="answer"),
+        ChatMessage.as_prompt(content="answer me seriously!", gpt_type="openai"),
+        ChatMessage.as_user(content="ping", gpt_type="openai"),
+        ChatMessage.as_assistant(content="pong", gpt_type="openai"),
+        ChatMessage.as_user(content="ask", gpt_type="openai"),
+        ChatMessage.as_assistant(content="answer", gpt_type="openai"),
     ]
 
 

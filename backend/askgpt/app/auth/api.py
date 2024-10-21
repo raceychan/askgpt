@@ -1,14 +1,13 @@
 import typing as ty
 
+from askgpt.api.model import EmptyResponse, RequestBody, ResponseData
+from askgpt.app.factory import AuthService, auth_service_factory
+from askgpt.domain.types import SupportedGPTs
+from askgpt.helpers.string import EMPTY_STR
 from fastapi import APIRouter, Depends
 from fastapi.responses import RedirectResponse
 from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
 from pydantic import EmailStr
-
-from askgpt.api.model import EmptyResponse, RequestBody, ResponseData
-from askgpt.app.factory import AuthService, auth_service_factory
-from askgpt.domain.config import SupportedGPTs
-from askgpt.helpers.string import EMPTY_STR
 
 from ._model import AccessToken, UserAuth
 
@@ -82,30 +81,46 @@ async def delete_user(service: Service, token: ParsedToken):
 
 class CreateNewKey(RequestBody):
     api_key: str
+    key_name: str
     api_type: SupportedGPTs = "openai"
 
 
 # should be /user/apikeys
 # POST /user/apikeys -> create new key
-api_key_router = APIRouter(prefix="/apikeys")
 
 
-@api_key_router.post("", status_code=201)
+@auth_router.post("/apikeys", status_code=201)
 async def create_new_key(service: Service, token: ParsedToken, r: CreateNewKey):
-    await service.add_api_key(user_id=token.sub, api_key=r.api_key, api_type=r.api_type)
+    await service.add_api_key(
+        user_id=token.sub, api_key=r.api_key, api_type=r.api_type, key_name=r.key_name
+    )
     return EmptyResponse.Created
 
 
-@api_key_router.get("", response_model=tuple[str, ...])
+class PublicAPIKey(ty.TypedDict):
+    key_name: str
+    key_type: str
+    key: str
+
+
+@auth_router.get("/apikeys")
 async def list_keys(
     service: Service,
     token: ParsedToken,
-    api_type: SupportedGPTs,
-    as_secret: bool = False,
-):
+    api_type: SupportedGPTs | None = None,
+    as_secret: bool = True,
+) -> list[PublicAPIKey]:
     keys = await service.list_api_keys(
         user_id=token.sub,
         api_type=api_type,
         as_secret=as_secret,
     )
-    return keys
+    return [
+        PublicAPIKey(key_name=name, key_type=type, key=key) for name, type, key in keys
+    ]
+
+
+@auth_router.delete("/apikeys/{key_name}", status_code=200)
+async def remove_key(service: Service, token: ParsedToken, key_name: str):
+    row_count = await service.remove_api_key(user_id=token.sub, key_name=key_name)
+    return EmptyResponse.OK if row_count > 0 else EmptyResponse.NotFound

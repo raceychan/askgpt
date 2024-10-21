@@ -86,7 +86,11 @@ class Cache[TKey: ty.Hashable, TValue: ty.Any](abc.ABC):
     @abc.abstractmethod
     def keyspace(self) -> KeySpace: ...
 
-    def load_script(self, script: str | pathlib.Path) -> ScriptFunc: ...
+    def load_script(
+        self, script: str | pathlib.Path
+    ) -> ScriptFunc[ty.Any, ty.Any, ty.Any]: ...
+
+
 class MemoryCache[TKey: str, TVal: ty.Any](Cache[TKey, TVal]):
     def __init__(self):
         self._cache: dict[TKey, TVal] = {}
@@ -198,7 +202,7 @@ class RedisCache[TKey: str | memoryview | bytes](Cache[TKey, ty.Any]):
         return res == 1
 
     async def lrange(self, key: TKey):
-        res: int = await self._redis.lrange(key, 0, -1) # type: ignore
+        res: int = await self._redis.lrange(key, 0, -1)  # type: ignore
         return res
 
     @asynccontextmanager

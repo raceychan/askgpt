@@ -6,8 +6,8 @@ from sqlalchemy.engine.cursor import CursorResult
 from sqlalchemy.ext.asyncio import AsyncConnection, AsyncEngine
 from sqlalchemy.sql import Executable, text
 
-from askgpt.helpers.time import timeit
 from askgpt.helpers._log import logger
+from askgpt.helpers.time import timeit
 
 type StrMap = ty.Mapping[str, ty.Any]
 type SQL_ISOLATIONLEVEL = ty.Literal[
@@ -20,7 +20,11 @@ type SQL_ISOLATIONLEVEL = ty.Literal[
 
 
 class ExecutionOptions(ty.TypedDict, total=False):
-    compiled_cache: ty.Any
+    """
+    reff: https://docs.sqlalchemy.org/en/20/core/connections.html#sqlalchemy.engine.Connection.execution_options
+    """
+
+    compiled_cache: dict[str, ty.Any]
     logging_token: str
     isolation_level: SQL_ISOLATIONLEVEL
     no_parameters: bool
@@ -28,7 +32,7 @@ class ExecutionOptions(ty.TypedDict, total=False):
     max_row_buffer: int
     yield_per: int
     insertmanyvalues_page_size: int
-    schema_translate_map: dict | None
+    schema_translate_map: dict[str | None, str | None] | None
     preserve_rowcount: bool
 
 

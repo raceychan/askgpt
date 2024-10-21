@@ -3,8 +3,6 @@ import typing as ty
 from datetime import datetime
 from functools import singledispatchmethod
 
-from pydantic import field_serializer
-
 from askgpt.domain.model.base import (
     Command,
     EmailStr,
@@ -15,6 +13,7 @@ from askgpt.domain.model.base import (
     utc_now,
 )
 from askgpt.infra import security
+from pydantic import field_serializer
 
 
 class UserRoles(enum.StrEnum):
@@ -37,6 +36,7 @@ class UserAPIKeyAdded(Event):
     entity_id: str = Field(alias="user_id")
     api_key: str
     api_type: str
+    key_name: str
     idem_id: str
 
 
@@ -45,6 +45,12 @@ class AccessPayload(ValueObject):
 
 
 class AccessToken(security.JWTBase, AccessPayload): ...
+
+
+class UserAPIKey(ty.NamedTuple):
+    key_name: str
+    key_type: str
+    key: str
 
 
 class UserCredential(ValueObject):

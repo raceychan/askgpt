@@ -1,6 +1,6 @@
 import React from "react";
 
-import { GptService, ListSessionsResponse } from "@/lib/api";
+import { GptService, SessionsService, ListSessionsResponse } from "@/lib/api";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { isLoggedIn } from "@/contexts/auth-context";
 import GPTSessionsCard from "./session-card";

@@ -3,10 +3,11 @@ from askgpt.api.throttler import UserRequestThrottler
 from askgpt.app.auth._repository import AuthRepository
 from askgpt.app.auth.service import AuthService, TokenRegistry
 from askgpt.app.gpt._repository import SessionRepository
-from askgpt.app.gpt.service import OpenAIGPT
+from askgpt.app.gpt.service import AnthropicGPT, GPTService, OpenAIGPT, SessionService
 from askgpt.app.user._repository import UserRepository
 from askgpt.app.user.service import UserService
 from askgpt.domain.config import SETTINGS_CONTEXT, Settings
+from askgpt.domain.types import SupportedGPTs
 from askgpt.helpers.functions import simplecache
 from askgpt.infra.eventstore import EventStore, OutBoxProducer
 from askgpt.infra.factory import encrypt_facotry
@@ -67,15 +68,31 @@ def auth_service_factory():
     return auth_service
 
 
-def gpt_service_factory():
-    session_repo = SessionRepository(uow_factory())
-    encryptor = encrypt_facotry()
-    service = OpenAIGPT(
-        encryptor=encryptor,
-        auth_service=auth_service_factory(),
-        user_service=user_service_factory(),
-        event_store=event_store_factory(),
-        cache=adapter_locator.aiocache,
-        session_repo=session_repo,
+def session_service_factory():
+    return SessionService(
+        session_repo=SessionRepository(uow_factory()), event_store=event_store_factory()
     )
-    return service
+
+
+def dynamic_gpt_service_factory(gpt_type: SupportedGPTs):
+    auth_service = auth_service_factory()
+    event_store = event_store_factory()
+    cache = adapter_locator.aiocache
+    session_service = session_service_factory()
+
+    if gpt_type == "openai":
+        return OpenAIGPT(
+            auth_service=auth_service,
+            session_service=session_service,
+            event_store=event_store,
+            cache=cache,
+        )
+    elif gpt_type == "anthropic":
+        return AnthropicGPT(
+            auth_service=auth_service,
+            session_service=session_service,
+            event_store=event_store,
+            cache=cache,
+        )
+    else:
+        raise ValueError(f"Unsupported GPT type: {gpt_type}")

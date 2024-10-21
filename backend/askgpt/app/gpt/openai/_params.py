@@ -28,7 +28,7 @@ class CompletionMessage(ty.TypedDict, total=False):
     name: str | None
 
 
-class CompletionOptions(ty.TypedDict, total=False):
+class OpenAIChatMessageOptions(CompletionCreateParamsBase, total=False):
     message: ty.Required[CompletionMessage]
     model: ty.Required[CompletionModels]
     frequency_penalty: float | None

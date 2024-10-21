@@ -26,8 +26,7 @@ class UnitOfWork:
     Unit of Work pattern implementation to manage database connections using ContextVar,
     ensuring that each coroutine gets its own connection.
 
-    This approach prevents shared connections across different async tasks, similar to
-    a transaction scope in .NET.
+    This approach prevents shared connections across different async tasks, similar to a transaction scope in .NET.
     """
 
     def __init__(self, aiodb: AsyncDatabase):

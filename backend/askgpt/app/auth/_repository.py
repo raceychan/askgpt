@@ -1,11 +1,10 @@
 import typing as ty
 
 import sqlalchemy as sa
-
 from askgpt.adapters.uow import UnitOfWork
 from askgpt.infra.schema import UserAPIKeySchema, UserSchema
 
-from ._model import UserAuth, UserCredential
+from ._model import UserAPIKey, UserAuth, UserCredential
 
 
 def dump_userauth(user: UserAuth) -> dict[str, ty.Any]:
@@ -79,24 +78,47 @@ class AuthRepository:
         return load_userauth(user_data)
 
     async def add_api_key_for_user(
-        self, user_id: str, encrypted_api_key: str, api_type: str, idem_id: str
+        self,
+        user_id: str,
+        encrypted_api_key: str,
+        api_type: str,
+        key_name: str,
+        idem_id: str,
     ) -> None:
         stmt = sa.insert(UserAPIKeySchema).values(
             user_id=user_id,
             api_key=encrypted_api_key,
             api_type=api_type,
+            key_name=key_name,
             idem_id=idem_id,
         )
 
         await self._uow.execute(stmt)
 
-    async def get_api_keys_for_user(self, user_id: str, api_type: str) -> list[bytes]:
-        stmt = sa.select(UserAPIKeySchema).where(
-            UserAPIKeySchema.user_id == user_id,
-            UserAPIKeySchema.api_type == api_type,
-        )
+    async def get_api_keys_for_user(
+        self, user_id: str, api_type: str | None
+    ) -> list[UserAPIKey]:
+        if api_type is None:
+            stmt = sa.select(UserAPIKeySchema).where(
+                UserAPIKeySchema.user_id == user_id,
+            )
+        else:
+            stmt = sa.select(UserAPIKeySchema).where(
+                UserAPIKeySchema.user_id == user_id,
+                UserAPIKeySchema.api_type == api_type,
+            )
 
         cursor = await self._uow.execute(stmt)
         res = cursor.fetchall()
-        encrypted_keys = [row.api_key for row in res]
+        encrypted_keys = [
+            UserAPIKey(row.key_name, row.api_type, row.api_key) for row in res
+        ]
         return encrypted_keys
+
+    async def remove_api_key_for_user(self, user_id: str, key_name: str) -> int:
+        stmt = sa.delete(UserAPIKeySchema).where(
+            UserAPIKeySchema.user_id == user_id,
+            UserAPIKeySchema.key_name == key_name,
+        )
+        resp = await self._uow.execute(stmt)
+        return resp.rowcount

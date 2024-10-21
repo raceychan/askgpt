@@ -4,10 +4,10 @@ import { Send, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Card, CardContent } from "@/components/ui/card";
-import { GptService } from "@/lib/api/services.gen";
+import { SessionsService } from "@/lib/api/services.gen";
 import { PublicChatSession } from "@/lib/api";
 import { Textarea } from "@/components/ui/textarea";
-import { streamingChat } from "@/lib/api-diy";
+import { streamingChat } from "./chat-service";
 
 import { useParams } from "@tanstack/react-router";
 
@@ -116,7 +116,7 @@ const ChatPage = () => {
   const { data: chatSession, isLoading } = useQuery<PublicChatSession, Error>({
     queryKey: ["chatSession", chatId],
     queryFn: async () => {
-      const resp = await GptService.getSession({
+      const resp = await SessionsService.getSession({
         path: { session_id: chatId },
       });
       if (resp.error) {
@@ -127,18 +127,19 @@ const ChatPage = () => {
   });
 
   const [streamingMessage, setStreamingMessage] = useState("");
-  const streamingMessageRef = useRef("");
 
   const chatMutation = useMutation({
     mutationFn: async (newMessage: string) => {
       setStreamingMessage("");
-      streamingMessageRef.current = "";
 
-      await streamingChat(chatId, newMessage, setStreamingMessage);
+      await streamingChat(chatId, newMessage, (content) => {
+        setStreamingMessage((prev) => prev + content);
+      });
     },
     onSuccess: () => {
       // Refetch the chat session to get the updated messages
       queryClient.invalidateQueries({ queryKey: ["chatSession", chatId] });
+      setStreamingMessage(""); // Clear streaming message after successful mutation
     },
   });
 
@@ -163,18 +164,19 @@ const ChatPage = () => {
   // TODO: only display chat session if chatSession is not empty
   return (
     <div className="relative h-full max-w-3xl mx-auto">
-      {chatSession && chatSession.messages.length > 0 && (
-        <div className="h-full overflow-hidden p-4 pb-20">
-          <ScrollArea className="h-[calc(100%-3rem)]">
-            <MessageBox chatSession={chatSession} />
-            {streamingMessage && (
-              <div className="mt-4">
-                <strong>AI:</strong> {streamingMessage}
-              </div>
-            )}
-          </ScrollArea>
-        </div>
-      )}
+      <div className="h-full overflow-hidden p-4 pb-20">
+        <ScrollArea className="h-[calc(100%-3rem)]">
+          <MessageBox chatSession={chatSession} />
+          {streamingMessage && (
+            <div className="mt-4 bg-green-100 rounded-lg p-3 shadow-sm">
+              <p className="text-sm font-semibold mb-1 text-green-700">AI</p>
+              <p className="text-gray-800 whitespace-pre-wrap">
+                {streamingMessage}
+              </p>
+            </div>
+          )}
+        </ScrollArea>
+      </div>
       <div className="fixed bottom-0 left-0 right-0 p-4 bg-white border-t max-w-3xl mx-auto">
         <InputBox
           onSendMessage={handleSendMessage}

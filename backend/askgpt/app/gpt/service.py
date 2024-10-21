@@ -1,3 +1,4 @@
+import abc
 import typing as ty
 
 from askgpt.adapters.cache import Cache
@@ -8,7 +9,7 @@ from askgpt.app.gpt._errors import (
     OrphanSessionError,
     SessionNotFoundError,
 )
-from askgpt.app.gpt._gptclient import OpenAIClient
+from askgpt.app.gpt._gptclient import AnthropicClient, GPTClient, OpenAIClient
 from askgpt.app.gpt._model import (
     DEFAULT_SESSION_NAME,
     ChatMessage,
@@ -20,57 +21,23 @@ from askgpt.app.gpt._model import (
     SessionRenamed,
     uuid_factory,
 )
-from askgpt.app.gpt._params import ChatCompletionMessageParam, CompletionOptions
 from askgpt.app.gpt._repository import SessionRepository
-from askgpt.app.user.service import UserService
+from askgpt.app.gpt.anthropic import _params as anthropic_params
+from askgpt.app.gpt.openai import _params as openai_params
 from askgpt.domain.config import SETTINGS_CONTEXT
 from askgpt.domain.types import SupportedGPTs
-
-# from askgpt.helpers._log import logger
 from askgpt.infra.eventstore import EventStore
-from askgpt.infra.security import Encryptor
 
 
-class AbstractGPTService: ...
-
-
-class OpenAIGPT(AbstractGPTService):
-    gpt_type: ty.ClassVar[SupportedGPTs] = "openai"
-
+class SessionService:
     def __init__(
         self,
-        encryptor: Encryptor,
-        user_service: UserService,
-        auth_service: AuthService,
         session_repo: SessionRepository,
         event_store: EventStore,
-        cache: Cache[str, str],
     ):
-        self._encryptor = encryptor
-        self._user_service = user_service
-        self._auth_service = auth_service
+        self._uow = session_repo.uow
         self._session_repo = session_repo
         self._event_store = event_store
-        self._cache: Cache[str, str] = cache
-        #
-        self._uow = self._session_repo.uow
-        self._settings = SETTINGS_CONTEXT.get()
-
-    async def _build_api_pool(self, user_id: str, api_type: str):
-        decrypted_api_keys = await self._auth_service.list_api_keys(
-            user_id=user_id, api_type=api_type
-        )
-        if not decrypted_api_keys:
-            raise APIKeyNotProvidedError(api_type=api_type)
-
-        pool_keyspace = self._settings.redis.keyspaces.API_POOL / user_id
-        user_api_pool = APIPool(
-            pool_keyspace=pool_keyspace,
-            api_type=api_type,
-            api_keys=decrypted_api_keys,
-            cache=self._cache,
-        )
-        return user_api_pool
 
     async def _rebuild_session(self, user_id: str, session_id: str) -> ChatSession:
         async with self._uow.trans():
@@ -136,45 +103,133 @@ class OpenAIGPT(AbstractGPTService):
             await self._event_store.add(session_removed)
             await self._session_repo.remove(entity_id=session_id)
 
-    def _message_adapter(
-        self, messages: list[ChatMessage]
-    ) -> list[ChatCompletionMessageParam]:
-        adapted = ty.cast(
-            list[ChatCompletionMessageParam],
-            [dict(content=message.content, role=message.role) for message in messages],
+
+class GPTService:
+    gpt_type: ty.ClassVar[SupportedGPTs]
+
+    def __init__(
+        self,
+        auth_service: AuthService,
+        session_service: SessionService,
+        event_store: EventStore,
+        cache: Cache[str, str],
+    ):
+        self._auth_service = auth_service
+        self._session_service = session_service
+        self._cache = cache
+        self._event_store = event_store
+        self._settings = SETTINGS_CONTEXT.get()
+
+    async def _build_api_pool(self, user_id: str, api_type: str):
+        decrypted_api_keys = await self._auth_service.list_api_keys(
+            user_id=user_id, api_type=api_type, as_secret=False
         )
-        return adapted
+        if not decrypted_api_keys:
+            raise APIKeyNotProvidedError(api_type=api_type)
+
+        pool_keyspace = self._settings.redis.keyspaces.API_POOL / user_id
+        user_api_pool = APIPool(
+            pool_keyspace=pool_keyspace,
+            api_type=api_type,
+            api_keys=tuple(key for _, _, key in decrypted_api_keys),
+            cache=self._cache,
+        )
+        return user_api_pool
+
+    @abc.abstractmethod
+    def _message_adapter(self, messages: list[ChatMessage]):
+        """
+        Adapt messages to the format expected by the API
+        """
+        raise NotImplementedError
+
+    @abc.abstractmethod
+    def _client_factory(self, api_key: str, timeout: float) -> "GPTClient":
+        raise NotImplementedError
+
+    async def build_message_context(
+        self, session: ChatSession, messages: list[ChatMessage]
+    ) -> list[ChatMessage]:
+        messages = session.messages + messages
+        return self._message_adapter(messages)
 
     async def chatcomplete(
         self,
         user_id: str,
         session_id: str,
-        params: CompletionOptions,
+        params: (
+            openai_params.OpenAIChatMessageOptions
+            | anthropic_params.AnthropicChatMessageOptions
+        ),
     ) -> ty.AsyncGenerator[str, None]:
-        session = await self._rebuild_session(user_id=user_id, session_id=session_id)
-        api_pool = await self._build_api_pool(user_id=user_id, api_type=self.gpt_type)
+        session = await self._session_service._rebuild_session(
+            user_id=user_id, session_id=session_id
+        )
+        raw_message = params.pop("messages", [])
+        message = raw_message[0]
 
+        msg = ChatMessage(
+            role=message["role"], content=message["content"], gpt_type=self.gpt_type
+        )
+        messages = await self.build_message_context(session, messages=[msg])
+        api_pool = await self._build_api_pool(user_id=user_id, api_type=self.gpt_type)
         async with api_pool.reserve_api_key() as api_key:
-            client = OpenAIClient.from_apikey(api_key, timeout=3.0)
-            message = params.pop("message")  # type: ignore
-            msg = ChatMessage(role=message["role"], content=message["content"])
-            messages = session.messages + [msg]
-            msgs = self._message_adapter(messages)
+            client = self._client_factory(api_key, timeout=3.0)
             answer = ""
-            async for chunk in client.complete(messages=msgs, params=params):
+            async for chunk in client.complete(messages=messages, params=params):
                 yield chunk
                 answer += chunk
 
-            events = [
-                ChatMessageSent(
-                    session_id=session_id,
-                    chat_message=msg,
+        events = [
+            ChatMessageSent(
+                session_id=session_id,
+                chat_message=msg,
+            ),
+            ChatResponseReceived(
+                session_id=session_id,
+                chat_message=ChatMessage(
+                    role="assistant", content=answer, gpt_type=self.gpt_type
                 ),
-                ChatResponseReceived(
-                    session_id=session_id,
-                    chat_message=ChatMessage(role="assistant", content=answer),
-                ),
-            ]
-            for e in events:
-                session.apply(e)
+            ),
+        ]
+        for e in events:
+            session.apply(e)
+
+        # TODO: extract this to be an event serivce
+        # await self._event_service.publish(events)
+        async with self._session_service._session_repo.uow.trans():
             await self._event_store.add_all(events)
+
+
+class OpenAIGPT(GPTService):
+    gpt_type: ty.ClassVar[SupportedGPTs] = "openai"
+
+    def _message_adapter(
+        self, messages: list[ChatMessage]
+    ) -> list[openai_params.ChatCompletionMessageParam]:
+        adapted = ty.cast(
+            list[openai_params.ChatCompletionMessageParam],
+            [dict(content=message.content, role=message.role) for message in messages],
+        )
+        return adapted
+
+    def _client_factory(self, api_key: str, timeout: float) -> OpenAIClient:
+        return OpenAIClient.from_apikey(api_key, timeout=timeout)
+
+
+class AnthropicGPT(GPTService):
+    gpt_type: ty.ClassVar[SupportedGPTs] = "anthropic"
+
+    def _message_adapter(
+        self, messages: list[ChatMessage]
+    ) -> list[anthropic_params.MessageParam]:
+        return [
+            anthropic_params.MessageParam(
+                content=message.content,
+                role="user" if message.role in ("system", "user") else "assistant",
+            )
+            for message in messages
+        ]
+
+    def _client_factory(self, api_key: str, timeout: float) -> AnthropicClient:
+        return AnthropicClient.from_apikey(api_key, timeout=timeout)

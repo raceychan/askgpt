@@ -46,7 +46,7 @@ class APIKeyNotAvailableError(GPTError, ThrottlingError):
 class OpenAIRequestError(GPTError):
     status_code: int
 
-    def __init__(self, status_code: int, message: str):
-        msg = f"OpenAI request failed with status code {status_code}: {message}"
+    def __init__(self, status_code: int, message: str, body: object | None):
+        msg = f"OpenAI request failed with status code {status_code}: {message}, {body}"
         self.status_code = status_code
         super().__init__(msg)

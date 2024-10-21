@@ -12,7 +12,7 @@ from askgpt.app.auth._model import UserAuth
 from askgpt.app.auth._repository import AuthRepository
 from askgpt.app.auth.service import AuthService, TokenRegistry
 from askgpt.app.gpt._gptclient import ClientRegistry, OpenAIClient
-from askgpt.app.gpt._params import ChatResponse
+from askgpt.app.gpt.openai._params import ChatResponse
 from askgpt.app.user._repository import UserRepository
 from askgpt.app.user.service import UserService
 from askgpt.domain.config import Settings

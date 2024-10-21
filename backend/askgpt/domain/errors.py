@@ -47,4 +47,5 @@ class BoostrapingFailedError(GeneralAPPError):
     Raised when the app failed to bootstrap.
     """
 
-    ...
+    def __init__(self, msg):
+        super().__init__(msg)

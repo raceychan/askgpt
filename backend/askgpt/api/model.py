@@ -48,6 +48,7 @@ class _EmptyResponse:
     OK = Response(status_code=status.HTTP_200_OK)
     Created = Response(status_code=status.HTTP_201_CREATED)
     EntityDeleted = Response(status_code=status.HTTP_204_NO_CONTENT)
+    NotFound = Response(status_code=status.HTTP_404_NOT_FOUND)
 
 
 EmptyResponse = _EmptyResponse()

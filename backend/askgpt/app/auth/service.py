@@ -1,13 +1,12 @@
 from datetime import timedelta
 
-from jose.exceptions import JWTError
-from pydantic import ValidationError
-
 from askgpt.adapters.cache import Cache, KeySpace
 from askgpt.domain.config import Settings
 from askgpt.domain.model.base import utc_now, uuid_factory
 from askgpt.infra import security
 from askgpt.infra.eventstore import EventStore
+from jose.exceptions import JWTError
+from pydantic import ValidationError
 
 from ._errors import (
     DuplicatedAPIKeyError,
@@ -115,44 +114,6 @@ class AuthService:
             await self._auth_repo.add(user_auth)
             await self._eventstore.add(user_signed_up)
 
-    async def add_api_key(self, user_id: str, api_key: str, api_type: str) -> None:
-        async with self._uow.trans():
-            user = await self._auth_repo.get(user_id)
-            if user is None:
-                raise UserNotFoundError(user_id=user_id)
-
-        encrypted_key = self._encryptor.encrypt_string(api_key).decode()
-        idem_id = self._encryptor.hash_string(api_type + api_key).hex()
-        user_api_added = UserAPIKeyAdded(
-            user_id=user_id,
-            api_key=encrypted_key,
-            api_type=api_type,
-            idem_id=idem_id,
-        )
-
-        try:
-            async with self._uow.trans():
-                await self._auth_repo.add_api_key_for_user(
-                    user_id, encrypted_key, api_type, idem_id
-                )
-                await self._eventstore.add(user_api_added)
-        except Exception as e:
-            # TODO: catch specific error
-            raise DuplicatedAPIKeyError(api_type=api_type) from e
-
-    async def list_api_keys(
-        self, user_id: str, api_type: str, as_secret: bool = False
-    ) -> tuple[str, ...]:
-        async with self._uow.trans():
-            encrypted_keys = await self._auth_repo.get_api_keys_for_user(
-                user_id=user_id, api_type=api_type
-            )
-
-        api_keys = tuple(self._encryptor.decrypt_string(key) for key in encrypted_keys)
-        if as_secret:
-            return tuple(partial_secret(key) for key in api_keys)
-        return api_keys
-
     async def login(self, email: str, password: str) -> str:
         async with self._uow.trans():
             user = await self._auth_repo.search_user_by_email(email)
@@ -188,3 +149,52 @@ class AuthService:
             user.apply(e)
             await self._auth_repo.remove(user.entity_id)
             await self._eventstore.add(e)
+
+    async def add_api_key(
+        self, user_id: str, api_key: str, api_type: str, key_name: str
+    ) -> None:
+        async with self._uow.trans():
+            user = await self._auth_repo.get(user_id)
+            if user is None:
+                raise UserNotFoundError(user_id=user_id)
+
+        encrypted_key = self._encryptor.encrypt_string(api_key).decode()
+        idem_id = self._encryptor.hash_string(api_type + api_key).hex()
+        user_api_added = UserAPIKeyAdded(
+            user_id=user_id,
+            api_key=encrypted_key,
+            api_type=api_type,
+            key_name=key_name,
+            idem_id=idem_id,
+        )
+
+        try:
+            async with self._uow.trans():
+                await self._auth_repo.add_api_key_for_user(
+                    user_id, encrypted_key, api_type, key_name, idem_id
+                )
+                await self._eventstore.add(user_api_added)
+        except Exception as e:
+            # TODO: catch specific error
+            raise DuplicatedAPIKeyError(api_type=api_type) from e
+
+    async def list_api_keys(
+        self, user_id: str, api_type: str | None, as_secret: bool
+    ) -> tuple[tuple[str, str, str], ...]:
+        async with self._uow.trans():
+            encrypted_keys = await self._auth_repo.get_api_keys_for_user(
+                user_id=user_id, api_type=api_type
+            )
+        public_api_keys = tuple(
+            (name, type, self._encryptor.decrypt_string(key.encode()))
+            for name, type, key in encrypted_keys
+        )
+        if as_secret:
+            return tuple(
+                (name, type, partial_secret(key)) for name, type, key in public_api_keys
+            )
+        return public_api_keys
+
+    async def remove_api_key(self, user_id: str, key_name: str) -> int:
+        async with self._uow.trans():
+            return await self._auth_repo.remove_api_key_for_user(user_id, key_name)

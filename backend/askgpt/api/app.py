@@ -1,9 +1,6 @@
 import typing as ty
 from contextlib import asynccontextmanager
 
-from fastapi import APIRouter, FastAPI
-from starlette.types import Lifespan
-
 from askgpt.adapters.request import client_factory
 from askgpt.api.error_handlers import handler_registry
 from askgpt.api.middleware import middlewares
@@ -15,6 +12,8 @@ from askgpt.helpers.error_registry import error_route_factory
 from askgpt.helpers.time import timeout
 from askgpt.infra.locator import adapter_locator, make_database
 from askgpt.infra.schema import create_tables
+from fastapi import APIRouter, FastAPI
+from starlette.types import Lifespan
 
 
 async def check_openai_endpoint(settings: Settings):
@@ -24,8 +23,9 @@ async def check_openai_endpoint(settings: Settings):
         resp = await client.get(url, timeout=3.0)
         assert resp.status_code in (200, 421)
     except Exception as e:
-        logger.exception("Failed to connect to openai endpoint")
-        raise BoostrapingFailedError(e) from e
+        raise BoostrapingFailedError(
+            "Failed to connect to openai endpoint, check your network"
+        ) from e
 
 
 @timeout(30, logger=logger)

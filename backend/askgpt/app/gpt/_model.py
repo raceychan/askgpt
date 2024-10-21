@@ -2,8 +2,6 @@ import typing as ty
 from collections import defaultdict
 from functools import singledispatchmethod
 
-from pydantic import AwareDatetime
-
 from askgpt.app.auth._model import UserAPIKeyAdded, UserSignedUp
 from askgpt.domain.interface import ICommand, IRepository
 from askgpt.domain.model.base import (
@@ -18,8 +16,9 @@ from askgpt.domain.model.base import (
 from askgpt.domain.model.base import uuid_factory as uuid_factory
 from askgpt.domain.types import SupportedGPTs
 from askgpt.helpers.time import utc_now
+from pydantic import AwareDatetime
 
-from ._params import ChatGPTRoles, CompletionModels
+from .openai._params import ChatGPTRoles, CompletionModels
 
 DEFAULT_SESSION_NAME = "New Session"
 
@@ -27,6 +26,7 @@ DEFAULT_SESSION_NAME = "New Session"
 class ChatMessage(ValueObject):
     role: ChatGPTRoles
     content: str
+    gpt_type: SupportedGPTs
     timestamp: AwareDatetime = Field(default_factory=utc_now)
 
     @property
@@ -42,16 +42,16 @@ class ChatMessage(ValueObject):
         return self.role == "assistant"
 
     @classmethod
-    def as_user(cls, content: str) -> ty.Self:
-        return cls(role="user", content=content)
+    def as_user(cls, content: str, gpt_type: SupportedGPTs) -> ty.Self:
+        return cls(role="user", content=content, gpt_type=gpt_type)
 
     @classmethod
-    def as_assistant(cls, content: str) -> ty.Self:
-        return cls(role="assistant", content=content)
+    def as_assistant(cls, content: str, gpt_type: SupportedGPTs) -> ty.Self:
+        return cls(role="assistant", content=content, gpt_type=gpt_type)
 
     @classmethod
-    def as_prompt(cls, content: str) -> ty.Self:
-        return cls(role="system", content=content)
+    def as_prompt(cls, content: str, gpt_type: SupportedGPTs) -> ty.Self:
+        return cls(role="system", content=content, gpt_type=gpt_type)
 
     def asdict(self):  # type: ignore
         # TODO: find a better way to handle this
@@ -92,12 +92,14 @@ class SendChatMessage(SessionRelated, Command):
     stream: bool = True
     user_id: str
     role: ChatGPTRoles
-    client_type: SupportedGPTs = "openai"
+    gpt_type: SupportedGPTs
 
     @computed_field  # type: ignore
     @property
     def chat_message(self) -> ChatMessage:
-        return ChatMessage(role=self.role, content=self.message_body)
+        return ChatMessage(
+            role=self.role, content=self.message_body, gpt_type=self.gpt_type
+        )
 
 
 class ChatMessageSent(SessionRelated, Event):
@@ -131,8 +133,8 @@ class ChatSession(Entity):
     def add_message(self, chat_message: ChatMessage) -> None:
         self.messages.append(chat_message)
 
-    def change_prompt(self, prompt: str) -> None:
-        self.prompt = ChatMessage(role="system", content=prompt)
+    def change_prompt(self, prompt: str, gpt_type: SupportedGPTs) -> None:
+        self.prompt = ChatMessage(role="system", content=prompt, gpt_type=gpt_type)
 
     @singledispatchmethod
     def handle(self, command: Command) -> None:

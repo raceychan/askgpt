@@ -25,6 +25,7 @@ but currently these are the ones we have tested, and ones you can call directly 
 | Supported Cloud Provider  |
 | ------------------------- |
 | OpenAI                    |
+| Anthropic                 |
 
 | Supported Local LLMs |
 | ---------------------|

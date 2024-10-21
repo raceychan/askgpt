@@ -4,9 +4,9 @@ import pathlib
 import typing as ty
 from contextvars import ContextVar
 
-import jose.constants
 from askgpt.domain.errors import StaticAPPError
 from askgpt.domain.interface import SQL_ISOLATIONLEVEL, EventLogRef, SystemRef
+from askgpt.domain.types import SUPPORTED_ALGORITHMS
 from askgpt.helpers.data import update_config_from_env
 from askgpt.helpers.file import FileUtil
 from askgpt.helpers.functions import freeze, simplecache
@@ -24,8 +24,6 @@ WEEK = 7 * DAY
 TIME_EPSILON_S = 0.001  # 1ms
 
 
-type SUPPORTED_ALGORITHMS = ty.Literal[tuple(jose.constants.ALGORITHMS.SUPPORTED)]  # type: ignore
-
 SETTINGS_READ_ORDER: tuple[str, ...] = (
     "test.settings.toml",
     "dev.settings.toml",
@@ -39,9 +37,6 @@ SETTINGS_READ_ORDER: tuple[str, ...] = (
 
 UNKNOWN_NETLOC = ("unknown_ip", "unknown_port")
 
-UTC_TZ = datetime.UTC
-
-type SupportedGPTs = ty.Literal["openai", "askgpt_test"]
 
 
 def detect_settings(read_order: tuple[str, ...] = SETTINGS_READ_ORDER) -> "Settings":
