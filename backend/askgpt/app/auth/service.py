@@ -91,7 +91,9 @@ class AuthService:
             token_dict = self._encryptor.decrypt_jwt(token)
             return AccessToken.model_validate(token_dict)
         except (JWTError, ValidationError) as e:
-            raise InvalidCredentialError("Your access token is invalid") from e
+            raise InvalidCredentialError(
+                "Your access token is invalid, check for expiry"
+            ) from e
 
     async def signup_user(self, user_name: str, email: str, password: str) -> None:
         async with self._uow.trans():
