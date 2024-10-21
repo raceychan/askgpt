@@ -31,6 +31,15 @@ but currently these are the ones we have tested, and ones you can call directly 
 | ---------------------|
 | Llama2               |
 
+### API Key management with multiple gpt agen support
+
+![image](https://github.com/user-attachments/assets/b3de39db-c098-437f-a846-4f1d91fac9a7)
+![image](https://github.com/user-attachments/assets/1bb23a64-0c67-4b7f-b50c-b8c0b34820fd)
+
+### Session management
+use multiple gpt agent in a same session, change model every message.
+![image](https://github.com/user-attachments/assets/05e706c9-12de-4354-a921-b0f8638395e3)
+
 ## Local Model Serving
 
 Local model serving is supported using llama.cpp, due to the size restriction
