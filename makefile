@@ -1,5 +1,6 @@
-project_name = askgpt
+PROJECT_NAME := askgpt
+PROJECT_DIR := $(shell pwd)
 
 .PHONY: compose
 compose:
-	docker-compose up --build ${project_name} -d
+	docker compose up --build ${PROJECT_NAME}

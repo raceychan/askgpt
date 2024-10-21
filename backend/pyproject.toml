@@ -1,45 +1,80 @@
-[tool.poetry]
+[project]
+authors = [{name = "raceychan", email = "raceychan@gmail.com"}]
+dependencies = []
+description = "Add a short description here"
 name = "askgpt"
+requires-python = ">= 3.12"
 version = "0.1.0"
-description = ""
-authors = ["raceychan <raceychan@gmail.com>"]
-license = "GPL"
-readme = "README.md"
 
+[tool.setuptools]
+py-modules = ["askgpt"]
 
 [tool.pytest.ini_options]
+addopts = "-vx --strict-markers --capture=no"
 asyncio_mode = "auto"
-testpaths = ["tests"]
-# addopts = "--strict-markers --maxfail=1 --pdbcls=IPython.terminal.debugger:Pdb"
-addopts = "--strict-markers --maxfail=1"
 markers = [
-    "integration_test: marks tests as slow integration tests (deselect with '-m \"not integration_test\"')",
+  "integration_test: marks tests as slow integration tests (deselect with '-m \"not integration_test\"')",
 ]
+testpaths = ["tests"]
 
 filterwarnings = ["ignore::DeprecationWarning"]
 
+[tool.coverage.run]
+omit = [
+  # omit anything in a .local directory anywhere
+  "*/adapters/*",
+  "*/helpers/*", # omit this single file
+  "*/script/*",
+]
 
 [tool.pyright]
-include = ["src/*.py"]
-typeCheckingMode = "strict"
-exclude = ["tests"]
+exclude = ["tests"] 
+include = ["askgpt/*.py"] 
+python_version = "3.12" 
+typeCheckingMode = "strict" # BUG: backend is not the root folder, pyright ignores this
 
-[tool.mypy]
-python_version = "3.12"
-mypy_path = "src/*.py"
-strict = true
-exclude = ["tests"]
+[tool.pixi.project]
+channels = ["conda-forge"]
+platforms = ["linux-64"]
 
-[[tool.mypy.overrides]]
-module = "src/*"
-implicit_reexport = true
-# enable-incomplete-feature = "Unpack"
+[tool.pixi.environments]
+default = {solve-group = "default"}
+dev = {features = ["dev"], solve-group = "default"}
+prod = {features = ["prod"], solve-group = "default"}
+test = {features = ["test", "dev"], solve-group = "default"}
 
-[[tool.mypy.overrides]]
-module = "src.domain.fileutil"
-warn_unused_ignores = false
-ignore_missing_imports = true
+[tool.pixi.tasks]
 
-[build-system]
-requires = ["poetry-core"]
-build-backend = "poetry.core.masonry.api"
+[tool.pixi.pypi-dependencies]
+askgpt = {path = ".", editable = true}
+
+[tool.pixi.dependencies]
+asyncpg = ">=0.29.0,<0.30"
+bcrypt = ">=4.0.1"
+email-validator = ">=2.1.0"
+fastapi = "0.115.*"
+gunicorn = ">=21.2.0"
+loguru = ">=0.7.2"
+openai = "==1.50.0"
+orjson = ">=3.9.10,<3.10"
+pydantic = ">=2.4.2"
+python = ">=3.12"
+python-jose = ">=3.3.0"
+redis-py = ">=5.0.1"
+sqlalchemy = ">=2.0.21"
+anthropic = ">=0.36.2,<0.37"
+
+[tool.pixi.feature.test.dependencies]
+pytest = ">=8.3.0"
+pytest-asyncio = ">=0.21.1"
+pytest-cov = ">=4.1.0"
+
+[tool.pixi.feature.dev.dependencies]
+aiosqlite = ">=0.19.0"
+alembic = ">=1.13.3,<2"
+ipython = ">=i.18.1"
+pyright = ">=1.1.327"
+rich = ">=13.7.0"
+uvicorn-standard = ">=0.24.0"
+
+[tool.pixi.feature.prod.dependencies]

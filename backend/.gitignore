@@ -1,10 +1,12 @@
 .pixi
 archive
+beta_*.py
 
 .ipynb_checkpoints
 *.vscode
 database
 *data.json
+*.db
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
@@ -158,3 +160,6 @@ cython_debug/
 #  option (not recommended) you can uncomment the following to ignore the entire idea folder.
 #.idea/
 *.gguf
+# pixi environments
+.pixi
+*.egg-info

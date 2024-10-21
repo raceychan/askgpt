@@ -1,15 +1,14 @@
-.PHONY: openapi
-openapi:
-	@curl -s "http://localhost:5000/v1/openapi.json" | \
-	jq '.paths |= map_values(map_values(.tags as $$tags | .operationId |= sub("^(\\($$tags[0]\\))-";"") ))' \
-	> openapi.json
-	@echo "OpenAPI specification updated in openapi.json"
+PROJECT_DIR := $(shell pwd)
+# PROJECT_DIR := $(shell dirname $(shell pwd))
+
 
 .PHONY: client
 client:
-	npm run openapi-ts
+	make -C ../backend openapi && \
+	 npm run openapi-ts
 
 
+# need to run backend/scripts/modify_openapi.py before this
 .PHONY: dev
 dev:
 	make client

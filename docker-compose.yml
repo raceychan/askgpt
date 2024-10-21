@@ -1,36 +1,58 @@
-version: "3.8"
 services:
-  askgpt:
+  redis:
+    image: redis:latest # Use the official Redis image
     ports:
-      - 5000:5000
+      - "6379:6379" # Map port 6379 on the host to port 6379 in the container
+    command:
+      - redis-server
+      - --bind
+      - 0.0.0.0
+    restart: unless-stopped
+
+  askgpt:
     environment:
+      - SETTINGS_FILE="dev.settings.toml"
+      - redis__HOST=redis
       - PYTHONUNBUFFERED=1 # send output to terminal
-      - RUNTIME_ENV=prod
+      - RUNTIME_ENV=dev # - RUNTIME_ENV=prod
 
     entrypoint:
       - pixi
       - run
-      - gunicorn
+      - -e
+      - dev
 
     command:
-      - "src.server:app_factory"
+      - "gunicorn"
+      - "askgpt.feat.app:app_factory"
       - "--workers"
       - "1"
       - "-k"
       - "uvicorn.workers.UvicornWorker"
       - "--bind"
       - "0.0.0.0:5000"
+      - "--log-level"
+      - "critical"
+    ports:
+      - 5000:5000
 
-    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://0.0.0.0:5000/v1/health/"]
+      interval: 60s
+      timeout: 60s
+      retries: 5
+      start_period: 60s
+
+    # restart: unless-stopped
     build:
       context: ./backend
       dockerfile: Dockerfile
 
+    depends_on:
+      - redis
+
     volumes:
-      - ./backend/src/settings.toml:/app/settings.toml
-    labels:
-      - "traefik.enable=true"
-      - "traefik.http.services.askgpt.loadbalancer.server.port=5000"
+      - ./backend/askgpt/settings.toml:/app/settings.toml
 
   # frontend:
   #   ports:

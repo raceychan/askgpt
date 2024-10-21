@@ -11,3 +11,8 @@ env.bak/
 venv.bak/
 *.env
 
+
+# dev only files
+*.ipynb
+*.vscode
+*.pytest_cache

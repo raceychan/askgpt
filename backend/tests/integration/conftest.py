@@ -3,24 +3,23 @@ import typing as ty
 
 import pytest
 from sqlalchemy.ext import asyncio as sa_aio
-from src.adapters.cache import MemoryCache, RedisCache
-from src.adapters.database import AsyncDatabase
-from src.adapters.gptclient import ClientRegistry, OpenAIClient
-from src.adapters.queue import BaseConsumer, BaseProducer, QueueBroker
-from src.app.actor import MailBox
-from src.app.auth.model import UserAuth
-from src.app.auth.repository import UserAuth
-from src.app.gpt.params import ChatResponse
-from src.domain.config import Settings
-from src.domain.model.test_default import TestDefaults
-from src.infra import schema
-from src.infra.eventrecord import EventRecord
-from src.infra.eventstore import EventStore
 
-
-class EchoMailbox(MailBox):
-    async def publish(self, message: str):
-        print(message)
+from askgpt.adapters.cache import MemoryCache
+from askgpt.adapters.database import AsyncDatabase
+from askgpt.adapters.queue import QueueBroker
+from askgpt.adapters.uow import UnitOfWork
+from askgpt.app.auth._model import UserAuth
+from askgpt.app.auth._repository import AuthRepository
+from askgpt.app.auth.service import AuthService, TokenRegistry
+from askgpt.app.gpt._gptclient import ClientRegistry, OpenAIClient
+from askgpt.app.gpt.openai._params import ChatResponse
+from askgpt.app.user._repository import UserRepository
+from askgpt.app.user.service import UserService
+from askgpt.domain.config import Settings
+from askgpt.infra.eventstore import EventStore, OutBoxProducer
+from askgpt.infra.schema import create_tables
+from askgpt.infra.security import Encryptor
+from tests.conftest import UserDefaults
 
 
 @pytest.fixture(scope="module")
@@ -36,23 +35,28 @@ def aiodb(settings: Settings):
 
 
 @pytest.fixture(scope="module")
+def uow(aiodb: AsyncDatabase):
+    return UnitOfWork(aiodb)
+
+
+@pytest.fixture(scope="module")
 def local_cache():
     return MemoryCache.from_singleton()
 
 
 @pytest.fixture(scope="module", autouse=True)
 async def tables(aiodb: AsyncDatabase):
-    await schema.create_tables(aiodb)
+    await create_tables(aiodb)
 
 
 @pytest.fixture(scope="module")
-async def eventstore(aiodb: AsyncDatabase) -> EventStore:
-    es = EventStore(aiodb)
+async def eventstore(uow: UnitOfWork) -> EventStore:
+    es = EventStore(uow)
     return es
 
 
 @pytest.fixture(scope="module")
-def user_auth(test_defaults: TestDefaults):
+def user_auth(test_defaults: UserDefaults):
     return UserAuth(
         credential=test_defaults.USER_INFO,
         last_login=datetime.datetime.utcnow(),
@@ -62,38 +66,63 @@ def user_auth(test_defaults: TestDefaults):
 
 @pytest.fixture(scope="module")
 def broker():
-    return QueueBroker[ty.Any]()
+    return QueueBroker[ty.Any](100)
 
 
 @pytest.fixture(scope="module")
-def producer(broker: QueueBroker[ty.Any]):
-    return BaseProducer(broker)
+def producer(eventstore: EventStore):
+    return OutBoxProducer(eventstore)
+
+
+# @pytest.fixture(scope="module", autouse=True)
+# async def redis_cache(settings: Settings):
+#     redis = RedisCache[str].build(
+#         url=settings.redis.URL,
+#         decode_responses=settings.redis.DECODE_RESPONSES,
+#         max_connections=settings.redis.MAX_CONNECTIONS,
+#         keyspace=settings.redis.keyspaces.APP,
+#         socket_timeout=settings.redis.SOCKET_TIMEOUT,
+#         socket_connect_timeout=settings.redis.SOCKET_CONNECT_TIMEOUT,
+#     )
+#     async with redis.lifespan():
+#         yield redis
 
 
 @pytest.fixture(scope="module")
-def consumer(broker: QueueBroker[ty.Any]):
-    return BaseConsumer(broker)
+async def event_store(uow: UnitOfWork):
+    return EventStore(uow)
 
 
-@pytest.fixture(scope="module", autouse=True)
-async def eventrecord(consumer: BaseConsumer[ty.Any], eventstore: EventStore):
-    es = EventRecord(consumer, eventstore, wait_gap=0.1)
-    async with es.lifespan():
-        yield es
+@pytest.fixture(scope="module")
+async def user_service(uow: UnitOfWork, eventstore: EventStore):
+    return UserService(event_store=eventstore, user_repo=UserRepository(uow))
 
 
-@pytest.fixture(scope="module", autouse=True)
-async def redis_cache(settings: Settings):
-    redis = RedisCache[str].build(
-        url=settings.redis.URL,
-        decode_responses=settings.redis.DECODE_RESPONSES,
-        max_connections=settings.redis.MAX_CONNECTIONS,
-        keyspace=settings.redis.keyspaces.APP,
-        socket_timeout=settings.redis.SOCKET_TIMEOUT,
-        socket_connect_timeout=settings.redis.SOCKET_CONNECT_TIMEOUT,
+@pytest.fixture(scope="module")
+async def auth_service(
+    uow: UnitOfWork,
+    local_cache: MemoryCache[str, str],
+    settings: Settings,
+    encryptor: Encryptor,
+    eventstore: EventStore,
+):
+    keyspace = settings.redis.keyspaces.APP.cls_keyspace(TokenRegistry)
+
+    return AuthService(
+        auth_repo=AuthRepository(uow),
+        encryptor=encryptor,
+        token_registry=TokenRegistry(
+            token_cache=local_cache,
+            keyspace=keyspace,
+        ),
+        eventstore=eventstore,
+        security_settings=settings.security,
     )
-    async with redis.lifespan():
-        yield redis
+
+
+@pytest.fixture(scope="module")
+async def cache(settings: Settings):
+    return MemoryCache()
 
 
 @pytest.fixture(scope="module")
@@ -122,7 +151,7 @@ def openai_client(chat_response: ChatResponse):
     async def asyncresponse():
         return chat_response
 
-    @ClientRegistry.register("test")
+    @ClientRegistry.register("askgpt_test")
     class FakeClient(OpenAIClient):
         async def complete(  # type: ignore
             self, **kwargs  # type: ignore

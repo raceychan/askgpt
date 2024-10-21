@@ -1,13 +1,21 @@
-import path from "path"
-// import react from "@vitejs/plugin-react"
-import reactSwc from "@vitejs/plugin-react-swc"
-import { defineConfig } from "vite"
+import path from "path";
+import reactSwc from "@vitejs/plugin-react-swc";
+import { defineConfig, loadEnv } from "vite";
+import { TanStackRouterVite } from "@tanstack/router-plugin/vite";
 
-export default defineConfig({
-  plugins: [reactSwc()],
-  resolve: {
-    alias: {
-      "@": path.resolve(__dirname, "./src"),
+export default defineConfig(({ mode }) => {
+  const env = loadEnv(mode, process.cwd(), "");
+
+  return {
+    plugins: [TanStackRouterVite(), reactSwc()],
+    resolve: {
+      alias: {
+        "@": path.resolve(__dirname, "./src"),
+      },
     },
-  },
-})
+    server: {
+      host: env.VITE_FRONTEND_API_HOST || "localhost",
+      port: parseInt(env.VITE_FRONTEND_API_PORT || "5173", 10),
+    },
+  };
+});
