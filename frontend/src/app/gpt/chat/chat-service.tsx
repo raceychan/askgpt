@@ -1,28 +1,42 @@
 import { fetchEventSource } from "@microsoft/fetch-event-source";
 
 import { Config } from "@/config";
-import { AnthropicChatMessageOptions } from "@/lib/api/types.gen";
+import {
+  AnthropicChatMessageOptions,
+  OpenAIChatMessageOptions,
+} from "@/lib/api/types.gen";
 
 export async function streamingChat(
   sessionId: string,
+  gpt_type: "anthropic" | "openai" = "anthropic",
   message: string,
+  max_tokens: number = 100,
   onMessageUpdate: (content: string) => void
 ) {
   const accessToken = localStorage.getItem("access_token") || "";
+  let requestBody: AnthropicChatMessageOptions | OpenAIChatMessageOptions;
 
-  const requestBody: AnthropicChatMessageOptions = {
-    messages: [
-      {
-        role: "user",
-        content: message,
-      },
-    ],
-    model: "claude-3-5-sonnet-20240620",
-    max_tokens: 100,
-    stream: true,
-  };
+  if (gpt_type === "anthropic") {
+    requestBody = {
+      max_tokens: max_tokens,
+      messages: [
+        {
+          role: "user",
+          content: message,
+        },
+      ],
+      model: "claude-3-5-sonnet-20240620",
+      stream: true,
+    };
+  } else {
+    requestBody = {
+      model: "gpt-4o-mini",
+      messages: [{ role: "user", content: message }],
+      stream: true,
+    };
+  }
 
-  const url = `${Config.API_GPT_URL}/sessions/${sessionId}/messages?gpt_type=anthropic`;
+  const url = `${Config.API_GPT_URL}/sessions/${sessionId}/messages?gpt_type=${gpt_type}`;
 
   await fetchEventSource(url, {
     method: "POST",
