@@ -119,10 +119,15 @@ class ErrorDetail(BaseModel):
     )
 
     def model_dump_json(
-        self, exclude_unset: bool = True, exclude_none: bool = True, **kwargs
+        self,
+        exclude_unset: bool = True,
+        exclude_none: bool = True,
+        **kwargs: ty.Any,  # type: ignore
     ):
         return super().model_dump_json(
-            exclude_unset=exclude_unset, exclude_none=exclude_none, **kwargs
+            exclude_unset=exclude_unset,
+            exclude_none=exclude_none,
+            **kwargs,  # type: ignore
         )
 
 
@@ -166,7 +171,7 @@ class RFC9457(Exception):
         return ErrorDetail(type=cls.__error_type__, title=cls.__error_title__)
 
     def to_json(self) -> str:
-        return self.error_detail.model_dump_json()
+        return self.error_detail.model_dump_json()  # type: ignore
 
 
 type ExceptionHandler[Exc] = ty.Callable[[Request, Exc], IErrorResponse]
@@ -176,12 +181,12 @@ type FastAPIExceptionHandler = dict[
 ]
 
 
-class HandlerRegistry[Exc: Exception]:
+class HandlerRegistry:
     """
     Add error handler to fastapi according to their signature
     """
 
-    _handlers: dict[type[Exc] | int, ExceptionHandler[Exc]]
+    _handlers: dict[type[Exception] | int, ExceptionHandler[ty.Any]]
 
     def __init__(self, error_route_path: str | None = None):
         self._handlers = {}
@@ -189,16 +194,16 @@ class HandlerRegistry[Exc: Exception]:
 
     def __iter__(
         self,
-    ) -> ty.Iterator[tuple[type[Exc] | int, ExceptionHandler[Exc]]]:
+    ) -> ty.Iterator[tuple[type[Exception] | int, ExceptionHandler[Exception]]]:
         return iter(self._handlers.items())
 
     @property
     def handlers(self) -> FastAPIExceptionHandler:
         return ty.cast(FastAPIExceptionHandler, self._handlers)
 
-    def register(
-        self, handler: ty.Callable[[Request, ty.Any], IErrorResponse]
-    ) -> ty.Callable[[Request, ty.Any], IErrorResponse]:
+    def register[
+        Exc: Exception
+    ](self, handler: ExceptionHandler[Exc]) -> ExceptionHandler[Exc]:
         """\
         >>> @HandlerRegistry.register
         def any_error_handler(request: Request, exc: Exception | ty.Literal[500]) -> ErrorResponse:
@@ -210,7 +215,7 @@ class HandlerRegistry[Exc: Exception]:
             for exctype in exc_types:
                 self._handlers[exctype] = handler
         else:
-            exc_type = ty.cast(type[Exc] | int, exc_type)
+            exc_type = ty.cast(type[Exception] | int, exc_type)
             self._handlers[exc_type] = handler
         return handler
 
@@ -218,16 +223,18 @@ class HandlerRegistry[Exc: Exception]:
         if not self._handlers:
             raise Exception("Empty Exception Handler")
         for exc, handler in self:
-            app.add_exception_handler(exc, handler)  # type: ignore
+            app.add_exception_handler(exc, handler)
 
     @classmethod
-    def _extract_exception(
-        cls, handler: ExceptionHandler[Exc]
-    ) -> type[Exc] | int | types.UnionType | int:
+    def _extract_exception[
+        Exc: Exception
+    ](cls, handler: ExceptionHandler[Exc]) -> (
+        type[Exception] | int | types.UnionType | int
+    ):
         sig = inspect.signature(handler)
         _, exc = sig.parameters.values()
         exc_type = exc.annotation
-        if exc_type is inspect._empty:  # type: ignore
+        if exc_type is inspect._empty:
             raise ValueError(f"handler {handler} has no annotation for {exc.name}")
         return exc_type
 
@@ -311,7 +318,7 @@ FIELD_TMPLT = """
 
 
 def error_route_factory(
-    registry: HandlerRegistry[ty.Any],
+    registry: HandlerRegistry,
     *,
     route_path: str = "/errors",
     route_tag: str = "errors",

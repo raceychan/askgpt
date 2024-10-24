@@ -3,9 +3,7 @@ import typing as ty
 from functools import singledispatchmethod
 
 
-
-class IDomainObject:
-    ...
+class IDomainObject: ...
 
 
 class Identifiable(ty.Protocol):
@@ -16,8 +14,7 @@ class IEntity(Identifiable, ty.Protocol):
     entity_id: str
 
     @singledispatchmethod
-    def apply(self, event: "IEvent") -> ty.Self:
-        ...
+    def apply(self, event: "IEvent") -> ty.Self: ...
 
 
 class IMessage(Identifiable, ty.Protocol):
@@ -32,12 +29,10 @@ class IMessage(Identifiable, ty.Protocol):
         exclude_none: bool = False,
         round_trip: bool = False,
         warnings: bool = True,
-    ) -> dict[str, ty.Any]:
-        ...
+    ) -> dict[str, ty.Any]: ...
 
 
-class ICommand(IMessage, ty.Protocol):
-    ...
+class ICommand(IMessage, ty.Protocol): ...
 
 
 class IEvent(IMessage, ty.Protocol):
@@ -46,8 +41,7 @@ class IEvent(IMessage, ty.Protocol):
     timestamp: datetime.datetime
 
     @property
-    def event_type(self) -> str:
-        ...
+    def event_type(self) -> str: ...
 
 
 class IQuery(IMessage, ty.Protocol):

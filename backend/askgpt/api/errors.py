@@ -1,7 +1,6 @@
 from askgpt.domain.errors import GeneralWebError
 
 
-
 class ThrottlingError(GeneralWebError):
     "Request throttled"
 

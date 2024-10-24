@@ -1,8 +1,9 @@
+import datetime
 import typing as ty
 
 import sqlalchemy as sa
-from askgpt.adapters.uow import UnitOfWork
-from askgpt.infra.schema import UserAPIKeySchema, UserSchema
+from askgpt.helpers.sql import UnitOfWork
+from askgpt.infra.schema import UserAPIKeysTable, UsersTable
 
 from ._model import UserAPIKey, UserAuth, UserCredential
 
@@ -45,11 +46,11 @@ class AuthRepository:
 
     async def add(self, entity: UserAuth) -> None:
         data = dump_userauth(entity)
-        stmt = sa.insert(UserSchema).values(data)
+        stmt = sa.insert(UsersTable).values(data)
         await self._uow.execute(stmt)
 
     async def get(self, entity_id: str) -> UserAuth | None:
-        stmt = sa.select(UserSchema).where(UserSchema.id == entity_id)
+        stmt = sa.select(UsersTable).where(UsersTable.id == entity_id)
         res = await self._uow.execute(stmt)
         row = res.mappings().one_or_none()
         if not row:
@@ -59,14 +60,14 @@ class AuthRepository:
 
     async def remove(self, entity_id: str) -> None:
         stmt = (
-            sa.update(UserSchema)
-            .where(UserSchema.id == entity_id)
+            sa.update(UsersTable)
+            .where(UsersTable.id == entity_id)
             .values(is_active=False)
         )
         await self._uow.execute(stmt)
 
     async def search_user_by_email(self, useremail: str) -> UserAuth | None:
-        stmt = sa.select(UserSchema).where(UserSchema.email == useremail)
+        stmt = sa.select(UsersTable).where(UsersTable.email == useremail)
 
         cursor = await self._uow.execute(stmt)
         res = cursor.mappings().one_or_none()
@@ -85,7 +86,7 @@ class AuthRepository:
         key_name: str,
         idem_id: str,
     ) -> None:
-        stmt = sa.insert(UserAPIKeySchema).values(
+        stmt = sa.insert(UserAPIKeysTable).values(
             user_id=user_id,
             api_key=encrypted_api_key,
             api_type=api_type,
@@ -99,13 +100,13 @@ class AuthRepository:
         self, user_id: str, api_type: str | None
     ) -> list[UserAPIKey]:
         if api_type is None:
-            stmt = sa.select(UserAPIKeySchema).where(
-                UserAPIKeySchema.user_id == user_id,
+            stmt = sa.select(UserAPIKeysTable).where(
+                UserAPIKeysTable.user_id == user_id,
             )
         else:
-            stmt = sa.select(UserAPIKeySchema).where(
-                UserAPIKeySchema.user_id == user_id,
-                UserAPIKeySchema.api_type == api_type,
+            stmt = sa.select(UserAPIKeysTable).where(
+                UserAPIKeysTable.user_id == user_id,
+                UserAPIKeysTable.api_type == api_type,
             )
 
         cursor = await self._uow.execute(stmt)
@@ -116,9 +117,19 @@ class AuthRepository:
         return encrypted_keys
 
     async def remove_api_key_for_user(self, user_id: str, key_name: str) -> int:
-        stmt = sa.delete(UserAPIKeySchema).where(
-            UserAPIKeySchema.user_id == user_id,
-            UserAPIKeySchema.key_name == key_name,
+        stmt = sa.delete(UserAPIKeysTable).where(
+            UserAPIKeysTable.user_id == user_id,
+            UserAPIKeysTable.key_name == key_name,
         )
         resp = await self._uow.execute(stmt)
         return resp.rowcount
+
+    async def update_last_login(
+        self, user_id: str, last_login: datetime.datetime
+    ) -> None:
+        stmt = (
+            sa.update(UsersTable)
+            .where(UsersTable.id == user_id)
+            .values(last_login=last_login)
+        )
+        await self._uow.execute(stmt)

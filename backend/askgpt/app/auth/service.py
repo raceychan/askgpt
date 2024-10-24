@@ -116,6 +116,8 @@ class AuthService:
             await self._auth_repo.add(user_auth)
             await self._eventstore.add(user_signed_up)
 
+        # await self._bus.dispatch(user_signed_up)
+
     async def login(self, email: str, password: str) -> str:
         async with self._uow.trans():
             user = await self._auth_repo.search_user_by_email(email)
@@ -129,7 +131,9 @@ class AuthService:
         if not user.is_active:
             raise UserInactiveError(user_id=email)
 
-        user.login()
+        async with self._uow.trans():
+            user.login()
+            await self._auth_repo.update_last_login(user.entity_id, user.last_login)
 
         access_token = self._create_access_token(user.entity_id, user.role)
         return access_token
@@ -200,3 +204,5 @@ class AuthService:
     async def remove_api_key(self, user_id: str, key_name: str) -> int:
         async with self._uow.trans():
             return await self._auth_repo.remove_api_key_for_user(user_id, key_name)
+
+

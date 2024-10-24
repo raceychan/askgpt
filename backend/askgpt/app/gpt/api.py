@@ -1,18 +1,19 @@
 import typing as ty
 
+from fastapi import APIRouter, Body, Depends
+from fastapi.responses import RedirectResponse, StreamingResponse
+from starlette import status
+
 from askgpt.api.errors import QuotaExceededError
 from askgpt.api.model import EmptyResponse, RequestBody, Response, ResponseData
 from askgpt.app.auth.api import ParsedToken
 from askgpt.app.factory import (
-    GPTService,
     SessionService,
     dynamic_gpt_service_factory,
     session_service_factory,
     user_request_throttler_factory,
 )
-from fastapi import APIRouter, Body, Depends, Query
-from fastapi.responses import RedirectResponse, StreamingResponse
-from starlette import status
+from askgpt.app.gpt.service import GPTService
 
 from ._model import ChatSession
 from .anthropic._params import AnthropicChatMessageOptions

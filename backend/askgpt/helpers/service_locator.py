@@ -6,6 +6,7 @@ from weakref import WeakKeyDictionary
 
 from askgpt.helpers.functions import attribute
 
+
 """
 some might argue that service locator pattern is an anti-pattern,
 but we improve it and remove many drawbacks the original version has
@@ -231,7 +232,7 @@ class DependencyRegistry[Registee: ty.Any]:
         cls._dependencies = WeakKeyDictionary()
         for _, dep in cls.__dict__.items():
             if isinstance(dep, Dependency):
-                cls._dependencies[dep.dependency] = dep
+                cls._dependencies[dep.dependency] = dep  # type: ignore
         cls._singleton = None
 
     def __new__(cls, settings: ty.Any) -> ty.Self:

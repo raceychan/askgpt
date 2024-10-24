@@ -1,12 +1,12 @@
 import pytest
 
-from askgpt.adapters.uow import UnitOfWork
 from askgpt.app.auth._repository import (
     AuthRepository,
     UserAuth,
     dump_userauth,
     load_userauth,
 )
+from askgpt.helpers.sql import UnitOfWork
 
 
 @pytest.fixture(scope="module")

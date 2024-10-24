@@ -74,10 +74,7 @@ class SessionService:
         return ss
 
     async def get_session(self, user_id: str, session_id: str) -> ChatSession:
-        async with self._uow.trans():
-            session = await self._rebuild_session(
-                user_id=user_id, session_id=session_id
-            )
+        session = await self._rebuild_session(user_id=user_id, session_id=session_id)
         return session
 
     async def list_sessions(self, user_id: str) -> list[ChatSession]:
@@ -137,7 +134,9 @@ class GPTService:
         return user_api_pool
 
     @abc.abstractmethod
-    def _message_adapter(self, messages: list[ChatMessage]):
+    def _message_adapter(
+        self, messages: ty.Sequence[ChatMessage]
+    ) -> ty.Sequence[ty.Any]:
         """
         Adapt messages to the format expected by the API
         """
@@ -149,7 +148,7 @@ class GPTService:
 
     async def build_message_context(
         self, session: ChatSession, messages: list[ChatMessage]
-    ) -> list[ChatMessage]:
+    ) -> ty.Sequence[ty.Any]:
         messages = session.messages + messages
         return self._message_adapter(messages)
 
@@ -162,7 +161,7 @@ class GPTService:
             | anthropic_params.AnthropicChatMessageOptions
         ),
     ) -> ty.AsyncGenerator[str, None]:
-        session = await self._session_service._rebuild_session(
+        session = await self._session_service.get_session(
             user_id=user_id, session_id=session_id
         )
         raw_message = params.pop("messages", [])
@@ -197,7 +196,7 @@ class GPTService:
 
         # TODO: extract this to be an event serivce
         # await self._event_service.publish(events)
-        async with self._session_service._session_repo.uow.trans():
+        async with self._event_store.uow.trans():
             await self._event_store.add_all(events)
 
 
@@ -205,10 +204,10 @@ class OpenAIGPT(GPTService):
     gpt_type: ty.ClassVar[SupportedGPTs] = "openai"
 
     def _message_adapter(
-        self, messages: list[ChatMessage]
-    ) -> list[openai_params.ChatCompletionMessageParam]:
+        self, messages: ty.Sequence[ChatMessage]
+    ) -> ty.Sequence[openai_params.ChatCompletionMessageParam]:
         adapted = ty.cast(
-            list[openai_params.ChatCompletionMessageParam],
+            ty.Sequence[openai_params.ChatCompletionMessageParam],
             [dict(content=message.content, role=message.role) for message in messages],
         )
         return adapted
@@ -221,7 +220,7 @@ class AnthropicGPT(GPTService):
     gpt_type: ty.ClassVar[SupportedGPTs] = "anthropic"
 
     def _message_adapter(
-        self, messages: list[ChatMessage]
+        self, messages: ty.Sequence[ChatMessage]
     ) -> list[anthropic_params.MessageParam]:
         return [
             anthropic_params.MessageParam(

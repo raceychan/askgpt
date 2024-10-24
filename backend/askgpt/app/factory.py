@@ -1,15 +1,15 @@
-from askgpt.adapters.uow import UnitOfWork
+from askgpt.helpers.sql import UnitOfWork
 from askgpt.api.throttler import UserRequestThrottler
 from askgpt.app.auth._repository import AuthRepository
 from askgpt.app.auth.service import AuthService, TokenRegistry
 from askgpt.app.gpt._repository import SessionRepository
-from askgpt.app.gpt.service import AnthropicGPT, GPTService, OpenAIGPT, SessionService
+from askgpt.app.gpt.service import AnthropicGPT, OpenAIGPT, SessionService
 from askgpt.app.user._repository import UserRepository
 from askgpt.app.user.service import UserService
 from askgpt.domain.config import SETTINGS_CONTEXT, Settings
 from askgpt.domain.types import SupportedGPTs
 from askgpt.helpers.functions import simplecache
-from askgpt.infra.eventstore import EventStore, OutBoxProducer
+from askgpt.infra.eventstore import EventStore
 from askgpt.infra.factory import encrypt_facotry
 from askgpt.infra.locator import adapter_locator
 
@@ -36,11 +36,6 @@ def token_registry_factory():
 @simplecache
 def event_store_factory():
     return EventStore(uow=uow_factory())
-
-
-@simplecache
-def outbox_producer_factory():
-    return OutBoxProducer(eventstore=event_store_factory())
 
 
 @simplecache

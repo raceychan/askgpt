@@ -1,6 +1,5 @@
 import abc
 import typing as ty
-from types import TracebackType
 
 from askgpt.domain.interface import IEntity, IEvent
 from askgpt.domain.model.base import Event
@@ -43,49 +42,3 @@ class IRepository[TEntity: IEntity](ty.Protocol):
     async def remove(self, entity_id: str) -> None:
         # Implement user deletion logic here
         ...
-
-
-class IEngine(ty.Protocol):
-    ...
-
-    def begin(self) -> ty.Self:
-        return self
-
-    def __enter__(self) -> ty.Self:
-        return self
-
-    def commit(self) -> None: ...
-
-    def rollback(self) -> None: ...
-
-    def close(self) -> None: ...
-
-
-class IUnitOfWork(abc.ABC):
-    """
-    with UnitOfWork(engine) as uow:
-        repo = UserRepository(uow.conn)
-        user_repository.create(new_user)
-        retrieved_user = user_repository.find_by_id(new_user.id)
-        retrieved_user.name = "Updated John"
-        user_repository.update(retrieved_user)
-    """
-
-    def __init__(self, engine: IEngine):  # aiodb: AsyncDatabase
-        self.engine = engine
-
-    def __enter__(self) -> ty.Self:
-        self.transaction = self.engine.begin().__enter__()
-        return self
-
-    def __exit__(
-        self,
-        exc_type: type[BaseException] | None,
-        exc_value: BaseException,
-        traceback: TracebackType,
-    ) -> None:
-        if exc_type is None:
-            self.transaction.commit()
-        else:
-            self.transaction.rollback()
-        self.transaction.close()

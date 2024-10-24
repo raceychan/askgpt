@@ -32,7 +32,6 @@ def utc_now(timestamp: float | None = None) -> datetime.datetime:
         now_ = datetime.datetime.fromtimestamp(timestamp)
     else:
         now_ = datetime.datetime.now(datetime.UTC)
-
     return now_
 
 

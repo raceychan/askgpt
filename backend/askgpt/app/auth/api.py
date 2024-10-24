@@ -1,13 +1,14 @@
 import typing as ty
 
-from askgpt.api.model import EmptyResponse, RequestBody, ResponseData
-from askgpt.app.factory import AuthService, auth_service_factory
-from askgpt.domain.types import SupportedGPTs
-from askgpt.helpers.string import EMPTY_STR
 from fastapi import APIRouter, Depends
 from fastapi.responses import RedirectResponse
 from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
 from pydantic import EmailStr
+
+from askgpt.api.model import EmptyResponse, RequestBody, ResponseData
+from askgpt.app.factory import AuthService, auth_service_factory
+from askgpt.domain.types import SupportedGPTs
+from askgpt.helpers.string import EMPTY_STR
 
 from ._model import AccessToken, UserAuth
 
@@ -122,5 +123,7 @@ async def list_keys(
 
 @auth_router.delete("/apikeys/{key_name}", status_code=200)
 async def remove_key(service: Service, token: ParsedToken, key_name: str):
+    # from askgpt.app import auth
+    # auth.remove_api_key
     row_count = await service.remove_api_key(user_id=token.sub, key_name=key_name)
     return EmptyResponse.OK if row_count > 0 else EmptyResponse.NotFound

@@ -1,6 +1,6 @@
-from askgpt.adapters.uow import UnitOfWork
 from askgpt.app.gpt._model import ChatSession
 from askgpt.app.gpt._repository import SessionRepository
+from askgpt.helpers.sql import UnitOfWork
 from tests.conftest import UserDefaults
 
 

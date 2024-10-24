@@ -2,7 +2,7 @@ import uvicorn
 
 from askgpt.api.app import app_factory
 from askgpt.domain import config
-from askgpt.helpers.file import relative_path
+from askgpt.helpers.file_loader import relative_path
 
 if __name__ == "__main__":
     config.sys_finetune()
