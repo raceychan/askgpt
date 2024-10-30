@@ -8,7 +8,7 @@ from askgpt.domain.config import Settings
 from askgpt.domain.errors import BoostrapingFailedError
 from askgpt.helpers._log import logger, prod_sink, update_sink
 from askgpt.helpers.time import timeout
-from askgpt.infra.locator import adapter_locator, make_database
+from askgpt.infra.factory import make_database
 from askgpt.infra.schema import create_tables
 
 __all__ = ["bootstrap"]
@@ -37,7 +37,7 @@ async def _check_dependencies_available(settings: Settings):
         tasks.append(task)
 
     _, pending = await asyncio.wait(
-        *tasks, return_when=asyncio.ALL_COMPLETED, timeout=settings.BOOTSTRAP_TIMEOUT
+        tasks, return_when=asyncio.ALL_COMPLETED, timeout=settings.BOOTSTRAP_TIMEOUT
     )
     if not pending:
         return
@@ -80,7 +80,5 @@ async def bootstrap(settings: Settings):
         await _prod_bootstrap(settings)
     else:
         await _dev_bootstrap(settings)
-
-    adapter_locator.build_singleton(settings)
 
     logger.info("Application startup complete.")

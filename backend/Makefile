@@ -12,7 +12,7 @@ dev:
 
 .PHONY: test
 test:
-	$(run) -e test pytest tests/ 
+	$(run) -e test pytest --durations=0 tests/ 
 
 .PHONY: cov
 cov:

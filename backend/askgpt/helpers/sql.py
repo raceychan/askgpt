@@ -22,6 +22,7 @@ type SQL_ISOLATIONLEVEL = ty.Literal[
 ]
 
 
+@ty.runtime_checkable
 class IEngine(ty.Protocol):
     @asynccontextmanager
     async def begin(self) -> ty.AsyncGenerator[AsyncConnection, None]: ...
@@ -138,8 +139,8 @@ class TableBase:
 class OutOfContextError(Exception):
     "raised when caller tries get connection before entering uow"
 
-    def __init__(self, msg: str = ""):
-        msg = msg or "Connection is used without entering UnitOfWork context"
+    def __init__(self, aiodb: IEngine):
+        msg = f"Connection is used without entering UnitOfWork context, using {aiodb}"
         super().__init__(msg)
 
 
@@ -160,8 +161,8 @@ class UnitOfWork:
         """Return the current connection for this coroutine."""
         try:
             _conn = self._connection_context.get()
-        except LookupError:
-            raise OutOfContextError()
+        except LookupError as e:
+            raise OutOfContextError(self._aiodb) from e
         return _conn
 
     async def execute(

@@ -10,7 +10,7 @@ from askgpt.app.auth.api import ParsedToken
 from askgpt.app.factory import (
     SessionService,
     dynamic_gpt_service_factory,
-    session_service_factory,
+    session_service_resolver,
     user_request_throttler_factory,
 )
 from askgpt.app.gpt.service import GPTService
@@ -22,7 +22,7 @@ from .openai._params import ChatGPTRoles, OpenAIChatMessageOptions
 gpt_router = APIRouter(prefix="/gpt")
 sessions = APIRouter(prefix="/sessions")
 
-DSessionService = ty.Annotated[SessionService, Depends(session_service_factory)]
+DSessionService = ty.Annotated[SessionService, Depends(session_service_resolver)]
 DGPTService = ty.Annotated[GPTService, Depends(dynamic_gpt_service_factory)]
 
 

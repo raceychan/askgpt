@@ -1,12 +1,13 @@
 from datetime import timedelta
 
+from jose.exceptions import JWTError
+from pydantic import ValidationError
+
 from askgpt.adapters.cache import Cache, KeySpace
 from askgpt.domain.config import Settings
 from askgpt.domain.model.base import utc_now, uuid_factory
 from askgpt.infra import security
 from askgpt.infra.eventstore import EventStore
-from jose.exceptions import JWTError
-from pydantic import ValidationError
 
 from ._errors import (
     DuplicatedAPIKeyError,
@@ -204,5 +205,3 @@ class AuthService:
     async def remove_api_key(self, user_id: str, key_name: str) -> int:
         async with self._uow.trans():
             return await self._auth_repo.remove_api_key_for_user(user_id, key_name)
-
-

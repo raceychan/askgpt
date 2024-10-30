@@ -12,8 +12,14 @@ from askgpt.domain.interface import EventLogRef, SystemRef
 from askgpt.domain.types import SUPPORTED_ALGORITHMS  # type: ignore
 from askgpt.helpers.file_loader import FileUtil, update_value_from_env
 from askgpt.helpers.functions import freeze, simplecache
+from askgpt.helpers.ididi import DependencyGraph
+
+# from ididi import DependencyGraph
 from askgpt.helpers.sql import SQL_ISOLATIONLEVEL
 from askgpt.helpers.string import KeySpace
+
+dg = DependencyGraph()
+
 
 UNIT = MINUTE = 1
 HOUR = 60 * MINUTE
@@ -36,22 +42,6 @@ SETTINGS_READ_ORDER: tuple[str, ...] = (
 )
 
 UNKNOWN_NETLOC = ("unknown_ip", "unknown_port")
-
-
-def detect_settings(read_order: tuple[str, ...] = SETTINGS_READ_ORDER) -> "Settings":
-    fileutil = FileUtil.from_cwd()
-    work_dir = pathlib.Path.cwd()
-    if (f := os.environ.get("SETTING_FILE", None)) is not None:
-        return Settings.from_file(fileutil.find(f))
-    for candidate in read_order:
-        try:
-            f = fileutil.find(candidate, dir=work_dir)
-        except FileNotFoundError:
-            continue
-        else:
-            settings = Settings.from_file(f)
-            return settings
-    raise FileNotFoundError(f"None of {read_order} File exists in {work_dir}")
 
 
 def sys_finetune():
@@ -302,3 +292,20 @@ class Settings(SettingsBase):
 
 
 SETTINGS_CONTEXT: ContextVar[Settings] = ContextVar("settings")
+
+
+@dg.node
+def detect_settings(read_order: tuple[str, ...] = SETTINGS_READ_ORDER) -> Settings:
+    fileutil = FileUtil.from_cwd()
+    work_dir = pathlib.Path.cwd()
+    if (f := os.environ.get("SETTING_FILE", None)) is not None:
+        return Settings.from_file(fileutil.find(f))
+    for candidate in read_order:
+        try:
+            f = fileutil.find(candidate, dir=work_dir)
+        except FileNotFoundError:
+            continue
+        else:
+            settings = Settings.from_file(f)
+            return settings
+    raise FileNotFoundError(f"None of {read_order} File exists in {work_dir}")

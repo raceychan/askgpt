@@ -4,12 +4,12 @@ from fastapi import APIRouter, Depends
 
 from askgpt.app.auth._errors import InvalidCredentialError, UserNotFoundError
 from askgpt.app.auth.api import ParsedToken
-from askgpt.app.factory import user_service_factory
+from askgpt.app.factory import user_service_resolver
 from askgpt.app.user._model import UserInfo
 from askgpt.app.user.service import UserService
 
 user_router = APIRouter(prefix="/users")
-Service = ty.Annotated[UserService, Depends(user_service_factory)]
+Service = ty.Annotated[UserService, Depends(user_service_resolver)]
 
 
 @user_router.get("/")

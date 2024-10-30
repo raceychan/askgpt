@@ -97,6 +97,7 @@ class ErrorResponseMiddleWare(BaseHTTPMiddleware):
             or subclasses of Exception that did not defined in the exception handlers would be raise here
             """
             logger.error("uncaught exception", exc_info=uncaught)
+            raise uncaught
             return self.__DUMB_RESPONSE__
         return resp
 

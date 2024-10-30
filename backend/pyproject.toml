@@ -47,13 +47,16 @@ test = {features = ["test", "dev"], solve-group = "default"}
 
 [tool.pixi.pypi-dependencies]
 askgpt = {path = ".", editable = true}
+ididi = ">=0.1.1"
 
 [tool.pixi.dependencies]
+anthropic = ">=0.36.2,<0.37"
 asyncpg = ">=0.29.0,<0.30"
 bcrypt = ">=4.0.1"
 email-validator = ">=2.1.0"
 fastapi = "0.115.*"
 gunicorn = ">=21.2.0"
+jupyterlab = ">=4.2.5,<5"
 loguru = ">=0.7.2"
 openai = "==1.50.0"
 orjson = ">=3.9.10,<3.10"
@@ -62,8 +65,6 @@ python = ">=3.12"
 python-jose = ">=3.3.0"
 redis-py = ">=5.0.1"
 sqlalchemy = ">=2.0.21"
-anthropic = ">=0.36.2,<0.37"
-jupyterlab = ">=4.2.5,<5"
 
 [tool.pixi.feature.test.dependencies]
 pytest = ">=8.3.0"
