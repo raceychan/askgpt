@@ -7,7 +7,6 @@ from askgpt.app.user._repository import UserRepository
 from askgpt.app.user.service import UserService
 from askgpt.domain.config import Settings, dg
 from askgpt.domain.types import SupportedGPTs
-from askgpt.helpers.sql import IEngine, UnitOfWork
 from askgpt.infra.eventstore import EventStore
 
 
@@ -36,40 +35,18 @@ def user_request_throttler_factory(
     return throttler
 
 
-@dg.node
-def uow_factory(aiodb: IEngine) -> UnitOfWork:
-    uow = UnitOfWork(aiodb)
-    return uow
+def user_service_factory(user_repo: UserRepository, event_store: EventStore):
+    return UserService(user_repo=user_repo, event_store=event_store)
 
 
 @dg.node
-def event_store_factory(uow: UnitOfWork) -> EventStore:
-    return EventStore(uow=uow)
+def session_service_factory(
+    session_repo: SessionRepository, event_store: EventStore
+) -> SessionService:
+    return SessionService(session_repo=session_repo, event_store=event_store)
 
 
-def user_service_factory(uow: UnitOfWork) -> UserService:
-    return UserService(
-        user_repo=UserRepository(uow),
-        event_store=event_store_factory(uow),
-    )
-
-
-@dg.node
-def session_service_factory(uow: UnitOfWork) -> SessionService:
-    return SessionService(
-        session_repo=SessionRepository(uow), event_store=event_store_factory(uow)
-    )
-
-
-def session_service_resolver() -> SessionService:
-    return dg.resolve(SessionService)
-
-
-def user_service_resolver() -> UserService:
-    return dg.resolve(UserService)
-
-
-def dynamic_gpt_service_factory(gpt_type: SupportedGPTs):
+def dynamic_gpt_service_resolver(gpt_type: SupportedGPTs):
     if gpt_type == "openai":
         return dg.resolve(OpenAIGPT)
     elif gpt_type == "anthropic":

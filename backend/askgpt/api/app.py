@@ -1,23 +1,23 @@
 import typing as ty
 from contextlib import asynccontextmanager
 
-from fastapi import APIRouter, FastAPI
-from starlette.types import Lifespan
-
 from askgpt.api.bootstrap import bootstrap
 from askgpt.api.error_handlers import handler_registry
 from askgpt.api.middleware import middlewares
 from askgpt.api.router import feature_router, route_id_factory
-from askgpt.domain.config import SETTINGS_CONTEXT, Settings, detect_settings
+from askgpt.domain.config import SETTINGS_CONTEXT, Settings, detect_settings, dg
 from askgpt.helpers._log import logger
 from askgpt.helpers.error_registry import error_route_factory
+from fastapi import APIRouter, FastAPI
+from starlette.types import Lifespan
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI | None = None):
     settings = SETTINGS_CONTEXT.get()
     await bootstrap(settings)
-    yield
+    async with dg:
+        yield
 
 
 def app_factory(

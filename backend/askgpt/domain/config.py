@@ -3,20 +3,17 @@ import pathlib
 import typing as ty
 from contextvars import ContextVar
 
-from pydantic import AnyUrl, BaseModel, ConfigDict
-from pydantic import SecretStr as SecretStr
-from pydantic import field_validator
-
 from askgpt.domain.errors import StaticAPPError
 from askgpt.domain.interface import EventLogRef, SystemRef
 from askgpt.domain.types import SUPPORTED_ALGORITHMS  # type: ignore
 from askgpt.helpers.file_loader import FileUtil, update_value_from_env
 from askgpt.helpers.functions import freeze, simplecache
-from askgpt.helpers.ididi import DependencyGraph
-
-# from ididi import DependencyGraph
 from askgpt.helpers.sql import SQL_ISOLATIONLEVEL
 from askgpt.helpers.string import KeySpace
+from ididi import DependencyGraph
+from pydantic import AnyUrl, BaseModel, ConfigDict
+from pydantic import SecretStr as SecretStr
+from pydantic import field_validator
 
 dg = DependencyGraph()
 

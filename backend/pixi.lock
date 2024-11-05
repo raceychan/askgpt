@@ -197,7 +197,7 @@ environments:
       - conda: https://conda.anaconda.org/conda-forge/noarch/zipp-3.20.2-pyhd8ed1ab_0.conda
       - conda: https://conda.anaconda.org/conda-forge/linux-64/zstandard-0.23.0-py312hef9b889_1.conda
       - conda: https://conda.anaconda.org/conda-forge/linux-64/zstd-1.5.6-ha6fb4c9_0.conda
-      - pypi: https://files.pythonhosted.org/packages/99/ae/107d2d716dfbb2b6865b96e710c57facc809731b95afb52e43a49b774e03/ididi-0.1.1-py3-none-any.whl
+      - pypi: https://files.pythonhosted.org/packages/dc/3a/2c8ca1c69c6bb7708871eb8e8224530d341d74294befbe8fa35c61d92e4c/ididi-0.1.5-py3-none-any.whl
       - pypi: .
   dev:
     channels:
@@ -411,7 +411,7 @@ environments:
       - conda: https://conda.anaconda.org/conda-forge/linux-64/zlib-1.3.1-h4ab18f5_1.conda
       - conda: https://conda.anaconda.org/conda-forge/linux-64/zstandard-0.23.0-py312hef9b889_1.conda
       - conda: https://conda.anaconda.org/conda-forge/linux-64/zstd-1.5.6-ha6fb4c9_0.conda
-      - pypi: https://files.pythonhosted.org/packages/99/ae/107d2d716dfbb2b6865b96e710c57facc809731b95afb52e43a49b774e03/ididi-0.1.1-py3-none-any.whl
+      - pypi: https://files.pythonhosted.org/packages/dc/3a/2c8ca1c69c6bb7708871eb8e8224530d341d74294befbe8fa35c61d92e4c/ididi-0.1.5-py3-none-any.whl
       - pypi: .
   prod:
     channels:
@@ -610,7 +610,7 @@ environments:
       - conda: https://conda.anaconda.org/conda-forge/noarch/zipp-3.20.2-pyhd8ed1ab_0.conda
       - conda: https://conda.anaconda.org/conda-forge/linux-64/zstandard-0.23.0-py312hef9b889_1.conda
       - conda: https://conda.anaconda.org/conda-forge/linux-64/zstd-1.5.6-ha6fb4c9_0.conda
-      - pypi: https://files.pythonhosted.org/packages/99/ae/107d2d716dfbb2b6865b96e710c57facc809731b95afb52e43a49b774e03/ididi-0.1.1-py3-none-any.whl
+      - pypi: https://files.pythonhosted.org/packages/dc/3a/2c8ca1c69c6bb7708871eb8e8224530d341d74294befbe8fa35c61d92e4c/ididi-0.1.5-py3-none-any.whl
       - pypi: .
   test:
     channels:
@@ -831,7 +831,7 @@ environments:
       - conda: https://conda.anaconda.org/conda-forge/linux-64/zlib-1.3.1-h4ab18f5_1.conda
       - conda: https://conda.anaconda.org/conda-forge/linux-64/zstandard-0.23.0-py312hef9b889_1.conda
       - conda: https://conda.anaconda.org/conda-forge/linux-64/zstd-1.5.6-ha6fb4c9_0.conda
-      - pypi: https://files.pythonhosted.org/packages/99/ae/107d2d716dfbb2b6865b96e710c57facc809731b95afb52e43a49b774e03/ididi-0.1.1-py3-none-any.whl
+      - pypi: https://files.pythonhosted.org/packages/dc/3a/2c8ca1c69c6bb7708871eb8e8224530d341d74294befbe8fa35c61d92e4c/ididi-0.1.5-py3-none-any.whl
       - pypi: .
 packages:
 - kind: conda
@@ -1038,7 +1038,7 @@ packages:
   name: askgpt
   version: 0.1.0
   path: .
-  sha256: 2a951e45e0cf08e1baa0f9c8a83b3192e512613f71f7ea03df25714097b93c6e
+  sha256: 024b79e2b9baac912a4634af74d88e53dfb35743450169cf9fb284591985ebe1
   requires_python: '>=3.12'
   editable: true
 - kind: conda
@@ -2007,9 +2007,11 @@ packages:
   timestamp: 1720853576813
 - kind: pypi
   name: ididi
-  version: 0.1.1
-  url: https://files.pythonhosted.org/packages/99/ae/107d2d716dfbb2b6865b96e710c57facc809731b95afb52e43a49b774e03/ididi-0.1.1-py3-none-any.whl
-  sha256: efff8856ecd8d543f0a72685b47640d5bdda996966c860b716824217992a36a6
+  version: 0.1.5
+  url: https://files.pythonhosted.org/packages/dc/3a/2c8ca1c69c6bb7708871eb8e8224530d341d74294befbe8fa35c61d92e4c/ididi-0.1.5-py3-none-any.whl
+  sha256: ae47c516791f81ce1bf66f8cf702aa898033927a91f5838c37bf57d2b4dae00c
+  requires_dist:
+  - python-graphviz<0.21,>=0.20.3 ; extra == 'graphviz'
   requires_python: '>=3.12'
 - kind: conda
   name: idna
