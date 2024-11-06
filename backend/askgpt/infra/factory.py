@@ -39,50 +39,26 @@ def make_database(settings: Settings) -> database.AsyncDatabase:
     return database.AsyncDatabase(make_async_engine(settings))
 
 
-@settingfactory
-def make_cache(settings: Settings) -> cache.RedisCache[str]:
-    config = settings.redis
-    if not config:
-        raise MissingConfigError(Settings.Redis)
-    return cache.RedisCache[str].build(
-        url=config.URL,
-        keyspace=config.keyspaces.APP,
-        socket_timeout=config.SOCKET_TIMEOUT,
-        decode_responses=config.DECODE_RESPONSES,
-        max_connections=config.MAX_CONNECTIONS,
-        socket_connect_timeout=config.SOCKET_CONNECT_TIMEOUT,
-    )
+# @settingfactory
+# def make_cache(settings: Settings) -> cache.RedisCache[str]:
+#     config = settings.redis
+#     if not config:
+#         raise MissingConfigError(Settings.Redis)
+#     return cache.RedisCache[str].build(
+#         url=config.URL,
+#         keyspace=config.keyspaces.APP,
+#         socket_timeout=config.SOCKET_TIMEOUT,
+#         decode_responses=config.DECODE_RESPONSES,
+#         max_connections=config.MAX_CONNECTIONS,
+#         socket_connect_timeout=config.SOCKET_CONNECT_TIMEOUT,
+#     )
 
 
-@settingfactory
-def make_local_cache(settings: Settings) -> cache.MemoryCache[str, str]:
-    return cache.MemoryCache[str, str]()
+# @settingfactory
+# def make_local_cache(settings: Settings) -> cache.MemoryCache[str, str]:
+#     return cache.MemoryCache[str, str]()
 
 
-@settingfactory
-def make_sqldbg(settings: Settings) -> SQLDebugger:
-    return SQLDebugger(make_engine(settings))
-
-
-# class adapter_locator(InfraLocator):
-#     # should be a global context var with resource management
-#     aiodb = Dependency(database.AsyncDatabase, make_database)
-#     aiocache = Dependency(cache.RedisCache[str], make_cache)
-
-#     @classmethod
-#     def build_token_bucket(
-#         cls, keyspace: cache.KeySpace
-#     ) -> tokenbucket.TokenBucketFactory:
-#         if not cls.settings.redis:
-#             raise MissingConfigError(Settings.Redis)
-#         script = cls.settings.redis.TOKEN_BUCKET_SCRIPT
-#         script_func = cls.aiocache.load_script(script)
-#         return tokenbucket.TokenBucketFactory(
-#             redis=cls.aiocache,
-#             script=script_func,
-#             keyspace=keyspace,
-#         )
-
-#     @classmethod
-#     def build_singleton(cls, settings: Settings) -> ty.Self:
-#         return cls(settings)
+# @settingfactory
+# def make_sqldbg(settings: Settings) -> SQLDebugger:
+#     return SQLDebugger(make_engine(settings))

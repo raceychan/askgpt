@@ -15,7 +15,7 @@ from pydantic import AnyUrl, BaseModel, ConfigDict
 from pydantic import SecretStr as SecretStr
 from pydantic import field_validator
 
-dg = DependencyGraph()
+dg = DependencyGraph(static_resolve=False)
 
 
 UNIT = MINUTE = 1

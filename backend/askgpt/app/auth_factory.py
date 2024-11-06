@@ -86,5 +86,3 @@ def auth_service_factory(
     return auth_service
 
 
-def auth_service_resolver() -> AuthService:
-    return dg.resolve(AuthService)
