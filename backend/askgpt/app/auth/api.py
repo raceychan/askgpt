@@ -1,21 +1,20 @@
 import typing as ty
 
-from fastapi import APIRouter, Depends
-from fastapi.responses import RedirectResponse
-from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
-from pydantic import EmailStr
-
 from askgpt.api.model import EmptyResponse, RequestBody, ResponseData
 from askgpt.app.auth_factory import AuthService, dg
 from askgpt.domain.types import SupportedGPTs
 from askgpt.helpers.string import EMPTY_STR
+from fastapi import APIRouter, Depends
+from fastapi.responses import RedirectResponse
+from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
+from pydantic import EmailStr
 
 from ._model import AccessToken, UserAuth
 
 auth_router = APIRouter(prefix="/auth")
 
 
-Service = ty.Annotated[AuthService, Depends(dg.factory(AuthService))]
+Service = ty.Annotated[AuthService, Depends(lambda: dg.resolve(AuthService))]
 LoginForm = ty.Annotated[OAuth2PasswordRequestForm, Depends()]
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="auth/login")
 

@@ -10,9 +10,19 @@ install:
 dev:
 	$(run) -e dev python -m $(app).server
 
+.PHONY: stage
+stage:
+	$(run) -e dev gunicorn askgpt.api.app:app_factory  \
+	--workers 1 -k uvicorn.workers.UvicornWorker \
+	--bind 0.0.0.0:5000 --log-level critical
+
 .PHONY: test
 test:
 	$(run) -e test pytest --durations=0 tests/ 
+
+.PHONY: api_test
+api_test:
+	$(run) -e test python api_test.py
 
 .PHONY: cov
 cov:
@@ -26,6 +36,9 @@ debug:
 openapi:
 	$(run) python -m scripts.modify_openapi
 
+.PHONY: logs
+logs:
+	docker logs -f $(app)
 
 # DEVOPS 
 
@@ -43,10 +56,6 @@ typecheck:
 build:
 	docker build -t $(app) .
 
-.PHONY: run
-run:
-	docker run -p 8000:8000 $(app)
-
 .PHONY: stop
 stop:
 	docker stop $(app)
@@ -58,7 +67,4 @@ docker-clean:
 .PHONY: clean
 clean:
 	rm -rf .pytest_cache .mypy_cache .coverage .coverage.* .coverage* .pytest_cache .pyt
-
-
-
 

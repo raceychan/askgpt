@@ -1,5 +1,4 @@
 import sqlalchemy as sa
-
 from askgpt.helpers.sql import UnitOfWork
 from askgpt.infra.schema import SessionsTable
 
@@ -10,6 +9,9 @@ def session_from_row(row: sa.RowMapping) -> ChatSession:
     return ChatSession(
         session_id=row.id, user_id=row.user_id, session_name=row.session_name
     )
+
+
+from askgpt.domain.config import dg
 
 
 class SessionRepository(ISessionRepository):
