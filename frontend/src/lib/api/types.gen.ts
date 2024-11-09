@@ -6,7 +6,7 @@ export type AnthropicChatMessageOptions = {
     model: (string | 'claude-3-5-sonnet-20240620' | 'claude-3-opus-20240229' | 'claude-3-sonnet-20240229' | 'claude-3-haiku-20240307' | 'claude-2.1' | 'claude-2.0' | 'claude-instant-1.2');
     metadata?: MetadataParam;
     stop_sequences?: Array<(string)>;
-    system?: (string | Array<TextBlockParam>);
+    system?: string;
     temperature?: number;
     tool_choice?: (ToolChoiceAutoParam | ToolChoiceAnyParam | ToolChoiceToolParam);
     tools?: Array<ToolParam>;
@@ -24,95 +24,25 @@ export type Body_auth_login = {
     client_secret?: (string | null);
 };
 
-export type ChatCompletionAssistantMessageParam = {
-    role: 'assistant';
-    content?: (string | Array<(ChatCompletionContentPartTextParam | ChatCompletionContentPartRefusalParam)> | null);
-    function_call?: (FunctionCall | null);
-    name?: string;
-    refusal?: (string | null);
-    tool_calls?: Array<ChatCompletionMessageToolCallParam>;
-};
-
-export type role = 'assistant';
-
-export type ChatCompletionContentPartImageParam = {
-    image_url: ImageURL;
-    type: 'image_url';
-};
-
-export type type = 'image_url';
-
-export type ChatCompletionContentPartRefusalParam = {
-    refusal: string;
-    type: 'refusal';
-};
-
-export type type2 = 'refusal';
-
-export type ChatCompletionContentPartTextParam = {
-    text: string;
-    type: 'text';
-};
-
-export type type3 = 'text';
-
 export type ChatCompletionFunctionCallOptionParam = {
     name: string;
 };
-
-export type ChatCompletionFunctionMessageParam = {
-    content: (string | null);
-    name: string;
-    role: 'function';
-};
-
-export type role2 = 'function';
-
-export type ChatCompletionMessageToolCallParam = {
-    id: string;
-    function: openai__types__chat__chat_completion_message_tool_call_param__Function;
-    type: 'function';
-};
-
-export type type4 = 'function';
 
 export type ChatCompletionNamedToolChoiceParam = {
     function: openai__types__chat__chat_completion_named_tool_choice_param__Function;
     type: 'function';
 };
 
+export type type = 'function';
+
 export type ChatCompletionStreamOptionsParam = {
     include_usage?: boolean;
 };
-
-export type ChatCompletionSystemMessageParam = {
-    content: (string | Array<ChatCompletionContentPartTextParam>);
-    role: 'system';
-    name?: string;
-};
-
-export type role3 = 'system';
-
-export type ChatCompletionToolMessageParam = {
-    content: (string | Array<ChatCompletionContentPartTextParam>);
-    role: 'tool';
-    tool_call_id: string;
-};
-
-export type role4 = 'tool';
 
 export type ChatCompletionToolParam = {
     function: FunctionDefinition;
     type: 'function';
 };
-
-export type ChatCompletionUserMessageParam = {
-    content: (string | Array<(ChatCompletionContentPartTextParam | ChatCompletionContentPartImageParam)>);
-    role: 'user';
-    name?: string;
-};
-
-export type role5 = 'user';
 
 export type ChatGPTRoles = 'system' | 'user' | 'assistant' | 'function';
 
@@ -126,11 +56,6 @@ export type CreateNewKey = {
     api_key: string;
     key_name: string;
     api_type?: SupportedGPTs;
-};
-
-export type FunctionCall = {
-    arguments: string;
-    name: string;
 };
 
 export type FunctionDefinition = {
@@ -151,21 +76,14 @@ export type ImageBlockParam = {
     type: 'image';
 };
 
-export type type5 = 'image';
-
-export type ImageURL = {
-    url: string;
-    detail?: 'auto' | 'low' | 'high';
-};
-
-export type detail = 'auto' | 'low' | 'high';
+export type type2 = 'image';
 
 export type InputSchemaTyped = {
     type: 'object';
     properties?: (unknown | null);
 };
 
-export type type6 = 'object';
+export type type3 = 'object';
 
 export type JSONSchema = {
     name: string;
@@ -181,14 +99,14 @@ export type MessageParam = {
     role: 'user' | 'assistant';
 };
 
-export type role6 = 'user' | 'assistant';
+export type role = 'user' | 'assistant';
 
 export type MetadataParam = {
     user_id?: (string | null);
 };
 
 export type OpenAIChatMessageOptions = {
-    messages: Array<(ChatCompletionSystemMessageParam | ChatCompletionUserMessageParam | ChatCompletionAssistantMessageParam | ChatCompletionToolMessageParam | ChatCompletionFunctionMessageParam)>;
+    messages: Array<CompletionMessage>;
     model: 'o1-preview' | 'o1-preview-2024-09-12' | 'o1-mini' | 'o1-mini-2024-09-12' | 'gpt-4o' | 'gpt-4o-2024-08-06' | 'gpt-4o-2024-05-13' | 'chatgpt-4o-latest' | 'gpt-4o-mini' | 'gpt-4o-mini-2024-07-18' | 'gpt-4-turbo' | 'gpt-4-turbo-2024-04-09' | 'gpt-4-0125-preview' | 'gpt-4-turbo-preview' | 'gpt-4-1106-preview' | 'gpt-4-vision-preview' | 'gpt-4' | 'gpt-4-0314' | 'gpt-4-0613' | 'gpt-4-32k' | 'gpt-4-32k-0314' | 'gpt-4-32k-0613' | 'gpt-3.5-turbo' | 'gpt-3.5-turbo-16k' | 'gpt-3.5-turbo-0301' | 'gpt-3.5-turbo-0613' | 'gpt-3.5-turbo-1106' | 'gpt-3.5-turbo-0125' | 'gpt-3.5-turbo-16k-0613';
     frequency_penalty?: (number | null);
     function_call?: ('none' | 'auto' | ChatCompletionFunctionCallOptionParam);
@@ -213,7 +131,6 @@ export type OpenAIChatMessageOptions = {
     top_logprobs?: (number | null);
     top_p?: (number | null);
     user?: string;
-    message: CompletionMessage;
     stream?: boolean;
     extra_headers?: (unknown | null);
     extra_query?: (unknown | null);
@@ -256,18 +173,20 @@ export type ResponseFormatJSONObject = {
     type: 'json_object';
 };
 
-export type type7 = 'json_object';
+export type type4 = 'json_object';
 
 export type ResponseFormatJSONSchema = {
     json_schema: JSONSchema;
     type: 'json_schema';
 };
 
-export type type8 = 'json_schema';
+export type type5 = 'json_schema';
 
 export type ResponseFormatText = {
     type: 'text';
 };
+
+export type type6 = 'text';
 
 export type SessionRenameRequest = {
     name: string;
@@ -287,7 +206,7 @@ export type Source = {
 
 export type media_type = 'image/jpeg' | 'image/png' | 'image/gif' | 'image/webp';
 
-export type type9 = 'base64';
+export type type7 = 'base64';
 
 export type SupportedGPTs = 'openai' | 'askgpt_test' | 'anthropic';
 
@@ -314,14 +233,14 @@ export type ToolChoiceAnyParam = {
     disable_parallel_tool_use?: boolean;
 };
 
-export type type10 = 'any';
+export type type8 = 'any';
 
 export type ToolChoiceAutoParam = {
     type: 'auto';
     disable_parallel_tool_use?: boolean;
 };
 
-export type type11 = 'auto';
+export type type9 = 'auto';
 
 export type ToolChoiceToolParam = {
     name: string;
@@ -329,7 +248,7 @@ export type ToolChoiceToolParam = {
     disable_parallel_tool_use?: boolean;
 };
 
-export type type12 = 'tool';
+export type type10 = 'tool';
 
 export type ToolParam = {
     input_schema: (InputSchemaTyped | {
@@ -346,7 +265,7 @@ export type ToolResultBlockParam = {
     is_error?: boolean;
 };
 
-export type type13 = 'tool_result';
+export type type11 = 'tool_result';
 
 export type ToolUseBlock = {
     id: string;
@@ -356,7 +275,7 @@ export type ToolUseBlock = {
     [key: string]: unknown | string;
 };
 
-export type type14 = 'tool_use';
+export type type12 = 'tool_use';
 
 export type ToolUseBlockParam = {
     id: string;
@@ -375,11 +294,6 @@ export type ValidationError = {
     loc: Array<(string | number)>;
     msg: string;
     type: string;
-};
-
-export type openai__types__chat__chat_completion_message_tool_call_param__Function = {
-    arguments: string;
-    name: string;
 };
 
 export type openai__types__chat__chat_completion_named_tool_choice_param__Function = {
@@ -511,7 +425,7 @@ export type DeleteSessionResponse = (void);
 export type DeleteSessionError = (HTTPValidationError);
 
 export type AddChatMessageData = {
-    body: (OpenAIChatMessageOptions | AnthropicChatMessageOptions);
+    body: (AnthropicChatMessageOptions | OpenAIChatMessageOptions);
     path: {
         session_id: string;
     };

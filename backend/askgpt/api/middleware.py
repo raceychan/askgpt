@@ -1,6 +1,10 @@
 import typing as ty
 from time import perf_counter
 
+from askgpt.api.xheaders import XHeaders
+from askgpt.domain.config import TIME_EPSILON_S, Settings
+from askgpt.domain.model.base import request_id_factory
+from askgpt.helpers._log import log_request, logger
 from fastapi import Request
 from fastapi.responses import Response
 
@@ -12,11 +16,6 @@ from starlette.middleware.base import (
 )
 from starlette.middleware.cors import CORSMiddleware as CORSMiddleware
 from starlette.types import ASGIApp, Receive, Scope, Send
-
-from askgpt.api.xheaders import XHeaders
-from askgpt.domain.config import TIME_EPSILON_S, Settings
-from askgpt.domain.model.base import request_id_factory
-from askgpt.helpers._log import log_request, logger
 
 
 class TraceMiddleware:
@@ -97,6 +96,7 @@ class ErrorResponseMiddleWare(BaseHTTPMiddleware):
             or subclasses of Exception that did not defined in the exception handlers would be raise here
             """
             logger.error("uncaught exception", exc_info=uncaught)
+            raise uncaught
             return self.__DUMB_RESPONSE__
         return resp
 

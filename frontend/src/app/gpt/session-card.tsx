@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState } from "react";
 import {
   Card,
   CardHeader,
@@ -9,25 +9,81 @@ import {
 import { Button } from "@/components/ui/button";
 import useAuth from "@/contexts/auth-context";
 import { Link } from "@tanstack/react-router";
+import { Input } from "@/components/ui/input";
+import { Pencil, Trash2 } from "lucide-react";
+import { useMutation, QueryClient } from "@tanstack/react-query";
+import { GptService } from "@/lib/api";
 
 type Session = {
   session_id: string;
-  session_name?: string;
+  session_name: string;
 };
 
 type GPTSessionCardProps = {
   status: "pending" | "error" | "success";
   sessions: Session[] | undefined;
-  addSessionMutation: {
-    mutate: () => void;
-  };
+  queryClient: QueryClient;
 };
+
 // GPTSessionsCardContent component
-const GPTSessionsCardContent: React.FC<
-  Pick<GPTSessionCardProps, "status" | "sessions">
-> = ({ status, sessions }) => {
+const GPTSessionsCardContent: React.FC<GPTSessionCardProps> = ({
+  status,
+  sessions,
+  queryClient,
+}) => {
   const { user } = useAuth();
-  let content;
+  const [editingSessionId, setEditingSessionId] = useState<string | null>(null);
+  const [newSessionName, setNewSessionName] = useState("");
+
+  const addSessionMutation = useMutation({
+    mutationFn: async () => {
+      const resp = await GptService.createSession();
+      if (!resp.data) {
+        throw Error(`Failed to create session ${resp.error}`);
+      }
+      return resp.data;
+    },
+    onSettled: () => {
+      queryClient.invalidateQueries({ queryKey: ["userSessions"] });
+    },
+  });
+
+  const renameSessionMutation = useMutation({
+    mutationFn: async (params: { sessionId: string; newName: string }) => {
+      const resp = await GptService.renameSession({
+        path: { session_id: params.sessionId },
+        body: { name: params.newName },
+      });
+      if (!resp.data) {
+        throw Error(`Failed to rename session ${resp.error}`);
+      }
+      return resp.data;
+    },
+    onSettled: () => {
+      queryClient.invalidateQueries({ queryKey: ["userSessions"] });
+    },
+  });
+
+  const deleteSessionMutation = useMutation({
+    mutationFn: async (sessionId: string) => {
+      const resp = await GptService.deleteSession({
+        path: { session_id: sessionId },
+      });
+      if (resp.status && resp.status >= 300) {
+        throw Error(`Failed to delete session ${resp.status}`);
+      }
+    },
+    onSettled: () => {
+      queryClient.invalidateQueries({ queryKey: ["userSessions"] });
+    },
+  });
+
+  const formatSessionName = (session: Session) => {
+    const truncatedId = session.session_id.slice(0, 8);
+    return `${session.session_name} (${truncatedId})`;
+  };
+
+  let content: React.ReactNode;
 
   if (!user) {
     content = (
@@ -44,18 +100,70 @@ const GPTSessionsCardContent: React.FC<
     content = <p>Error loading sessions. Please try again later.</p>;
   } else if (sessions && sessions.length > 0) {
     content = (
-      <ul>
+      <ul className="space-y-2">
         {sessions.map((session) => (
-          <li key={session.session_id}>
-            <Button
-              asChild
-              variant="default"
-              className="hover:bg-gray-300 border"
-            >
-              <Link to={`/chat/${session.session_id}`}>
-                {session.session_name + `(${session.session_id})`}
-              </Link>
-            </Button>
+          <li key={session.session_id} className="flex items-center space-x-2">
+            {editingSessionId === session.session_id ? (
+              <form
+                onSubmit={(e) => {
+                  e.preventDefault();
+                  renameSessionMutation.mutate({
+                    sessionId: session.session_id,
+                    newName: newSessionName,
+                  });
+                  setEditingSessionId(null);
+                }}
+                className="flex-grow flex items-center space-x-2"
+              >
+                <Input
+                  value={newSessionName}
+                  onChange={(e) => setNewSessionName(e.target.value)}
+                  className="flex-grow"
+                />
+                <Button type="submit" size="sm">
+                  Save
+                </Button>
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="outline"
+                  onClick={() => setEditingSessionId(null)}
+                >
+                  Cancel
+                </Button>
+              </form>
+            ) : (
+              <>
+                <Button
+                  asChild
+                  variant="outline"
+                  className="flex-grow text-left justify-start bg-white text-black hover:bg-gray-200"
+                >
+                  <Link to={`/chat/${session.session_id}`}>
+                    {formatSessionName(session)}
+                  </Link>
+                </Button>
+                <Button
+                  size="icon"
+                  variant="ghost"
+                  onClick={() => {
+                    setEditingSessionId(session.session_id);
+                    setNewSessionName(session.session_name);
+                  }}
+                >
+                  <Pencil className="h-4 w-4" />
+                </Button>
+                <Button
+                  size="icon"
+                  variant="ghost"
+                  onClick={() =>
+                    deleteSessionMutation.mutate(session.session_id)
+                  }
+                >
+                  <Trash2 className="h-4 w-4" />
+                </Button>
+              </>
+            )}
           </li>
         ))}
       </ul>
@@ -64,31 +172,37 @@ const GPTSessionsCardContent: React.FC<
     content = <p>No sessions found</p>;
   }
 
-  return <CardContent>{content}</CardContent>;
+  return (
+    <>
+      <CardContent>{content}</CardContent>
+      <CardFooter className="flex justify-end">
+        <Button
+          onClick={() => addSessionMutation.mutate()}
+          className="bg-blue-500 text-white font-bold py-2 px-4 rounded border-2 border-black hover:bg-blue-600 transition-colors duration-200"
+        >
+          Create New Session
+        </Button>
+      </CardFooter>
+    </>
+  );
 };
 
 // Main GPTSessionsCard component
 const GPTSessionsCard: React.FC<GPTSessionCardProps> = ({
   status,
   sessions,
-  addSessionMutation,
+  queryClient,
 }) => {
   return (
-    <Card>
+    <Card className="flex flex-col w-3/4 justify-center ">
       <CardHeader>
         <CardTitle>Your GPT Sessions</CardTitle>
       </CardHeader>
-      <GPTSessionsCardContent status={status} sessions={sessions} />
-      <CardFooter className="bg-gray-100 p-4 flex">
-        <Button
-          onClick={() => {
-            addSessionMutation.mutate();
-          }}
-          className="bg-blue-500 text-white font-bold py-2 px-4 rounded border-2 border-black hover:bg-blue-600 transition-colors duration-200"
-        >
-          Create New Session
-        </Button>
-      </CardFooter>
+      <GPTSessionsCardContent
+        status={status}
+        sessions={sessions}
+        queryClient={queryClient}
+      />
     </Card>
   );
 };

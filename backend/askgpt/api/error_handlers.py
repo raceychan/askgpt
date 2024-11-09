@@ -22,7 +22,7 @@ from askgpt.app.gpt._errors import (
 from askgpt.domain.errors import EntityNotFoundError, GeneralWebError
 from askgpt.helpers.error_registry import ErrorDetail, HandlerRegistry
 
-handler_registry: ty.Final[HandlerRegistry[GeneralWebError]] = HandlerRegistry()
+handler_registry: ty.Final[HandlerRegistry] = HandlerRegistry()
 
 
 class ServerResponse(Response):

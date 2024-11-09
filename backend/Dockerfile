@@ -11,8 +11,11 @@ ENV PATH="$PIXI_HOME/bin:${PATH}"
 WORKDIR /app
 
 # Pip uses pyproject.toml to install dependencies
-COPY pyproject.toml ./
-COPY pixi.lock .
+COPY pixi.lock pyproject.toml ./
+
+# Install dependencies using pixi, caching the result in a volume
+RUN --mount=type=cache,target=/root/.pixi/cache \
+    pixi install
 
 # Install dependencies using pip
 RUN pixi install
@@ -27,4 +30,4 @@ RUN if [ "$RUNTIME_ENV" = "dev" ]; then touch dev.db; fi
 COPY askgpt ./askgpt
 EXPOSE 5000
 ENTRYPOINT ["pixi", "run", "-e", "dev"]
-CMD ["uvicorn", "askgpt.feat.app:app_factory"]
+CMD ["uvicorn", "askgpt.api.app:app_factory"]

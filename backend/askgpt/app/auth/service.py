@@ -1,12 +1,13 @@
 from datetime import timedelta
 
+from jose.exceptions import JWTError
+from pydantic import ValidationError
+
 from askgpt.adapters.cache import Cache, KeySpace
 from askgpt.domain.config import Settings
 from askgpt.domain.model.base import utc_now, uuid_factory
 from askgpt.infra import security
 from askgpt.infra.eventstore import EventStore
-from jose.exceptions import JWTError
-from pydantic import ValidationError
 
 from ._errors import (
     DuplicatedAPIKeyError,
@@ -91,7 +92,9 @@ class AuthService:
             token_dict = self._encryptor.decrypt_jwt(token)
             return AccessToken.model_validate(token_dict)
         except (JWTError, ValidationError) as e:
-            raise InvalidCredentialError("Your access token is invalid") from e
+            raise InvalidCredentialError(
+                "Your access token is invalid, check for expiry"
+            ) from e
 
     async def signup_user(self, user_name: str, email: str, password: str) -> None:
         async with self._uow.trans():
@@ -114,6 +117,8 @@ class AuthService:
             await self._auth_repo.add(user_auth)
             await self._eventstore.add(user_signed_up)
 
+        # await self._bus.dispatch(user_signed_up)
+
     async def login(self, email: str, password: str) -> str:
         async with self._uow.trans():
             user = await self._auth_repo.search_user_by_email(email)
@@ -127,7 +132,9 @@ class AuthService:
         if not user.is_active:
             raise UserInactiveError(user_id=email)
 
-        user.login()
+        async with self._uow.trans():
+            user.login()
+            await self._auth_repo.update_last_login(user.entity_id, user.last_login)
 
         access_token = self._create_access_token(user.entity_id, user.role)
         return access_token

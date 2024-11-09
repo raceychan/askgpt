@@ -2,6 +2,7 @@ import { AuthService } from "@/lib/api/services.gen";
 import { CreateNewKey, PublicAPIKey } from "@/lib/api/types.gen";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
+import { BackHomeButton } from "@/components/shared/back-home";
 import { Input } from "@/components/ui/input";
 import {
   Card,
@@ -11,11 +12,10 @@ import {
   CardFooter,
 } from "@/components/ui/card";
 import { toast, useToast } from "@/hooks/use-toast";
-import { useNavigate, useRouter } from "@tanstack/react-router";
+import { useRouter } from "@tanstack/react-router";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
-import { Separator } from "@/components/ui/separator";
 import {
   Form,
   FormControl,
@@ -44,6 +44,7 @@ const formSchema = z.object({
   keyName: z.string().min(1, { message: "Key Name is required" }),
   keyType: z.enum(["openai", "anthropic", "askgpt_test"]),
 });
+
 
 const APIKeyForm: React.FC<{ onSuccess?: () => void }> = ({ onSuccess }) => {
   const { history } = useRouter();
@@ -261,7 +262,6 @@ const APIKeyDisplay: React.FC<{
 };
 
 const SettingsPage: React.FC = () => {
-  const navigate = useNavigate();
   const queryClient = useQueryClient();
   const [showSecrets, setShowSecrets] = useState(false);
 
@@ -311,13 +311,7 @@ const SettingsPage: React.FC = () => {
 
   return (
     <div className="flex flex-col items-center justify-center min-h-screen p-4">
-      <Button
-        variant="ghost"
-        onClick={() => navigate({ to: "/" })}
-        className="self-start mb-4"
-      >
-        ← Back to Home
-      </Button>
+      <BackHomeButton />
       <APIKeyDisplay
         apiKeys={apiKeys}
         isLoading={isLoading}

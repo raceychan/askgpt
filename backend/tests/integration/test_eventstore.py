@@ -23,7 +23,7 @@ def test_dump_event_does_not_lose_timestamp(user_created: UserCreated):
 
 
 async def test_insert_event(eventstore: EventStore, user_created: UserCreated):
-    async with eventstore._uow.trans():
+    async with eventstore.uow.trans():
         await eventstore.add(user_created)
         events = await eventstore.get(user_created.entity_id)
         e = events[0]
@@ -33,7 +33,7 @@ async def test_insert_event(eventstore: EventStore, user_created: UserCreated):
 
 
 async def test_list_event(eventstore: EventStore, user_created: UserCreated):
-    async with eventstore._uow.trans():
+    async with eventstore.uow.trans():
         es = await eventstore.list_all()
         e = es[0]
         assert e.event_type == "user_created"

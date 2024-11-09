@@ -1,4 +1,4 @@
-import React, { useState, useRef } from "react";
+import React, { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Send, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -10,6 +10,14 @@ import { Textarea } from "@/components/ui/textarea";
 import { streamingChat } from "./chat-service";
 
 import { useParams } from "@tanstack/react-router";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { Input } from "@/components/ui/input";
 
 const MessageBox: React.FC<{ chatSession?: PublicChatSession }> = ({
   chatSession,
@@ -48,7 +56,7 @@ const MessageBox: React.FC<{ chatSession?: PublicChatSession }> = ({
           >
             <div
               className={`max-w-[70%] ${
-                message.role === "user" ? "bg-blue-100" : "bg-green-100"
+                message.role === "user" ? "bg-blue-100" : "bg-white-100"
               } rounded-lg p-3 shadow-sm`}
             >
               <p
@@ -56,7 +64,7 @@ const MessageBox: React.FC<{ chatSession?: PublicChatSession }> = ({
                   message.role === "user" ? "text-blue-700" : "text-green-700"
                 }`}
               >
-                {message.role === "user" ? "You" : "AI"}
+                {message.role === "user" ? "" : "GPT"}
               </p>
               <p className="text-gray-800 whitespace-pre-wrap">
                 {message.content}
@@ -70,9 +78,15 @@ const MessageBox: React.FC<{ chatSession?: PublicChatSession }> = ({
 };
 
 const InputBox: React.FC<{
-  onSendMessage: (e: React.FormEvent<HTMLFormElement>) => void;
+  onSendMessage: (
+    message: string,
+    gptType: "anthropic" | "openai",
+    maxTokens: number
+  ) => void;
   isLoading: boolean;
 }> = ({ onSendMessage, isLoading }) => {
+  const [gptType, setGptType] = useState<"anthropic" | "openai">("anthropic");
+  const [maxTokens, setMaxTokens] = useState(1000);
   const textareaRef = React.useRef<HTMLTextAreaElement>(null);
 
   const adjustTextareaHeight = () => {
@@ -87,29 +101,80 @@ const InputBox: React.FC<{
     adjustTextareaHeight();
   }, []);
 
+  const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    const form = e.currentTarget;
+    const formData = new FormData(form);
+    const message = formData.get("message") as string;
+    if (message.trim()) {
+      onSendMessage(message, gptType, maxTokens);
+      form.reset();
+    }
+  };
+
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+    if (e.key === "Enter" && e.ctrlKey) {
+      e.preventDefault();
+      const message = textareaRef.current?.value.trim();
+      if (message) {
+        onSendMessage(message, gptType, maxTokens);
+        if (textareaRef.current) {
+          textareaRef.current.value = "";
+          adjustTextareaHeight();
+        }
+      }
+    }
+  };
+
   return (
-    <form onSubmit={onSendMessage} className="flex flex-col gap-2">
-      <Textarea
-        ref={textareaRef}
-        name="message"
-        placeholder="Type your message..."
-        className="resize-none overflow-hidden"
-        rows={1}
-        onInput={adjustTextareaHeight}
-      />
-      <Button type="submit" disabled={isLoading} className="self-end">
-        {isLoading ? (
-          <Loader2 className="h-4 w-4 animate-spin mr-2" />
-        ) : (
-          <Send className="h-4 w-4 mr-2" />
-        )}
-        {isLoading ? "Sending..." : "Send"}
-      </Button>
+    <form onSubmit={handleSubmit} className="flex flex-col gap-2">
+      <div className="flex gap-2">
+        <Select
+          value={gptType}
+          onValueChange={(value: "anthropic" | "openai") => setGptType(value)}
+        >
+          <SelectTrigger className="w-[180px]">
+            <SelectValue placeholder="Select GPT type" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="anthropic">Anthropic</SelectItem>
+            <SelectItem value="openai">OpenAI</SelectItem>
+          </SelectContent>
+        </Select>
+        <Input
+          type="number"
+          value={maxTokens}
+          onChange={(e) => setMaxTokens(Number(e.target.value))}
+          min={1}
+          max={2000}
+          className="w-[120px]"
+          placeholder="Max tokens"
+        />
+      </div>
+      <div className="flex gap-2 items-stretch">
+        <Textarea
+          ref={textareaRef}
+          name="message"
+          placeholder="Type your message..."
+          className="resize-none overflow-hidden flex-grow"
+          rows={1}
+          onInput={adjustTextareaHeight}
+          onKeyDown={handleKeyDown}
+        />
+        <Button type="submit" disabled={isLoading} className="self-end">
+          {isLoading ? (
+            <Loader2 className="h-4 w-4 animate-spin mr-2" />
+          ) : (
+            <Send className="h-4 w-4 mr-2" />
+          )}
+          {isLoading ? "Sending..." : "Send"}
+        </Button>
+      </div>
     </form>
   );
 };
 
-const ChatPage = () => {
+const ChatPage: React.FC = () => {
   const { chatId } = useParams({ from: "/chat/$chatId" });
   const queryClient = useQueryClient();
 
@@ -128,13 +193,25 @@ const ChatPage = () => {
 
   const [streamingMessage, setStreamingMessage] = useState("");
 
+  type AddNewMessage = {
+    newMessage: string;
+    gptType: "anthropic" | "openai";
+    maxTokens: number;
+  };
+
   const chatMutation = useMutation({
-    mutationFn: async (newMessage: string) => {
+    mutationFn: async (new_message: AddNewMessage) => {
       setStreamingMessage("");
 
-      await streamingChat(chatId, newMessage, (content) => {
-        setStreamingMessage((prev) => prev + content);
-      });
+      await streamingChat(
+        chatId,
+        new_message.gptType,
+        new_message.newMessage,
+        new_message.maxTokens,
+        (content: string) => {
+          setStreamingMessage((prev) => prev + content);
+        }
+      );
     },
     onSuccess: () => {
       // Refetch the chat session to get the updated messages
@@ -143,14 +220,17 @@ const ChatPage = () => {
     },
   });
 
-  const handleSendMessage = async (e: React.FormEvent<HTMLFormElement>) => {
-    e.preventDefault();
-    const form = e.currentTarget;
-    const formData = new FormData(form);
-    const message = formData.get("message") as string;
+  const handleSendMessage = async (
+    message: string,
+    gptType: "anthropic" | "openai",
+    maxTokens: number
+  ) => {
     if (message.trim()) {
-      await chatMutation.mutateAsync(message);
-      form.reset();
+      await chatMutation.mutateAsync({
+        newMessage: message,
+        gptType: gptType,
+        maxTokens: maxTokens,
+      });
     }
   };
 

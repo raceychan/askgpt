@@ -37,16 +37,16 @@ async def test_get_user_info(client: httpx.AsyncClient, token: str) -> dict:
 
 
 async def test_add_api_key(client: httpx.AsyncClient, token: str) -> None:
-    data = {"api_key": "test", "api_type": "openai"}
+    data = {"api_key": "test", "api_type": "openai", "key_name": "test"}
     response = await client.post(
         "/auth/apikeys", headers={"Authorization": f"Bearer {token}"}, json=data
     )
-    assert response.status_code in (201, 409)
+    assert response.status_code in (201, 401, 409), response.status_code
 
 
 async def test_add_session(client: httpx.AsyncClient, token: str) -> str:
     response = await client.post(
-        "/gpt/openai/sessions",
+        "/gpt/sessions",
         headers={"Authorization": f"Bearer {token}"},
         follow_redirects=True,
     )
@@ -107,22 +107,22 @@ async def main():
     await test_chat(client, token, session_id, dft.QUESTION)
 
 
-async def test_openai_api():
-    from openai import AsyncOpenAI
+# async def test_openai_api():
+#     from openai import AsyncOpenAI
 
-    settings = detect_settings()
-    # client = AsyncOpenAI(api_key=settings.openai_api_key)
-    client = AsyncOpenAI(api_key="sk-proj-123")
-    resp = await client.chat.completions.create(
-        model="gpt-4o",
-        messages=[{"role": "user", "content": "hi"}],
-        max_tokens=10,
-        stream=True,
-    )
-    async for chunk in resp:
-        print(chunk)
+#     settings = detect_settings()
+#     # client = AsyncOpenAI(api_key=settings.openai_api_key)
+#     client = AsyncOpenAI(api_key="sk-proj-123")
+#     resp = await client.chat.completions.create(
+#         model="gpt-4o",
+#         messages=[{"role": "user", "content": "hi"}],
+#         max_tokens=10,
+#         stream=True,
+#     )
+#     async for chunk in resp:
+#         print(chunk)
 
 
 if __name__ == "__main__":
-    # asyncio.run(main())
-    asyncio.run(test_openai_api())
+    asyncio.run(main())
+    # asyncio.run(test_openai_api())

@@ -1,19 +1,23 @@
-import datetime
 import os
 import pathlib
 import typing as ty
 from contextvars import ContextVar
 
-from askgpt.domain.errors import StaticAPPError
-from askgpt.domain.interface import SQL_ISOLATIONLEVEL, EventLogRef, SystemRef
-from askgpt.domain.types import SUPPORTED_ALGORITHMS
-from askgpt.helpers.data import update_config_from_env
-from askgpt.helpers.file import FileUtil
-from askgpt.helpers.functions import freeze, simplecache
-from askgpt.helpers.string import KeySpace
+from ididi import DependencyGraph
 from pydantic import AnyUrl, BaseModel, ConfigDict
 from pydantic import SecretStr as SecretStr
 from pydantic import field_validator
+
+from askgpt.domain.errors import StaticAPPError
+from askgpt.domain.interface import EventLogRef, SystemRef
+from askgpt.domain.types import SUPPORTED_ALGORITHMS  # type: ignore
+from askgpt.helpers.file_loader import FileUtil, update_value_from_env
+from askgpt.helpers.functions import freeze, simplecache
+from askgpt.helpers.sql import SQL_ISOLATIONLEVEL
+from askgpt.helpers.string import KeySpace
+
+dg = DependencyGraph(static_resolve=True)
+
 
 UNIT = MINUTE = 1
 HOUR = 60 * MINUTE
@@ -36,23 +40,6 @@ SETTINGS_READ_ORDER: tuple[str, ...] = (
 )
 
 UNKNOWN_NETLOC = ("unknown_ip", "unknown_port")
-
-
-
-def detect_settings(read_order: tuple[str, ...] = SETTINGS_READ_ORDER) -> "Settings":
-    fileutil = FileUtil.from_cwd()
-    work_dir = pathlib.Path.cwd()
-    if (f := os.environ.get("SETTING_FILE", None)) is not None:
-        return Settings.from_file(fileutil.find(f))
-    for candidate in read_order:
-        try:
-            f = fileutil.find(candidate, dir=work_dir)
-        except FileNotFoundError:
-            continue
-        else:
-            settings = Settings.from_file(f)
-            return settings
-    raise FileNotFoundError(f"None of {read_order} File exists in {work_dir}")
 
 
 def sys_finetune():
@@ -109,8 +96,9 @@ class SettingsBase(BaseModel):
 class Settings(SettingsBase):
     PROJECT_NAME: ty.ClassVar[str] = "askgpt"
     PROJECT_ROOT: ty.ClassVar[pathlib.Path] = pathlib.Path.cwd()
-    FILE_NAME: str | None = None
     RUNTIME_ENV: ty.Literal["dev", "prod", "test"]
+    CONFIG_FILE_NAME: str | None = None
+    BOOTSTRAP_TIMEOUT: float = 60.0
 
     @property
     def is_prod_env(self):
@@ -209,6 +197,7 @@ class Settings(SettingsBase):
         HOST: str
         PORT: int
         API_VERSION: str = "1"
+        DEPENDENCIES_CHECK_URL: list[str] = ["https://api.openai.com"]
 
         @property
         def API_VERSION_STR(self) -> str:
@@ -295,9 +284,26 @@ class Settings(SettingsBase):
     def from_file(cls, filename: str | pathlib.Path) -> ty.Self:
         fileutil = FileUtil.from_cwd()
         config_data = fileutil.read_file(filename)
-        config_data["FILE_NAME"] = str(filename)
-        updated_config = update_config_from_env(config_data)
+        config_data["CONFIG_FILE_NAME"] = str(filename)
+        updated_config = update_value_from_env(config_data)
         return cls.model_validate(updated_config)
 
 
 SETTINGS_CONTEXT: ContextVar[Settings] = ContextVar("settings")
+
+
+@dg.node
+def detect_settings(read_order: tuple[str, ...] = SETTINGS_READ_ORDER) -> Settings:
+    fileutil = FileUtil.from_cwd()
+    work_dir = pathlib.Path.cwd()
+    if (f := os.environ.get("SETTING_FILE", None)) is not None:
+        return Settings.from_file(fileutil.find(f))
+    for candidate in read_order:
+        try:
+            f = fileutil.find(candidate, dir=work_dir)
+        except FileNotFoundError:
+            continue
+        else:
+            settings = Settings.from_file(f)
+            return settings
+    raise FileNotFoundError(f"None of {read_order} File exists in {work_dir}")

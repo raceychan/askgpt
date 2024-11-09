@@ -13,7 +13,7 @@ from loguru import logger
 from rich.console import Console
 from starlette.responses import Response
 
-from askgpt.helpers.file import relative_path
+from askgpt.helpers.file_loader import relative_path
 
 __all__ = ["logger"]
 

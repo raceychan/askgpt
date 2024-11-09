@@ -1,7 +1,7 @@
 import React from "react";
 
-import { GptService, SessionsService, ListSessionsResponse } from "@/lib/api";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { GptService, ListSessionsResponse } from "@/lib/api";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { isLoggedIn } from "@/contexts/auth-context";
 import GPTSessionsCard from "./session-card";
 
@@ -20,33 +20,14 @@ const SessionComponent: React.FC = () => {
     enabled: isLoggedIn,
   });
 
-  const addSessionMutation = useMutation({
-    mutationFn: async () => {
-      const resp = await GptService.createSession();
-      if (!resp.data) {
-        throw Error(`Failed to create session ${resp.error}`);
-      }
-      return resp.data;
-    },
-    onSuccess: () => {
-      // queryClient.setQueryData(
-      //   ["userSessions"],
-      //   (oldData: ListSessionsResponse) => {
-      //     return [...oldData, { id: "123", name: "New Session" }];
-      //   }
-      // );
-    },
-    onSettled: () => {
-      queryClient.invalidateQueries({ queryKey: ["userSessions"] });
-    },
-  });
-
   return (
-    <GPTSessionsCard
-      status={status}
-      sessions={sessions}
-      addSessionMutation={addSessionMutation}
-    ></GPTSessionsCard>
+    <div className="flex justify-center">
+      <GPTSessionsCard
+        status={status}
+        sessions={sessions}
+        queryClient={queryClient}
+      />
+    </div>
   );
 };
 

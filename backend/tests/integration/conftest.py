@@ -7,7 +7,6 @@ from sqlalchemy.ext import asyncio as sa_aio
 from askgpt.adapters.cache import MemoryCache
 from askgpt.adapters.database import AsyncDatabase
 from askgpt.adapters.queue import QueueBroker
-from askgpt.adapters.uow import UnitOfWork
 from askgpt.app.auth._model import UserAuth
 from askgpt.app.auth._repository import AuthRepository
 from askgpt.app.auth.service import AuthService, TokenRegistry
@@ -16,7 +15,8 @@ from askgpt.app.gpt.openai._params import ChatResponse
 from askgpt.app.user._repository import UserRepository
 from askgpt.app.user.service import UserService
 from askgpt.domain.config import Settings
-from askgpt.infra.eventstore import EventStore, OutBoxProducer
+from askgpt.helpers.sql import UnitOfWork
+from askgpt.infra.eventstore import EventStore
 from askgpt.infra.schema import create_tables
 from askgpt.infra.security import Encryptor
 from tests.conftest import UserDefaults
@@ -41,7 +41,7 @@ def uow(aiodb: AsyncDatabase):
 
 @pytest.fixture(scope="module")
 def local_cache():
-    return MemoryCache.from_singleton()
+    return MemoryCache[str, str].from_singleton()
 
 
 @pytest.fixture(scope="module", autouse=True)
@@ -67,11 +67,6 @@ def user_auth(test_defaults: UserDefaults):
 @pytest.fixture(scope="module")
 def broker():
     return QueueBroker[ty.Any](100)
-
-
-@pytest.fixture(scope="module")
-def producer(eventstore: EventStore):
-    return OutBoxProducer(eventstore)
 
 
 # @pytest.fixture(scope="module", autouse=True)
@@ -122,7 +117,7 @@ async def auth_service(
 
 @pytest.fixture(scope="module")
 async def cache(settings: Settings):
-    return MemoryCache()
+    return MemoryCache[str, str].from_singleton()
 
 
 @pytest.fixture(scope="module")

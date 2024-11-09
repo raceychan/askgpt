@@ -1,8 +1,8 @@
 import datetime
 
 from jose.exceptions import JWTError as JWTError
-from pydantic import ValidationError as ValidationError
 from pydantic import BaseModel, ConfigDict
+from pydantic import ValidationError as ValidationError
 
 from askgpt.helpers.security import decode_jwt as decode_jwt
 from askgpt.helpers.security import decrypt_string as decrypt_string
@@ -54,6 +54,9 @@ class Encryptor:
         )
 
     def encrypt_string(self, string: str) -> bytes:
+        """
+        NOTE: NOT idempotent, same string would turn into different encrypted value
+        """
         return encrypt_string(string, self._secret_key.encode())
 
     def decrypt_string(self, encrypted: bytes) -> str:

@@ -1,18 +1,16 @@
 import typing as ty
 
-from askgpt.api.errors import QuotaExceededError
-from askgpt.api.model import EmptyResponse, RequestBody, Response, ResponseData
-from askgpt.app.auth.api import ParsedToken
-from askgpt.app.factory import (
-    GPTService,
-    SessionService,
-    dynamic_gpt_service_factory,
-    session_service_factory,
-    user_request_throttler_factory,
-)
-from fastapi import APIRouter, Body, Depends, Query
+from fastapi import APIRouter, Body, Depends
 from fastapi.responses import RedirectResponse, StreamingResponse
 from starlette import status
+
+from askgpt.api.errors import QuotaExceededError
+from askgpt.api.model import EmptyResponse, RequestBody, Response, ResponseData
+from askgpt.api.throttler import UserRequestThrottler
+from askgpt.app.auth.api import ParsedToken
+from askgpt.app.gpt.service import GPTService
+from askgpt.app.gpt_factory import SessionService, dynamic_gpt_service_resolver
+from askgpt.domain.config import dg
 
 from ._model import ChatSession
 from .anthropic._params import AnthropicChatMessageOptions
@@ -21,14 +19,14 @@ from .openai._params import ChatGPTRoles, OpenAIChatMessageOptions
 gpt_router = APIRouter(prefix="/gpt")
 sessions = APIRouter(prefix="/sessions")
 
-DSessionService = ty.Annotated[SessionService, Depends(session_service_factory)]
-DGPTService = ty.Annotated[GPTService, Depends(dynamic_gpt_service_factory)]
+DSessionService = ty.Annotated[SessionService, Depends(dg.factory(SessionService))]
+DGPTService = ty.Annotated[GPTService, Depends(dynamic_gpt_service_resolver)]
 
 
 async def throttle_user_request(
     access_token: ParsedToken,
 ):
-    throttler = user_request_throttler_factory()
+    throttler = dg.resolve(UserRequestThrottler)
     wait_time = await throttler.validate(access_token.sub)
     if wait_time:
         raise QuotaExceededError(throttler.max_tokens, wait_time)

@@ -24,7 +24,7 @@ services:
 
     command:
       - "gunicorn"
-      - "askgpt.feat.app:app_factory"
+      - "askgpt.api.app:app_factory"
       - "--workers"
       - "1"
       - "-k"

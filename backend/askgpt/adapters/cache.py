@@ -22,7 +22,7 @@ class ScriptFunc[
     def __call__(self, keys: KeysT, args: ArgsT) -> ty.Awaitable[ResultT]: ...
 
 
-class CacheList[TKey, TValue]:
+class CacheList[TKey: ty.Hashable, TValue]:
     def __init__(self, base: "Cache[TKey, TValue]"):
         self._base = base
         self._cache_lists: dict[TKey, list[TValue]] = defaultdict(list)

@@ -78,7 +78,7 @@ class TokenBucket:
 class TokenBucketFactory:
     def __init__(
         self,
-        redis: RedisCache,
+        redis: RedisCache[str],
         script: TokenBucketScript,
         keyspace: KeySpace | None = None,
     ):

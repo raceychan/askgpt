@@ -1,6 +1,6 @@
 """
-modules in this package are too small to be a seperate pypi package
-these modules involve no business logic, and are purely for convenience
+Modules in this package are too small to be a seperate pypi package
+These modules involve no business logic, and are purely for convenience
 
-TODO: make this a separate repo
+NOTE: can only dependent on third party libraries, not other modules in the project.
 """

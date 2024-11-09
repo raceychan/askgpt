@@ -1,8 +1,31 @@
 import abc
+import copy
+import os
 import typing as ty
 from pathlib import Path
 
 from askgpt.helpers.functions import simplecache
+
+
+def update_value_from_env[
+    T: dict[str, ty.Any]
+](config_data: T, prefix: str = "", delimiter: str = "__") -> T:
+    updated_config = copy.deepcopy(config_data)
+    null = object()
+
+    for key, value in updated_config.items():
+        env_key = f"{prefix}{key}"
+
+        if isinstance(value, dict):
+            value = ty.cast(dict[str, ty.Any], value)
+            updated_config[key] = update_value_from_env(
+                value, env_key + delimiter, delimiter
+            )
+        else:
+            env_value = os.environ.get(env_key, null)
+            if env_value is not null:
+                updated_config[key] = env_value
+    return updated_config
 
 
 def relative_path(file: str) -> str:
@@ -200,7 +223,7 @@ class FileUtil:
             rg = work_dir.glob(pattern)
         try:
             file = next(rg)
-        except StopIteration as se:
+        except StopIteration:
             return None
         return file
 
@@ -214,7 +237,7 @@ class FileUtil:
         else:
             files = work_dir.iterdir()
             for file in files:
-                if file == pattern:
+                if file.name == pattern:
                     return work_dir / file
         raise FileNotFoundError(
             f"File '{pattern}' not found in current directory {work_dir}"
